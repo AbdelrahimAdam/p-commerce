@@ -465,7 +465,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useOrdersStore } from '@/stores/orders'
 import { useAuthStore } from '@/stores/auth'
 import { useLanguageStore } from '@/stores/language'
-import { showNotification } from '@/utils/notifications'
+import { authNotification } from '@/utils/notifications'  // Fixed import
 import { showConfirmation } from '@/utils/confirmation'
 import type { PaymentStatus } from '@/types'
 
@@ -612,11 +612,11 @@ const updateOrderStatus = async () => {
     )
     
     if (success) {
-      showNotification.success(t('Order status updated successfully'))
+      authNotification.loggedIn(t('Order status updated successfully')) // Changed from success
       await fetchOrder()
     }
   } catch (err) {
-    showNotification.error(t('Failed to update order status'))
+    authNotification.error(t('Failed to update order status'))
   } finally {
     updating.value = false
   }
@@ -636,10 +636,10 @@ const updatePaymentStatus = async () => {
     if (success) {
       showPaymentStatusModal.value = false
       await fetchOrder()
-      showNotification.success(t('Payment status updated successfully'))
+      authNotification.loggedIn(t('Payment status updated successfully')) // Changed from success
     }
   } catch (err) {
-    showNotification.error(t('Failed to update payment status'))
+    authNotification.error(t('Failed to update payment status'))
   } finally {
     updatingPayment.value = false
   }
@@ -662,9 +662,9 @@ const saveNotes = async () => {
     await ordersStore.updateOrder(order.value.id, {
       adminNotes: adminNotes.value
     })
-    showNotification.success(t('Notes saved successfully'))
+    authNotification.loggedIn(t('Notes saved successfully')) // Changed from success
   } catch (err) {
-    showNotification.error(t('Failed to save notes'))
+    authNotification.error(t('Failed to save notes'))
   } finally {
     savingNotes.value = false
   }
@@ -679,9 +679,9 @@ const sendEmailNotification = async () => {
   
   try {
     // In a real app, you'd call an API endpoint here
-    showNotification.success(t('Email notification sent to customer'))
+    authNotification.loggedIn(t('Email notification sent to customer')) // Changed from success
   } catch (err) {
-    showNotification.error(t('Failed to send email'))
+    authNotification.error(t('Failed to send email'))
   }
 }
 

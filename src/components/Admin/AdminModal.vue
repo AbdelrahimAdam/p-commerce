@@ -179,7 +179,8 @@ export default defineComponent({
         formData.value = {
           displayName: admin.displayName || '',
           email: admin.email,
-          phoneNumber: admin.phoneNumber || '',
+          // Use type assertion because AdminUser might not have phoneNumber
+          phoneNumber: (admin as any).phoneNumber || '',
           role: admin.role,
           isActive: admin.isActive,
           password: ''

@@ -409,8 +409,9 @@
               >
                 {{ t('Save Without Products') }}
               </button>
+              <!-- Fixed: wrap saveBrand in an arrow function to avoid event argument -->
               <button
-                @click="saveBrand"
+                @click="() => saveBrand()"
                 :disabled="saving"
                 class="px-4 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600 disabled:opacity-50 disabled:cursor-not-allowed"
               >
@@ -437,7 +438,8 @@ import { useRoute, useRouter } from 'vue-router'
 import { useLanguageStore } from '@/stores/language'
 import { useBrandsStore } from '@/stores/brands'
 import { useProductsStore } from '@/stores/products'
-import type { Brand, Product } from '@/types'
+// Removed unused Brand type import
+import type { Product } from '@/types'
 
 const route = useRoute()
 const router = useRouter()

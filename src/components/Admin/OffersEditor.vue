@@ -136,7 +136,7 @@
                       maxlength="60"
                       placeholder="e.g., Coco Chanel 50% Off"
                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                      @input="updateOffer(index)"
+                      @input="() => updateOffer(index)"
                     />
                     <div class="flex justify-between mt-1">
                       <p class="text-xs text-gray-500">{{ t('Catchy offer title') }}</p>
@@ -155,7 +155,7 @@
                       maxlength="100"
                       placeholder="e.g., Iconic Eau De Parfum Limited Offer"
                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                      @input="updateOffer(index)"
+                      @input="() => updateOffer(index)"
                     />
                     <div class="flex justify-between mt-1">
                       <p class="text-xs text-gray-500">{{ t('Brief description') }}</p>
@@ -173,7 +173,7 @@
                       type="text"
                       placeholder="coco-chanel-offer"
                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                      @input="updateOffer(index)"
+                      @input="() => updateOffer(index)"
                     />
                     <p class="text-xs text-gray-500 mt-1">
                       {{ t('Used in URLs:') }} /offer/{{ offer.slug || 'offer-name' }}
@@ -203,7 +203,7 @@
                         step="0.01"
                         placeholder="1500"
                         class="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                        @input="updateOffer(index)"
+                        @input="() => updateOffer(index)"
                       />
                       <span class="absolute left-3 top-2.5 text-gray-500">EGP</span>
                     </div>
@@ -222,7 +222,7 @@
                         step="0.01"
                         placeholder="150"
                         class="w-full pl-8 pr-3 py-2 border border-red-300 bg-red-50 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                        @input="updateOffer(index)"
+                        @input="() => updateOffer(index)"
                       />
                       <span class="absolute left-3 top-2.5 text-red-500">EGP</span>
                     </div>
@@ -346,7 +346,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import type { ComponentPublicInstance } from 'vue'
-import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage'
+import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage' // removed unused getStorage
 import { storage } from '@/firebase/config' // Adjust path if needed
 import { useLanguageStore } from '@/stores/language'
 
@@ -383,7 +383,7 @@ const offersData = ref<Offer[]>(props.offers.map(offer => ({
 const fileInputs = ref<(HTMLInputElement | null)[]>([])
 
 // Helper to set file input refs (accepts Vue component instance or element)
-const setFileInputRef = (el: Element | ComponentPublicInstance | null, index: number) => {
+const setFileInputRef = (el: any, index: number) => {
   if (el instanceof HTMLInputElement) {
     fileInputs.value[index] = el
   } else {
@@ -392,7 +392,7 @@ const setFileInputRef = (el: Element | ComponentPublicInstance | null, index: nu
 }
 
 // Methods
-const updateOffer = (index: number) => {
+const updateOffer = (_index: number) => {
   emit('update', offersData.value)
   emit('change-detected')
 }

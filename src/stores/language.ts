@@ -129,7 +129,7 @@ export const useLanguageStore = defineStore('language', () => {
     }
   }
 
-  // Translation helper with interpolation support
+  // Translation helper with interpolation support – FIXED INDEXING
   const t = (key: string, params?: Record<string, string>): string => {
     // Get translation from our computed translations
     const translationObj = translations.value[key as keyof typeof translations.value]
@@ -139,7 +139,9 @@ export const useLanguageStore = defineStore('language', () => {
       return key
     }
     
-    let translation = translationObj[currentLanguage.value] || translationObj.en || key
+    // Cast to a record with Language keys to allow indexing
+    const dict = translationObj as Record<Language, string>
+    let translation = dict[currentLanguage.value] || dict.en || key
     
     // Replace parameters if provided
     if (params) {

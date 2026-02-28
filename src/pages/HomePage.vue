@@ -118,7 +118,7 @@
                 
                 <div v-if="activeOffers.length > 1" class="slide-indicators">
                   <span
-                    v-for="(offer, index) in activeOffers"
+                    v-for="(_, index) in activeOffers"
                     :key="index"
                     class="indicator-dot"
                     :class="{ active: index === currentOfferIndex }"
@@ -211,7 +211,7 @@
               
               <div v-if="activeOffers.length > 1" class="slide-indicators">
                 <span
-                  v-for="(offer, index) in activeOffers"
+                  v-for="(_, index) in activeOffers"
                   :key="index"
                   class="indicator-dot"
                   :class="{ active: index === currentOfferIndex }"
@@ -243,18 +243,10 @@ const homepageStore = useHomepageStore()
 const brandsStore = useBrandsStore()
 const { t, formatDate } = languageStore
 
-const isDevelopment = import.meta.env.DEV
-
 // =================== COMPUTED ===================
 const homepageData = computed(() => homepageStore.homepageData || {})
 const heroBanner = computed(() => homepageData.value.heroBanner || {})
 const activeOffers = computed(() => homepageData.value.activeOffers || [])
-const lastUpdatedFormatted = computed(() => {
-  if (homepageData.value.lastUpdated) {
-    return formatDate(homepageData.value.lastUpdated)
-  }
-  return 'Never'
-})
 
 const dataSource = computed(() => homepageData.value.source || 'unknown')
 const isDarkMode = computed(() => homepageData.value.settings?.isDarkMode || false)
@@ -310,7 +302,7 @@ const goToOffer = (index: number) => {
 }
 
 // Watch for changes in offers (admin updates)
-watch(activeOffers, (newOffers) => {
+watch(activeOffers, (_newOffers) => {
   currentOfferIndex.value = 0
   stopOfferRotation()
   startOfferRotation()
@@ -322,7 +314,7 @@ onMounted(async () => {
   document.documentElement.style.scrollBehavior = 'smooth'
   
   // Subscribe to homepage updates
-  const unsubscribe = homepageStore.subscribeToUpdates((data) => {
+  const _unsubscribe = homepageStore.subscribeToUpdates((data) => {
     console.log('📡 Homepage store update notification:', {
       source: data.source,
       offers: data.activeOffers?.length,
@@ -379,8 +371,6 @@ onUnmounted(() => {
 })
 
 // =================== OTHER METHODS ===================
-const navigateToShop = () => router.push('/shop')
-
 // Updated navigateToOffer with linkUrl support
 const navigateToOffer = (offer: any) => {
   if (offer?.linkUrl) {

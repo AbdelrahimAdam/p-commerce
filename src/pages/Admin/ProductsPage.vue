@@ -641,8 +641,8 @@
     <!-- Product Form Modal -->
     <ProductFormModal
       v-if="showProductForm"
-      :product="editingProduct"
-      :brand="selectedBrandForProduct"
+      :product="editingProduct || undefined"   <!-- Fixed: null to undefined -->
+      :brand="selectedBrandForProduct || undefined"   <!-- Fixed: null to undefined -->
       @close="closeProductForm"
       @save="handleSaveProduct"
       @saved="handleProductSaved"
@@ -727,7 +727,7 @@ const filteredProducts = computed(() => {
     const query = searchQuery.value.toLowerCase()
     filtered = filtered.filter(product =>
       getProductName(product).toLowerCase().includes(query) ||
-      product.description?.[currentLanguage.value]?.toLowerCase().includes(query) ||
+      product.description?.[currentLanguage.value as 'en' | 'ar']?.toLowerCase().includes(query) ||
       product.description?.en?.toLowerCase().includes(query) ||
       product.brand?.toLowerCase().includes(query) ||
       product.category?.toLowerCase().includes(query)
@@ -809,7 +809,7 @@ const endIndex = computed(() => {
 const getCategoryDisplayName = (category: Category): string => {
   if (!category) return ''
   // Category has en/ar properties, not a string name
-  return category[currentLanguage.value] || category.en || category.id
+  return category[currentLanguage.value as 'en' | 'ar'] || category.en || category.id
 }
 
 const getCategoryName = (categoryId: string): string => {
@@ -821,11 +821,11 @@ const getCategoryName = (categoryId: string): string => {
 const getProductName = (product: Product | null): string => {
   if (!product) return ''
   if (typeof product.name === 'string') return product.name
-  return product.name?.[currentLanguage.value] || product.name?.en || t('Unnamed Product')
+  return product.name?.[currentLanguage.value as 'en' | 'ar'] || product.name?.en || t('Unnamed Product')
 }
 
 const getProductDescription = (product: Product): string => {
-  return product.description?.[currentLanguage.value] || product.description?.en || t('No description')
+  return product.description?.[currentLanguage.value as 'en' | 'ar'] || product.description?.en || t('No description')
 }
 
 const getProductDate = (date: any): Date => {

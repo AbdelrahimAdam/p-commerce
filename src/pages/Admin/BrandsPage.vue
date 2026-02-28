@@ -139,7 +139,8 @@
                 :key="category"
                 :value="category"
               >
-                {{ t(category) }}
+                <!-- Fixed: handle undefined category with fallback -->
+                {{ t(category || '') }}
               </option>
             </select>
 
@@ -364,7 +365,7 @@
     <!-- Add/Edit Brand Modal -->
     <BrandFormModal
       v-if="showAddModal || editingBrand"
-      :brand="editingBrand"
+      :brand="editingBrand || undefined"   <!-- Fixed: null to undefined -->
       :mode="editingBrand ? 'edit' : 'add'"
       @close="closeModal"
       @saved="handleBrandSaved"

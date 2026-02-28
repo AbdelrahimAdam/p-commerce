@@ -193,7 +193,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage'
+import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage' // removed unused getStorage
 import { storage } from '@/firebase/config' // assuming you have this configured
 
 interface Brand {
@@ -225,8 +225,8 @@ const fileInputs = ref<(HTMLInputElement | null)[]>([])
 const showDebug = ref(false)
 const uploadStatus = ref<UploadStatus | null>(null)
 
-// Helper: set file input ref
-const setFileInputRef = (el: Element | null, index: number) => {
+// Helper: set file input ref – accept any to avoid type mismatch
+const setFileInputRef = (el: any, index: number) => {
   if (el instanceof HTMLInputElement) {
     fileInputs.value[index] = el
   } else {

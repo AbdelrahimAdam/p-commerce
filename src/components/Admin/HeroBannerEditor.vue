@@ -1,4 +1,4 @@
-<!-- src/components/Admin/HeroBannerEditor.vue - UPDATED -->
+<!-- src/components/Admin/HeroBannerEditor.vue -->
 <template>
   <div class="hero-banner-editor space-y-6">
     <div class="flex items-center justify-between">
@@ -81,7 +81,7 @@
             </svg>
             
             <button
-              @click="$refs.fileInput.click()"
+              @click="fileInput?.click()"
               class="mt-4 px-4 py-2 bg-gold-500 text-white hover:bg-gold-600 rounded-lg transition-colors"
               :disabled="isUploading"
             >
@@ -169,7 +169,8 @@
 
 <script setup lang="ts">
 import { ref, watch } from 'vue'
-import { useHomepageStore } from '@/stores/homepage'
+// homepageStore not used – removed import
+import { useLanguageStore } from '@/stores/language'
 
 const props = defineProps<{
   heroBanner: {
@@ -184,7 +185,9 @@ const emit = defineEmits<{
   changeDetected: []
 }>()
 
-const homepageStore = useHomepageStore()
+const languageStore = useLanguageStore()
+const { t } = languageStore
+
 const fileInput = ref<HTMLInputElement | null>(null)
 const isUploading = ref(false)
 const uploadStatus = ref<{type: 'success' | 'error', message: string} | null>(null)

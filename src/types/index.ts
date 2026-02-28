@@ -283,7 +283,7 @@ export interface StatusHistoryItem {
   status: OrderStatus
   date: Date
   note?: string
-  updatedBy?: string                      // ✅ added
+  updatedBy?: string
 }
 
 export interface OrderCustomer {
@@ -301,7 +301,6 @@ export interface OrderCustomer {
   country?: string
 }
 
-// ✅ Define OrderItem (used in orders)
 export interface OrderItem {
   id: string
   productId: string
@@ -317,7 +316,6 @@ export interface OrderItem {
   originalPrice?: number
 }
 
-// ✅ Define ShippingAddress
 export interface ShippingAddress {
   name: string
   email: string
@@ -332,7 +330,7 @@ export interface Order {
   orderNumber: string
 
   customer: OrderCustomer
-  items: OrderItem[]                       // ✅ now OrderItem is defined
+  items: OrderItem[]
 
   subtotal: number
   shippingCost: number
@@ -350,7 +348,7 @@ export interface Order {
   notes?: string
   adminNotes?: string
 
-  userId?: string                           // ✅ added
+  userId?: string
   guestId?: string
   userEmail?: string // legacy
 
@@ -364,11 +362,14 @@ export interface Order {
 }
 
 // Firestore order type (with Timestamps)
-import type { Timestamp } from 'firebase/firestore'
+import type { Timestamp, FieldValue } from 'firebase/firestore'
 
-export interface FirestoreOrder extends Omit<Order, 'createdAt' | 'updatedAt' | 'shippedAt' | 'deliveredAt' | 'cancelledAt' | 'statusHistory' | 'id'> {
+export interface FirestoreOrder extends Omit<Order, 
+  'createdAt' | 'updatedAt' | 'shippedAt' | 'deliveredAt' | 'cancelledAt' | 
+  'statusHistory' | 'id' | 'userId' | 'guestId'
+> {
   userId?: string | null
-  guestId?: string | null                  // ✅ allow null for Firestore
+  guestId?: string | null
   createdAt: Timestamp | FieldValue
   updatedAt: Timestamp | FieldValue
   shippedAt?: Timestamp | FieldValue | null
@@ -565,4 +566,4 @@ export interface UpdateAdminDto {
 // ===============================
 // Exports for convenience
 // ===============================
-export type { Timestamp }
+export type { Timestamp, FieldValue }

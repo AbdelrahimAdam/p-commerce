@@ -1,3 +1,6 @@
+// src/services/currencyService.ts
+declare const importMeta: any; // quick fix for import.meta
+
 import type { ExchangeRate } from '@/types/currency'
 import { db } from '@/firebase/config'
 import { doc, getDoc, setDoc, Timestamp } from 'firebase/firestore'

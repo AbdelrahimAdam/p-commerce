@@ -118,11 +118,11 @@
               </div>
               <div class="flex justify-between py-2">
                 <span class="text-sm text-gray-600">{{ t('Shipping') }}</span>
-                <span class="text-sm font-medium text-gray-900">{{ order.shipping === 0 ? t('Free') : formatCurrency(order.shipping) + ' EGP' }}</span>
+                <span class="text-sm font-medium text-gray-900">{{ order.shipping === 0 ? t('Free') : formatCurrency(order.shipping || 0) + ' EGP' }}</span>
               </div>
               <div class="flex justify-between py-2">
                 <span class="text-sm text-gray-600">{{ t('Tax') }}</span>
-                <span class="text-sm font-medium text-gray-900">{{ formatCurrency(order.tax) }} EGP</span>
+                <span class="text-sm font-medium text-gray-900">{{ formatCurrency(order.tax || 0) }} EGP</span>
               </div>
               <div class="flex justify-between py-3 border-t border-gray-200">
                 <span class="text-base font-bold text-gray-900">{{ t('Total') }}</span>
@@ -161,7 +161,13 @@ import { useRoute } from 'vue-router'
 import { useOrdersStore } from '@/stores/orders'
 import { useAuthStore } from '@/stores/auth'
 import { useLanguageStore } from '@/stores/language'
-import { showNotification } from '@/utils/notifications'
+import { showError, showSuccess } from '@/utils/notifications' // ✅ corrected import
+
+// Type declaration for html2pdf
+declare module 'html2pdf.js' {
+  const html2pdf: any
+  export default html2pdf
+}
 import html2pdf from 'html2pdf.js'
 
 const route = useRoute()
@@ -217,10 +223,10 @@ const verifyEmail = async () => {
       order.value = fetchedOrder
       isVerified.value = true
     } else {
-      showNotification.error(t('Invalid email address'))
+      showError(t('Invalid email address')) // ✅ corrected
     }
   } catch (err) {
-    showNotification.error(t('Failed to verify email'))
+    showError(t('Failed to verify email')) // ✅ corrected
   } finally {
     verifying.value = false
   }
@@ -242,7 +248,7 @@ const downloadInvoice = async () => {
     }
     
     await html2pdf().set(opt).from(element).save()
-    showNotification.success(t('Invoice downloaded successfully'))
+    showSuccess(t('Invoice downloaded successfully')) // ✅ corrected
   }
 }
 
@@ -259,7 +265,7 @@ onMounted(async () => {
         isVerified.value = true
       }
     } catch (err) {
-      showNotification.error(t('Order not found'))
+      showError(t('Order not found')) // ✅ corrected
     } finally {
       loading.value = false
     }

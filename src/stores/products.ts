@@ -12,9 +12,8 @@ import {
   limit,
   startAfter,
   QueryConstraint,
-  QueryDocumentSnapshot,
-  startAt
-} from 'firebase/firestore'
+  QueryDocumentSnapshot
+} from 'firebase/firestore'  // removed startAt
 import { ref as storageRef, getDownloadURL, listAll } from 'firebase/storage'
 import { db, storage } from '@/firebase/config'
 import type { Product, FilterOptions, Brand } from '@/types'
@@ -722,9 +721,9 @@ export const useProductsStore = defineStore('products', () => {
       filtered = filtered.filter(p => p.price <= options.maxPrice!)
     }
 
-    // Filter by rating
+    // Filter by rating – FIXED undefined handling
     if (options.minRating !== undefined) {
-      filtered = filtered.filter(p => p.rating >= options.minRating!)
+      filtered = filtered.filter(p => (p.rating ?? 0) >= options.minRating!)
     }
 
     // Filter by bestseller

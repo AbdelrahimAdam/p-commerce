@@ -13,7 +13,6 @@ import {
   addDoc, 
   serverTimestamp,
   Timestamp,
-  FieldValue,
   limit,
   startAfter,
   QueryDocumentSnapshot,
@@ -360,7 +359,7 @@ export const useOrdersStore = defineStore('orders', () => {
 
         const currentUserId = getCurrentUserId()
         const currentUserEmail = getCurrentUserEmail()
-        const currentUserName = getCurrentUserName()
+        const currentUserName = getCurrentUserName() // used in statusHistory
 
         const orderItems: OrderItem[] = cartStore.items.map(item => {
           const product = productsStore.products.find(p => p.id === item.id)
@@ -385,17 +384,25 @@ export const useOrdersStore = defineStore('orders', () => {
         const tax = cartStore.tax || Math.round(subtotal * 0.14)
         const total = subtotal + shipping + tax
 
+        // Use currentUserName if available, else fallback to currentUserId or 'customer'/'guest'
+        const updatedByName = authStore.isAuthenticated 
+          ? (currentUserName || currentUserId || 'customer')
+          : 'guest'
+
         const statusHistory: StatusHistoryItem[] = [{
           status: 'pending',
           date: new Date(),
           note: 'Order placed successfully',
-          updatedBy: authStore.isAuthenticated ? currentUserId || 'customer' : 'guest'
+          updatedBy: updatedByName
         }]
+
+        // Convert shippingAddress object to a string for legacy field
+        const shippingAddressString = `${shippingAddress.address}, ${shippingAddress.city}, ${shippingAddress.country || 'Egypt'}`
 
         const orderData: Omit<FirestoreOrder, 'id'> = {
           orderNumber,
-          userId: currentUserId,
-          guestId: guestId,
+          userId: currentUserId ?? undefined, // ensure null -> undefined
+          guestId: guestId, // string | undefined
           userEmail: currentUserEmail || shippingAddress.email,
           customer: {
             name: shippingAddress.name,
@@ -407,13 +414,13 @@ export const useOrdersStore = defineStore('orders', () => {
           },
           items: orderItems,
           subtotal,
-          shippingCost: shipping,                     // ✅ set required shippingCost
+          shippingCost: shipping,
           tax,
           total,
           status: 'pending',
           paymentMethod,
           paymentStatus: paymentMethod === 'cash_on_delivery' ? 'pending' : 'paid',
-          shippingAddress,                            // keep for legacy
+          shippingAddress: shippingAddressString,
           notes: notes || '',
           statusHistory: statusHistory.map(h => ({
             status: h.status,
@@ -457,7 +464,9 @@ export const useOrdersStore = defineStore('orders', () => {
         updatedAt: new Date(),
         shippedAt: undefined,
         deliveredAt: undefined,
-        cancelledAt: undefined
+        cancelledAt: undefined,
+        userId: newOrder.userId ?? undefined,
+        guestId: newOrder.guestId ?? undefined // ensure null -> undefined
       }
 
       orders.value = [createdOrder, ...orders.value]
@@ -582,7 +591,7 @@ export const useOrdersStore = defineStore('orders', () => {
       }
 
       const currentUserId = getCurrentUserId()
-      const currentUserName = getCurrentUserName()
+      const currentUserName = getCurrentUserName() || 'admin'
 
       const statusHistory: StatusHistoryItem[] = order.statusHistory || []
       statusHistory.push({

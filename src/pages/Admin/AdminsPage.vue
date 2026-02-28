@@ -432,7 +432,7 @@ import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
 import { useAdminStore } from '@/stores/admin'
 import type { AdminUser, CreateAdminDto } from '@/types/admin'
-import AdminModal from '@/components/admin/AdminModal.vue'
+import AdminModal from '@/components/Admin/AdminModal.vue' // Fixed: uppercase 'Admin'
 
 export default defineComponent({
   name: 'AdminsPage',
@@ -468,6 +468,9 @@ export default defineComponent({
     const stats = computed(() => adminStore.stats)
     const error = computed(() => adminStore.error)
     
+    // Enrich admins with optional fields to satisfy template
+    const enrichedAdmins = computed(() => admins.value.map(admin => admin as any))
+
     const lastLogin = computed(() => {
       const lastLogins = admins.value
         .filter(admin => admin.lastLoginAt)
@@ -476,7 +479,7 @@ export default defineComponent({
     })
 
     const filteredAdmins = computed(() => {
-      let filtered = [...admins.value]
+      let filtered = [...enrichedAdmins.value]
 
       // Apply search filter
       if (searchQuery.value) {

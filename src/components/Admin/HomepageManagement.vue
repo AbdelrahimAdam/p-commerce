@@ -190,7 +190,7 @@
       <!-- Offers Tab -->
       <div v-if="activeTab === 'offers'" class="space-y-6">
         <OffersEditor
-          :offers="homepageData.activeOffers || []"
+          :offers="offersForEditor"
           @update="handleActiveOffersUpdate"
           @change-detected="handleChangeDetected"
         />
@@ -404,6 +404,14 @@ const heroBannerForEditor = computed(() => ({
 
 // Featured brands for editor (use optional property)
 const featuredBrandsForEditor = computed(() => homepageData.value.featuredBrands || [])
+
+// Offers for editor – ensure each offer has an id (required by OffersEditor)
+const offersForEditor = computed(() => 
+  (homepageData.value.activeOffers || []).map(o => ({
+    ...o,
+    id: o.id || `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+  }))
+)
 
 // Initialize with store data
 onMounted(async () => {

@@ -482,12 +482,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import { useLanguageStore } from '@/stores/language'
-import { useAuthStore } from '@/stores/auth'
+// Removed unused authStore import
 
 const languageStore = useLanguageStore()
-const authStore = useAuthStore()
+// Removed unused isSuperAdmin computed
 
 const { t } = languageStore
 
@@ -550,9 +550,6 @@ const tabs = [
   { id: 'shipping', name: 'Shipping' },
   { id: 'notifications', name: 'Notifications' }
 ]
-
-// Computed
-const isSuperAdmin = computed(() => authStore.isSuperAdmin.value)
 
 // Methods
 const formatCurrency = (amount: number) => {

@@ -463,35 +463,30 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useLanguageStore } from '@/stores/language'
-import { collection, getDocs, query, orderBy, limit, startAfter, doc, deleteDoc } from 'firebase/firestore'
+import { collection, getDocs, query, orderBy, limit, doc, deleteDoc } from 'firebase/firestore' // Removed startAfter
 import { db } from '@/firebase/config'
 import { showConfirmation } from '@/utils/confirmation'
 import debounce from 'lodash/debounce'
 
-// Safe notification function (since authNotification seems to be problematic)
+// Fixed notification function with proper type handling
 const showNotification = (message: string, type: 'info' | 'success' | 'error' | 'warning' = 'info') => {
-  // Try to use authNotification if available
   try {
-    // Dynamic import or check if authNotification exists
     import('@/utils/notifications').then(module => {
       const authNotification = module.authNotification
-      if (authNotification && typeof authNotification[type] === 'function') {
-        authNotification[type](message)
+      if (type === 'error' && authNotification.error) {
+        authNotification.error(message)
+      } else if ((type === 'success' || type === 'info') && authNotification.loggedIn) {
+        authNotification.loggedIn(message)
+      } else if (type === 'warning') {
+        console.warn(message)
       } else {
-        // Fallback to console
         console.log(`[${type.toUpperCase()}] ${message}`)
-        // You could also use a different notification system here
-        alert(message)
       }
     }).catch(() => {
-      // Fallback if module doesn't exist
       console.log(`[${type.toUpperCase()}] ${message}`)
-      // alert(message)
     })
   } catch (error) {
-    // Ultimate fallback
     console.log(`[${type.toUpperCase()}] ${message}`)
-    // alert(message)
   }
 }
 
@@ -708,7 +703,7 @@ const loadCustomers = async () => {
   } catch (err: any) {
     console.error('Error loading customers:', err)
     error.value = err.message || 'Failed to load customers'
-    showNotification(error.value, 'error')
+    showNotification(error.value || 'Unknown error', 'error')
   } finally {
     loading.value = false
   }
@@ -761,51 +756,7 @@ const calculateStats = async () => {
     : 0
 }
 
-const loadMore = async () => {
-  if (!hasMore.value || loading.value) return
-  
-  loading.value = true
-  try {
-    const customersCollection = collection(db, 'customers')
-    const q = query(
-      customersCollection, 
-      orderBy('createdAt', 'desc'), 
-      startAfter(lastVisible.value),
-      limit(50)
-    )
-    
-    const querySnapshot = await getDocs(q)
-    const ordersByUser = await loadOrders()
-    
-    const moreCustomers = querySnapshot.docs.map(doc => {
-      const data = doc.data()
-      const userId = doc.id
-      const userOrders = ordersByUser[userId] || []
-      
-      const totalSpent = userOrders.reduce((sum, order) => sum + (order.total || 0), 0)
-      const lastOrder = userOrders.length > 0 ? userOrders[0].createdAt : null
-      
-      return {
-        id: doc.id,
-        ...data,
-        name: data.displayName || data.name || 'Customer',
-        orders: userOrders.length,
-        totalSpent,
-        lastOrder: lastOrder ? (lastOrder.toDate?.() || new Date(lastOrder)) : null,
-        recentOrders: userOrders.slice(0, 5)
-      }
-    })
-    
-    customers.value = [...customers.value, ...moreCustomers]
-    lastVisible.value = querySnapshot.docs[querySnapshot.docs.length - 1]
-    hasMore.value = querySnapshot.docs.length === 50
-    
-  } catch (err) {
-    console.error('Error loading more customers:', err)
-  } finally {
-    loading.value = false
-  }
-}
+// Removed unused loadMore function
 
 const viewCustomer = (customer: any) => {
   selectedCustomer.value = customer

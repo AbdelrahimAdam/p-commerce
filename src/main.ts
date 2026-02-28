@@ -1,9 +1,11 @@
+/// <reference types="vite/client" />
+
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 import { VueFire } from 'vuefire'
 import App from './App.vue'
 import router from './router'
-import { app } from './firebase/config'
+import { app as firebaseApp } from './firebase/config' // renamed to avoid conflict
 import './assets/styles/main.css'
 
 // Import vue-i18n
@@ -183,7 +185,7 @@ const pinia = createPinia()
 // Use plugins
 vueApp.use(pinia)
 vueApp.use(router)
-vueApp.use(VueFire, { firebaseApp: app })
+vueApp.use(VueFire, { firebaseApp }) // using renamed import
 vueApp.use(i18n)
 
 // Mount app
@@ -222,11 +224,8 @@ setTimeout(async () => {
     const languageStore = useLanguageStore()
     
     console.log('🔄 Initializing language store...')
-    if (typeof languageStore.initialize === 'function') {
-      await languageStore.initialize()
-    } else if (typeof languageStore.loadLanguage === 'function') {
-      await languageStore.loadLanguage()
-    }
+    // Language store only has initialize method
+    await languageStore.initialize()
     
     // Only check auth on protected pages
     if (!isPublic) {
@@ -240,24 +239,24 @@ setTimeout(async () => {
     console.log('📊 Initializing data stores...')
     // Initialize data stores in parallel
     await Promise.all([
-      brandsStore.initialize(),
-      productsStore.initialize(),
-      homepageStore.loadHomepageData()
+      brandsStore.initialize?.(),
+      productsStore.initialize?.(),
+      homepageStore.loadHomepageData?.()
     ])
     
     console.log('🛒 Restoring cart...')
-    cartStore.restoreCart()
+    cartStore.restoreCart?.()
     
     // Log initialization status (simplified)
     console.log('✅ All stores initialized successfully')
     console.log(`  👤 Auth: ${authStore.isAuthenticated ? 'Logged in' : 'Guest'}`)
     console.log(`  📁 Brands: ${brandsStore.brands?.length || 0}`)
     console.log(`  📦 Products: ${productsStore.products?.length || 0}`)
-    console.log(`  🛒 Cart Items: ${cartStore.cartItems?.length || 0}`)
+    console.log(`  🛒 Cart Items: ${cartStore.items?.length || 0}`) // changed from cartItems to items
     console.log(`  🌐 Language: ${languageStore.currentLanguage}`)
     
     // Check if we need sample data (only in development)
-    if (import.meta.env.DEV) {
+    if ((import.meta as any).env.DEV) { // type assertion to avoid ImportMeta error
       const brandsCount = brandsStore.brands?.length || 0
       const productsCount = productsStore.products?.length || 0
       
@@ -300,8 +299,8 @@ setTimeout(async () => {
       }
       
       await Promise.all([
-        brandsStore.initialize().catch(() => {}),
-        productsStore.initialize().catch(() => {})
+        brandsStore.initialize?.().catch(() => {}),
+        productsStore.initialize?.().catch(() => {})
       ])
       
     } catch (recoveryError) {
@@ -315,7 +314,7 @@ window.addEventListener('error', (event) => {
   console.error('🌍 Global error:', event.message)
 })
 
-window.addEventListener('unhandledrejection', (event) => {
+window.addEventListener('unhandledrejection', (_event) => { // renamed to _event to avoid unused variable warning
   console.error('🌍 Unhandled promise rejection')
 })
 
@@ -324,7 +323,7 @@ vueApp.config.errorHandler = (err) => {
 }
 
 // Development mode
-if (import.meta.env.DEV) {
+if ((import.meta as any).env.DEV) { // type assertion to avoid ImportMeta error
   console.log('🔧 Development mode enabled')
   
   // Expose stores for debugging on protected pages

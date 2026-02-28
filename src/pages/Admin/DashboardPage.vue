@@ -121,7 +121,7 @@
                       @change="handleBannerImageUpload"
                     />
                     <button
-                      @click="$refs.bannerFileInput.click()"
+                      @click="bannerFileInput?.click()"
                       class="px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50"
                     >
                       {{ t('Upload') }}
@@ -204,7 +204,7 @@
                     </svg>
                   </button>
                   <button
-                    @click="removeOffer(offer.id)"
+                    @click="removeOffer(offer.id!)"
                     class="p-1.5 lg:p-2 text-red-600 hover:text-red-700"
                     :title="t('Remove')"
                   >
@@ -287,7 +287,8 @@ const { t, formatDate } = languageStore
 const homepageData = computed(() => homepageStore.homepageData)
 const heroBanner = computed({
   get: () => homepageData.value?.heroBanner || { imageUrl: '', linkText: '', linkUrl: '' },
-  set: (val) => { /* used for v-model, we'll update via store */ }
+  // used for v-model, we'll update via store
+  set: (_val) => { /* empty setter for v-model compatibility */ }
 })
 const activeOffers = computed(() => homepageData.value?.activeOffers || [])
 const settings = computed(() => homepageData.value?.settings || { isDarkMode: false, defaultLanguage: 'ar' })

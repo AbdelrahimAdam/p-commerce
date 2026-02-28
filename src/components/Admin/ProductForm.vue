@@ -707,7 +707,7 @@
                   </label>
                   <div class="space-y-2">
                     <div 
-                      v-for="(note, index) in productData.notes.top" 
+                      v-for="(_note, index) in productData.notes.top" 
                       :key="`top-${index}`"
                       class="flex items-center gap-2"
                     >
@@ -744,7 +744,7 @@
                   </label>
                   <div class="space-y-2">
                     <div 
-                      v-for="(note, index) in productData.notes.heart" 
+                      v-for="(_note, index) in productData.notes.heart" 
                       :key="`heart-${index}`"
                       class="flex items-center gap-2"
                     >
@@ -781,7 +781,7 @@
                   </label>
                   <div class="space-y-2">
                     <div 
-                      v-for="(note, index) in productData.notes.base" 
+                      v-for="(_note, index) in productData.notes.base" 
                       :key="`base-${index}`"
                       class="flex items-center gap-2"
                     >
@@ -1158,8 +1158,8 @@ const formatBytes = (bytes: number): string => {
 const getCategoryDisplayName = (category: Category) => {
   if (!category) return ''
   if (typeof category === 'string') return category
-  // ✅ Use id as fallback instead of name (which doesn't exist on Category)
-  return category[currentLanguage.value] || category.id || ''
+  // Use id as fallback instead of name (which doesn't exist on Category)
+  return category[currentLanguage.value as keyof Category] || category.id || ''
 }
 
 const isValidUrl = (url: string): boolean => {

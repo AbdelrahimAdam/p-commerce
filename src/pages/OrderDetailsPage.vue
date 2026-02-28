@@ -76,7 +76,7 @@
               </div>
               <div class="flex-1">
                 <p class="text-sm text-gray-900">{{ ordersStore.getStatusText(statusItem.status) }}</p>
-                <p class="text-xs text-gray-500">{{ formatDate(statusItem.timestamp) }}</p>
+                <p class="text-xs text-gray-500">{{ formatDate(statusItem.date) }}</p>
               </div>
             </div>
           </div>
@@ -131,11 +131,11 @@
             </div>
             <div class="flex justify-between text-sm">
               <span class="text-gray-600">{{ t('Shipping') }}</span>
-              <span class="font-medium text-gray-900">{{ order.shipping === 0 ? t('Free') : formatCurrency(order.shipping) + ' EGP' }}</span>
+              <span class="font-medium text-gray-900">{{ order.shipping === 0 ? t('Free') : formatCurrency(order.shipping || 0) + ' EGP' }}</span>
             </div>
             <div class="flex justify-between text-sm">
               <span class="text-gray-600">{{ t('Tax') }}</span>
-              <span class="font-medium text-gray-900">{{ formatCurrency(order.tax) }} EGP</span>
+              <span class="font-medium text-gray-900">{{ formatCurrency(order.tax || 0) }} EGP</span>
             </div>
             <div class="flex justify-between text-base font-medium pt-4 border-t border-gray-200">
               <span class="text-gray-900">{{ t('Total') }}</span>
@@ -211,7 +211,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useOrdersStore } from '@/stores/orders'
 import { useAuthStore } from '@/stores/auth'
 import { useLanguageStore } from '@/stores/language'
-import { showNotification } from '@/utils/notifications'
+import { showError, showSuccess } from '@/utils/notifications' // ✅ corrected import
 import { showConfirmation } from '@/utils/confirmation'
 
 const route = useRoute()
@@ -289,10 +289,10 @@ const verifyEmail = async () => {
     if (fetchedOrder && fetchedOrder.customer.email === verificationEmail.value) {
       isVerified.value = true
     } else {
-      showNotification.error(t('Invalid email address'))
+      showError(t('Invalid email address')) // ✅ corrected
     }
   } catch (err) {
-    showNotification.error(t('Failed to verify email'))
+    showError(t('Failed to verify email')) // ✅ corrected
   } finally {
     verifying.value = false
   }
@@ -324,7 +324,7 @@ const cancelOrder = async () => {
   
   if (confirmed) {
     await ordersStore.cancelOrder(order.value.id, 'Cancelled by customer')
-    showNotification.success(t('Order cancelled successfully'))
+    showSuccess(t('Order cancelled successfully')) // ✅ corrected
     await ordersStore.fetchOrderById(order.value.id)
   }
 }

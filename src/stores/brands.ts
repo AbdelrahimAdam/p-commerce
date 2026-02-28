@@ -6,13 +6,12 @@ import {
   getDoc,
   getDocs,
   updateDoc,
-  deleteDoc,
   query,
   where,
   orderBy,
   writeBatch,
   serverTimestamp
-} from 'firebase/firestore'
+} from 'firebase/firestore'  // removed unused deleteDoc
 import { db } from '@/firebase/config'
 import type { Brand, BrandWithProducts } from '@/types'
 import type { Product } from '@/types'

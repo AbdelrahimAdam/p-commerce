@@ -542,18 +542,10 @@ const appTranslations = {
 
 // Safe translate function
 const safeTranslate = (key: string) => {
-  try {
-    const translations = appTranslations[key as keyof typeof appTranslations]
-    if (!translations) return key
-    
-    if (languageStore.t) {
-      return languageStore.t(translations) || translations.en || key
-    }
-    return translations[languageStore.currentLanguage] || translations.en || key
-  } catch (error) {
-    console.warn('Translation error:', error)
-    return key
-  }
+  const translations = appTranslations[key as keyof typeof appTranslations]
+  if (!translations) return key
+  const lang = languageStore.currentLanguage as 'en' | 'ar'
+  return translations[lang] || translations.en || key
 }
 
 // Methods

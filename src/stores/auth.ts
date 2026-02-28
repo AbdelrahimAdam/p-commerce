@@ -591,7 +591,8 @@ export const useAuthStore = defineStore('auth', () => {
     try {
       // This would typically upload to Firebase Storage
       // For now, we'll return a placeholder
-      showInfo('Photo upload functionality coming soon')
+      // FIXED: showInfo expects two arguments (title, message)
+      showInfo('Info', 'Photo upload functionality coming soon')
       return ''
     } catch (err: any) {
       console.error('❌ Error uploading photo:', err)

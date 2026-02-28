@@ -1,9 +1,9 @@
 export const showConfirmation = async ({
   title,
   message,
-  confirmText = 'Yes',
-  cancelText = 'No',
-  type = 'warning'
+  confirmText: _confirmText = 'Yes',
+  cancelText: _cancelText = 'No',
+  type: _type = 'warning'
 }: {
   title: string
   message: string

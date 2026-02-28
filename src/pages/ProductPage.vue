@@ -359,6 +359,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
+import { storeToRefs } from 'pinia'
 import { useRoute, useRouter } from 'vue-router'
 import { useLanguageStore } from '@/stores/language'
 import { useProductsStore } from '@/stores/products'
@@ -378,7 +379,9 @@ const cartStore = useCartStore()
 const wishlistStore = useWishlistStore()
 const brandsStore = useBrandsStore()
 
-const { currentLanguage, isRTL, t } = languageStore
+// ✅ Use storeToRefs for reactive language refs
+const { currentLanguage, isRTL } = storeToRefs(languageStore)
+const { t } = languageStore  // t is a function, not a ref
 
 // Safe language for indexing (only 'en' or 'ar')
 const safeLang = computed(() => {
@@ -513,7 +516,6 @@ const addToCart = async () => {
   isAddingToCart.value = true
   
   try {
-    // Pass the full product object – it already satisfies the Product type
     cartStore.addToCart(product.value, quantity.value)
     
     // Show success animation
@@ -531,7 +533,6 @@ const addToCart = async () => {
 
 const toggleWishlist = () => {
   if (!product.value) return
-  
   wishlistStore.toggleWishlist(product.value)
 }
 
@@ -540,13 +541,11 @@ const viewProduct = (relatedProduct: Product) => {
 }
 
 const handleRelatedProductAdd = (relatedProduct: Product) => {
-  // Pass the full product object
   cartStore.addToCart(relatedProduct, 1)
 }
 
 const loadBrandDetails = async () => {
   if (!brandSlug.value) return
-  
   try {
     const brand = await brandsStore.getBrandBySlug(brandSlug.value)
     if (brand) {

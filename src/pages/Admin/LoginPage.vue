@@ -192,7 +192,7 @@ const router = useRouter()
 const languageStore = useLanguageStore()
 const authStore = useAuthStore()
 
-const { isRTL, t } = languageStore
+const { t } = languageStore  // Removed unused isRTL
 
 const loading = ref(false)
 const showPassword = ref(false)

@@ -438,9 +438,7 @@
                 <div>
                   <p class="text-sm text-gray-600">{{ t('Shipping Address') }}</p>
                   <p class="font-medium">
-                    {{ selectedOrder.customer?.address || selectedOrder.shippingAddress?.address || t('N/A') }}<br>
-                    {{ selectedOrder.customer?.city || selectedOrder.shippingAddress?.city || '' }}, 
-                    {{ selectedOrder.customer?.country || selectedOrder.shippingAddress?.country || '' }}
+                    {{ getShippingAddress(selectedOrder) }}
                   </p>
                 </div>
               </div>
@@ -667,7 +665,6 @@
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useLanguageStore } from '@/stores/language'
 import { useOrdersStore } from '@/stores/orders'
-import { useAuthStore } from '@/stores/auth'
 import type { Order, OrderStatus } from '@/types'
 import debounce from 'lodash/debounce'
 import { collection, query, orderBy, onSnapshot, limit } from 'firebase/firestore'
@@ -676,7 +673,7 @@ import { authNotification } from '@/utils/notifications'
 
 const languageStore = useLanguageStore()
 const ordersStore = useOrdersStore()
-const authStore = useAuthStore()
+// Removed unused authStore
 const { t } = languageStore
 
 // Real-time listener
@@ -700,6 +697,14 @@ const showStatusModal = ref(false)
 const orderToUpdate = ref<Order | null>(null)
 const newStatus = ref<OrderStatus>('pending')
 const trackingNumber = ref('')
+
+// Helper function to format shipping address
+const getShippingAddress = (order: any) => {
+  if (typeof order.shippingAddress === 'object') {
+    return `${order.shippingAddress.address || ''}, ${order.shippingAddress.city || ''}, ${order.shippingAddress.country || ''}`.replace(/^, |, $/g, '')
+  }
+  return order.shippingAddress || order.customer?.address || t('N/A')
+}
 
 // Computed properties (unchanged)
 const filteredOrders = computed(() => {
@@ -966,11 +971,8 @@ const setupOrdersListener = () => {
   unsubscribeOrders = onSnapshot(q, (snapshot) => {
     if (ordersStore.orders.length === 0) {
       // First load – set orders via store action
-      const newOrders = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }))
-      ordersStore.setOrders(newOrders)   // <-- using store action
+      const newOrders = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Order))
+      ordersStore.setOrders(newOrders)
       lastOrderCount.value = newOrders.length
     } else {
       snapshot.docChanges().forEach((change) => {
@@ -978,8 +980,8 @@ const setupOrdersListener = () => {
           const newOrder = {
             id: change.doc.id,
             ...change.doc.data()
-          }
-          ordersStore.addOrder(newOrder)   // <-- using store action
+          } as Order
+          ordersStore.addOrder(newOrder)
           newOrdersCount.value++
           showNewOrdersNotification.value = true
           playNotificationSound()

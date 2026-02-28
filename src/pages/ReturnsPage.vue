@@ -264,9 +264,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive } from 'vue'
+import { ref, reactive, watch } from 'vue' // ✅ added watch import
 import { useLanguageStore } from '@/stores/language'
-import { showNotification } from '@/utils/notifications'
+import { showSuccess, showError } from '@/utils/notifications' // ✅ corrected imports
 
 const { t } = useLanguageStore()
 
@@ -347,7 +347,7 @@ const submitReturnRequest = async () => {
       files: uploadedFiles.value
     })
     
-    showNotification.success(t('Return request submitted successfully! We will contact you within 24 hours.'))
+    showSuccess(t('Return request submitted successfully! We will contact you within 24 hours.'))
     
     // Reset form
     form.orderNumber = ''
@@ -358,7 +358,7 @@ const submitReturnRequest = async () => {
     uploadedFiles.value = []
     
   } catch (error) {
-    showNotification.error(t('Failed to submit return request. Please try again.'))
+    showError(t('Failed to submit return request. Please try again.'))
   } finally {
     submitting.value = false
   }

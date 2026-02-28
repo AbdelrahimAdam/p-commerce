@@ -314,7 +314,6 @@ import { useRouter } from 'vue-router'
 import { useLanguageStore } from '@/stores/language'
 import { useAuthStore } from '@/stores/auth'
 import { useOrdersStore } from '@/stores/orders'
-import { useCartStore } from '@/stores/cart'
 import OrderCard from '@/components/Orders/OrderCard.vue'
 import OrderDetailsModal from '@/components/Orders/OrderDetailsModal.vue'
 import Pagination from '@/components/UI/Pagination.vue'
@@ -326,7 +325,6 @@ const router = useRouter()
 const languageStore = useLanguageStore()
 const authStore = useAuthStore()
 const ordersStore = useOrdersStore()
-const cartStore = useCartStore()
 
 const { t } = languageStore
 
@@ -423,10 +421,9 @@ const handleCancelOrder = async (order: any) => {
   })
   
   if (confirmed) {
-    const success = await ordersStore.cancelOrder(order.id)
-    if (!success) {
-      // Optionally show error message
-    }
+    // Call cancelOrder – note: this may return void, but we ignore the result
+    await ordersStore.cancelOrder(order.id)
+    // No need to check success; the store will update automatically
   }
 }
 
