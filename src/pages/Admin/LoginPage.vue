@@ -1,3 +1,4 @@
+<!-- src/pages/Admin/LoginPage.vue -->
 <template>
   <div class="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center p-4">
     <div class="w-full max-w-md">
@@ -186,7 +187,6 @@ import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import { useLanguageStore } from '@/stores/language'
 import { useAuthStore } from '@/stores/auth'
-import { authNotification } from '@/utils/notifications'
 
 const router = useRouter()
 const languageStore = useLanguageStore()
