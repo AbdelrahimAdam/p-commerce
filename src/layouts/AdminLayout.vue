@@ -1,19 +1,24 @@
 <!-- src/layouts/AdminLayout.vue -->
 <template>
   <div class="admin-layout min-h-screen bg-gray-50">
-    <!-- Admin Sidebar -->
-    <AdminSidebar v-if="!isMobileMenuOpen" class="fixed lg:static inset-y-0 left-0 z-40" />
+    <!-- Admin Sidebar - always rendered, slides in/out on mobile -->
+    <AdminSidebar 
+      :class="[
+        'fixed lg:static inset-y-0 left-0 z-40 w-64 transition-transform duration-300 ease-in-out',
+        isMobile && !isMobileMenuOpen ? '-translate-x-full' : 'translate-x-0'
+      ]"
+    />
     
     <!-- Mobile Overlay -->
     <div 
-      v-if="isMobileMenuOpen"
+      v-if="isMobileMenuOpen && isMobile"
       class="fixed inset-0 bg-black bg-opacity-50 z-30 lg:hidden"
       @click="isMobileMenuOpen = false"
     ></div>
     
     <!-- Main Content Area -->
     <div class="lg:ml-64 transition-all duration-200">
-      <!-- Top Navigation Bar -->
+      <!-- Top Navigation Bar (sticky header) -->
       <header class="bg-white border-b border-gray-200 sticky top-0 z-20">
         <div class="px-4 sm:px-6 lg:px-8">
           <div class="flex items-center justify-between h-16">
@@ -60,7 +65,7 @@
               </router-link>
             </div>
             
-            <!-- Page Title -->
+            <!-- Page Title (desktop) -->
             <div class="hidden lg:block flex-1">
               <h1 class="text-xl font-display-en font-bold text-gray-900">
                 {{ pageTitle }}
@@ -252,7 +257,7 @@
       
       <!-- Main Content -->
       <main class="p-4 sm:p-6 lg:p-8">
-        <!-- Page Header -->
+        <!-- Page Header (mobile) -->
         <div class="mb-6">
           <div class="lg:hidden">
             <h1 class="text-2xl font-display-en font-bold text-gray-900 mb-2">
@@ -317,6 +322,7 @@ const isMobileMenuOpen = ref(false)
 const isDarkMode = ref(false)
 const showNotifications = ref(false)
 const showUserMenu = ref(false)
+const isMobile = ref(false) // for sidebar drawer
 const notifications = ref([
   { id: 1, message: 'New order #ORD-1234 received', type: 'order', timestamp: new Date(Date.now() - 5 * 60 * 1000), read: false },
   { id: 2, message: 'Product "Tom Ford Noir Extreme" is running low', type: 'product', timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000), read: true },
@@ -350,7 +356,6 @@ const pageDescription = computed(() => {
   if (typeof description === 'string') return description
   // description is an object with en/ar
   const lang = currentLanguage.value === 'en' || currentLanguage.value === 'ar' ? currentLanguage.value : 'en'
-  // Cast to Record<string, string> to allow indexing
   const descriptionObj = description as Record<string, string>
   return descriptionObj[lang] || descriptionObj.en || ''
 })
@@ -434,7 +439,6 @@ const formatTimeAgo = (date: Date) => {
 // Click outside directive
 const vClickOutside = {
   mounted(el: HTMLElement, binding: { value: () => void }) {
-    // Store handler for cleanup
     const handler = (event: Event) => {
       if (!(el === event.target || el.contains(event.target as Node))) {
         binding.value()
@@ -451,9 +455,11 @@ const vClickOutside = {
   }
 }
 
-// Resize handler defined outside lifecycle hooks so both onMounted and onUnmounted can access it
-const handleResize = () => {
-  if (window.innerWidth >= 1024) {
+// Resize handler to detect mobile width
+const updateMobileStatus = () => {
+  isMobile.value = window.innerWidth < 1024
+  if (!isMobile.value) {
+    // On desktop, ensure menu is closed and sidebar visible
     isMobileMenuOpen.value = false
   }
 }
@@ -467,12 +473,15 @@ onMounted(() => {
     document.documentElement.classList.add('dark')
   }
   
+  // Set initial mobile status
+  updateMobileStatus()
+  
   // Add resize listener
-  window.addEventListener('resize', handleResize)
+  window.addEventListener('resize', updateMobileStatus)
 })
 
 onUnmounted(() => {
-  window.removeEventListener('resize', handleResize)
+  window.removeEventListener('resize', updateMobileStatus)
 })
 
 // Watch for auth changes
@@ -500,6 +509,12 @@ watch(
 .fade-enter-from,
 .fade-leave-to {
   opacity: 0;
+}
+
+/* Sidebar transition */
+.transition-transform {
+  transition-property: transform;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* Scrollbar styling */
