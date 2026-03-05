@@ -1,7 +1,5 @@
 <template>
-  <aside class="fixed left-0 top-0 h-screen w-64 bg-gray-900 text-white z-40 transition-transform duration-300"
-         :class="{ '-translate-x-full': !isSidebarOpen && isMobile }"
-         @click="emit('close')">
+  <aside class="fixed left-0 top-0 h-screen w-64 bg-gray-900 text-white z-40 transition-transform duration-300">
     <!-- Logo -->
     <div class="p-6 border-b border-gray-800">
       <div class="flex items-center space-x-3" :class="{ 'space-x-reverse': isRTL }">
@@ -297,8 +295,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, onMounted, onUnmounted } from 'vue'
-import { useRouter } from 'vue-router' // only useRouter needed
+import { computed } from 'vue'
+import { useRouter } from 'vue-router'
 import { useLanguageStore } from '@/stores/language'
 import { useAuthStore } from '@/stores/auth'
 
@@ -306,17 +304,7 @@ const router = useRouter()
 const languageStore = useLanguageStore()
 const authStore = useAuthStore()
 
-// Destructure only needed values; currentLanguage not used
 const { isRTL, t } = languageStore
-
-// Props & Emits
-const emit = defineEmits<{
-  close: []
-}>()
-
-// State
-const isMobile = ref(false)
-const isSidebarOpen = ref(true)
 
 // Computed
 const isSuperAdmin = computed(() => authStore.isSuperAdmin)
@@ -336,10 +324,7 @@ const userInitials = computed(() => {
 
 // Methods
 const handleNavigation = () => {
-  // Close sidebar on mobile after navigation
-  if (isMobile.value) {
-    emit('close')
-  }
+  // No need to emit close – parent controls visibility via overlay
 }
 
 const handleLogout = async () => {
@@ -365,25 +350,6 @@ const goToAddOffer = () => {
   router.push('/admin/homepage/offers')
   handleNavigation()
 }
-
-const checkMobile = () => {
-  isMobile.value = window.innerWidth < 1024
-  if (isMobile.value) {
-    isSidebarOpen.value = false
-  } else {
-    isSidebarOpen.value = true
-  }
-}
-
-// Lifecycle
-onMounted(() => {
-  checkMobile()
-  window.addEventListener('resize', checkMobile)
-})
-
-onUnmounted(() => {
-  window.removeEventListener('resize', checkMobile)
-})
 </script>
 
 <style scoped>
@@ -431,17 +397,6 @@ onUnmounted(() => {
 @media (max-width: 1023px) {
   aside {
     box-shadow: 2px 0 10px rgba(0, 0, 0, 0.3);
-  }
-  
-  .-translate-x-full {
-    transform: translateX(-100%);
-  }
-}
-
-/* Desktop sidebar */
-@media (min-width: 1024px) {
-  aside {
-    transform: translateX(0) !important;
   }
 }
 
