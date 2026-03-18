@@ -60,30 +60,14 @@ type ListenerCallback = (data: HomepageData) => void
 export const useHomepageStore = defineStore('homepage', () => {
   const authStore = useAuthStore()
 
-  // =================== DEFAULT DATA ===================
+  // =================== DEFAULT DATA (removed default offer) ===================
   const defaultLocalData: HomepageData = {
     heroBanner: {
       imageUrl: '/images/banner.jpg',
       linkText: 'SHOP NOW',
       linkUrl: '/shop'
     },
-    activeOffers: [
-      {
-        id: 'default-offer-1',
-        slug: 'summer-collection',
-        title: 'Summer Oud',
-        subtitle: 'Limited Edition',
-        description: 'A refreshing summer oud with notes of citrus and sandalwood. Perfect for warm evenings.',
-        imageUrl: '/images/default-offer.jpg',
-        oldPrice: 3500,
-        newPrice: 2500,
-        offerType: 'percentage',
-        startDate: '2025-06-01',
-        endDate: '2025-08-31',
-        terms: 'Limited time offer. While stocks last.',
-        active: true
-      }
-    ],
+    activeOffers: [], // <-- removed the default offer that caused 404
     marqueeBrands: [],
     aboutWork: {
       title: 'what about our work',
