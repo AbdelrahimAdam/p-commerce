@@ -59,6 +59,7 @@ export interface HomepageData {
     defaultLanguage: Language
   }
   productCount?: number
+  tenantId?: string                // <-- ADDED
   lastUpdated?: string
   source?: 'firebase' | 'local' | 'api'
 }
@@ -133,6 +134,8 @@ export interface Product {
 
   sku?: string
 
+  tenantId: string                // <-- ADDED (required)
+
   createdAt?: any
   updatedAt?: any
 
@@ -170,6 +173,7 @@ export interface ProductFormData {
   isNew?: boolean
   isActive?: boolean
   inStock: boolean
+  // tenantId would be added at creation
 }
 
 // ===============================
@@ -202,6 +206,7 @@ export interface AdminUser {
   photoURL?: string
   phoneNumber?: string
   role: 'admin' | 'super-admin'
+  tenantId: string                 // <-- ADDED (required)
   lastLogin?: Date
   isActive?: boolean
   createdAt?: Date
@@ -216,6 +221,7 @@ export interface CustomerUser {
   displayName?: string
   photoURL?: string
   phoneNumber?: string
+  tenantId: string                 // <-- ADDED (required)
   addresses?: Address[]
   defaultAddressId?: string
   wishlist?: string[]
@@ -352,6 +358,8 @@ export interface Order {
   guestId?: string
   userEmail?: string // legacy
 
+  tenantId: string                // <-- ADDED (required)
+
   statusHistory?: StatusHistoryItem[]
 
   createdAt: Date
@@ -370,6 +378,7 @@ export interface FirestoreOrder extends Omit<Order,
 > {
   userId?: string | null
   guestId?: string | null
+  tenantId: string                 // <-- ADDED (required)
   createdAt: Timestamp | FieldValue
   updatedAt: Timestamp | FieldValue
   shippedAt?: Timestamp | FieldValue | null
@@ -524,6 +533,7 @@ export interface Brand {
   productCount?: number
   isActive: boolean
   productIds?: string[]
+  tenantId: string                // <-- ADDED (required)
   createdAt: Date
   updatedAt: Date
 }
@@ -540,6 +550,7 @@ export interface FeaturedBrand {
   price: number
   slug: string
   category?: string
+  // tenantId may be omitted as this is a derived type
 }
 
 // ===============================
@@ -553,6 +564,7 @@ export interface CreateAdminDto {
   phoneNumber?: string
   role: 'admin' | 'super-admin'
   photoURL?: string
+  tenantId: string                // <-- ADDED (required for creation)
 }
 
 export interface UpdateAdminDto {
@@ -561,6 +573,7 @@ export interface UpdateAdminDto {
   role?: 'admin' | 'super-admin'
   photoURL?: string
   isActive?: boolean
+  // tenantId should not be changed
 }
 
 // ===============================
