@@ -21,13 +21,17 @@
 
       <!-- Offer Details -->
       <div v-else class="offer-details">
-        <div class="offer-image-section">
+        <div v-if="offer.imageUrl" class="offer-image-section">
           <img
             :src="offer.imageUrl"
             :alt="offer.title"
             class="offer-main-image"
             @error="handleImageError"
           />
+        </div>
+        <!-- Optional fallback when image is missing -->
+        <div v-else class="offer-image-section placeholder">
+          <span>{{ t('noImage') || 'No image available' }}</span>
         </div>
 
         <div class="offer-info-section">
@@ -221,7 +225,17 @@ const retry = () => {
 
 const handleImageError = (e: Event) => {
   const img = e.target as HTMLImageElement
-  img.src = '/images/default-offer.jpg'
+  console.warn('Offer image failed to load:', img.src)
+  // Hide the image instead of setting a 404 fallback
+  img.style.display = 'none'
+  // Optionally show a placeholder message in the parent div
+  const parent = img.parentElement
+  if (parent) {
+    const placeholder = document.createElement('span')
+    placeholder.className = 'image-placeholder'
+    placeholder.textContent = t('imageNotAvailable') || 'Image not available'
+    parent.appendChild(placeholder)
+  }
 }
 
 const getOfferTypeLabel = (type: string): string => {
@@ -336,6 +350,13 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
+  min-height: 200px;
+  background: #f9f9f9;
+}
+
+.offer-image-section.placeholder {
+  color: #999;
+  font-style: italic;
 }
 
 .offer-main-image {
@@ -343,6 +364,13 @@ onMounted(() => {
   max-height: 500px;
   object-fit: contain;
   border: 1px solid var(--border-color, rgba(212,175,55,0.15));
+}
+
+.image-placeholder {
+  display: block;
+  padding: 1rem;
+  color: #999;
+  font-style: italic;
 }
 
 .offer-info-section {
