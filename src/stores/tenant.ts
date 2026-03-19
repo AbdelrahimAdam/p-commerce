@@ -1,5 +1,6 @@
+// stores/tenant.ts
 import { defineStore } from 'pinia'
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { collection, query, where, getDocs, limit, DocumentData } from 'firebase/firestore'
 import { db } from '@/firebase/config'
 
@@ -17,8 +18,19 @@ export const useTenantStore = defineStore('tenant', () => {
   const error = ref<string | null>(null)
   const isInitialized = ref(false)
 
+  // ⚡ Computed
+  const isReady = computed(() => tenantId.value !== null && isInitialized.value)
+
   // ⚡ Cache expiry: 1 hour
   const CACHE_EXPIRY = 1000 * 60 * 60
+
+  // ⚡ Internal promise for whenReady
+  let resolveReady: (value: unknown) => void
+  let rejectReady: (reason?: any) => void
+  const readyPromise = new Promise((resolve, reject) => {
+    resolveReady = resolve
+    rejectReady = reject
+  })
 
   /**
    * Resolve tenant from current hostname (production only)
@@ -34,6 +46,8 @@ export const useTenantStore = defineStore('tenant', () => {
     const cacheKey = `tenant_${hostname}`
 
     try {
+      console.log('🔍 resolveTenantFromDomain started, hostname:', hostname)
+
       // 🔹 Load cached tenant
       const cachedStr = localStorage.getItem(cacheKey)
       if (cachedStr) {
@@ -44,6 +58,7 @@ export const useTenantStore = defineStore('tenant', () => {
             tenantDomain.value = cached.tenantDomain
             console.info('🟢 Tenant loaded from cache:', tenantId.value)
             isInitialized.value = true
+            resolveReady(true)
             return
           } else {
             localStorage.removeItem(cacheKey) // expired
@@ -63,7 +78,8 @@ export const useTenantStore = defineStore('tenant', () => {
         tenantId.value = null
         tenantDomain.value = null
         console.warn(error.value)
-        window.location.href = '/choose-company'
+        // Don't redirect automatically - let the page handle it
+        rejectReady(new Error(error.value))
         return
       }
 
@@ -85,12 +101,13 @@ export const useTenantStore = defineStore('tenant', () => {
       }
       localStorage.setItem(cacheKey, JSON.stringify(cacheData))
 
+      resolveReady(true)
     } catch (err: any) {
       console.error('❌ Tenant resolution failed:', err)
       error.value = err?.message || 'Failed to resolve tenant'
       tenantId.value = null
       tenantDomain.value = null
-      window.location.href = '/error'
+      rejectReady(err)
     } finally {
       isLoading.value = false
       isInitialized.value = true
@@ -114,6 +131,7 @@ export const useTenantStore = defineStore('tenant', () => {
     }
     localStorage.setItem(cacheKey, JSON.stringify(cacheData))
     console.info('🟢 Tenant set after registration:', id)
+    resolveReady(true)
   }
 
   /**
@@ -126,14 +144,24 @@ export const useTenantStore = defineStore('tenant', () => {
     await resolveTenantFromDomain()
   }
 
+  /**
+   * Wait for tenant to be ready (useful for other stores)
+   */
+  const whenReady = (): Promise<void> => {
+    if (isReady.value) return Promise.resolve()
+    return readyPromise as Promise<void>
+  }
+
   return {
     tenantId,
     tenantDomain,
     isLoading,
     error,
     isInitialized,
+    isReady,
     resolveTenantFromDomain,
     setTenantAfterRegistration,
-    refreshTenant
+    refreshTenant,
+    whenReady
   }
 })
