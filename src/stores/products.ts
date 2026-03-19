@@ -1,12 +1,12 @@
 // stores/products.ts - PRODUCTION READY WITH BRAND SUBCOLLECTIONS
 import { defineStore } from 'pinia'
-import { ref, computed, watch } from 'vue'
-import { 
-  collection, 
-  doc, 
-  getDocs, 
-  getDoc, 
-  query, 
+import { ref, computed, watch, watchEffect } from 'vue'
+import {
+  collection,
+  doc,
+  getDocs,
+  getDoc,
+  query,
   where,
   orderBy,
   limit,
@@ -45,7 +45,7 @@ export const useProductsStore = defineStore('products', () => {
   const isFetchingMore = ref(false)
   const error = ref<string | null>(null)
   const lastUpdated = ref<Date | null>(null)
-  
+
   // Pagination state
   const lastDoc = ref<QueryDocumentSnapshot | null>(null)
   const hasMore = ref(true)
@@ -60,6 +60,9 @@ export const useProductsStore = defineStore('products', () => {
   const productCache = ref<Map<string, Product>>(new Map())
   const brandProductsCache = ref<Map<string, Product[]>>(new Map())
 
+  // Initialization flag to prevent redundant fetches
+  const isInitialized = ref(false)
+
   /* =========================
    * GETTERS
    * ========================= */
@@ -70,7 +73,7 @@ export const useProductsStore = defineStore('products', () => {
     return Array.from(brands).sort()
   })
 
-  const byCategory = computed(() => 
+  const byCategory = computed(() =>
     (categoryId: string) => products.value
       .filter(p => p.category === categoryId)
       .sort((a, b) => {
@@ -80,7 +83,7 @@ export const useProductsStore = defineStore('products', () => {
       })
   )
 
-  const getCategoryById = computed(() => 
+  const getCategoryById = computed(() =>
     (id: string) => LUXURY_CATEGORIES.find(c => c.id === id)
   )
 
@@ -88,7 +91,7 @@ export const useProductsStore = defineStore('products', () => {
 
   const priceRange = computed(() => {
     if (products.value.length === 0) return { min: 0, max: 0 }
-    
+
     const prices = products.value.map(p => p.price)
     return {
       min: Math.min(...prices),
@@ -103,12 +106,12 @@ export const useProductsStore = defineStore('products', () => {
   /* =========================
    * CORE FETCHING METHODS
    * ========================= */
-  
+
   /**
    * Fetch products from a specific brand's subcollection
    */
   const fetchProductsFromBrand = async (
-    brandId: string, 
+    brandId: string,
     brand: Brand,
     options: FilterOptions = {},
     isInitialLoad: boolean = true
@@ -125,19 +128,19 @@ export const useProductsStore = defineStore('products', () => {
       if (options.category) {
         constraints.unshift(where('category', '==', options.category))
       }
-      
+
       if (options.bestseller === true) {
         constraints.unshift(where('isBestSeller', '==', true))
       }
-      
+
       if (options.isFeatured === true) {
         constraints.unshift(where('isFeatured', '==', true))
       }
-      
+
       if (options.minPrice !== undefined) {
         constraints.unshift(where('price', '>=', options.minPrice))
       }
-      
+
       if (options.maxPrice !== undefined) {
         constraints.unshift(where('price', '<=', options.maxPrice))
       }
@@ -157,24 +160,24 @@ export const useProductsStore = defineStore('products', () => {
       const brandProducts = await Promise.all(
         snapshot.docs.map(async (docSnap) => {
           const cacheKey = `${brandId}_${docSnap.id}`
-          
+
           // Check cache first
           if (productCache.value.has(cacheKey)) {
             return productCache.value.get(cacheKey)!
           }
 
           const data = docSnap.data()
-          
+
           // Enhanced image handling
           let imageUrl = data.imageUrl || ''
           let images: string[] = []
-          
+
           try {
             // Try to fetch from storage path first
             if (data.imagePath) {
               const imageRef = storageRef(storage, data.imagePath)
               imageUrl = await getDownloadURL(imageRef)
-              
+
               // Try to list all images in the same directory
               const directoryPath = data.imagePath.substring(0, data.imagePath.lastIndexOf('/'))
               const dirRef = storageRef(storage, directoryPath)
@@ -183,12 +186,12 @@ export const useProductsStore = defineStore('products', () => {
                 imageList.items.map(item => getDownloadURL(item))
               )
             }
-            
+
             // Fallback to imageUrl array
             if (images.length === 0 && Array.isArray(data.images)) {
               images = data.images
             }
-            
+
             // Ensure we have at least one image
             if (!imageUrl && images.length > 0) {
               imageUrl = images[0]
@@ -234,7 +237,7 @@ export const useProductsStore = defineStore('products', () => {
 
           // Cache the product
           productCache.value.set(cacheKey, product)
-          
+
           return product
         })
       )
@@ -292,7 +295,7 @@ export const useProductsStore = defineStore('products', () => {
       let brandsToFetch = brandsStore.activeBrands.filter(
         brand => brand.tenantId === authStore.currentTenant
       )
-      
+
       // Filter by brand if specified
       if (options.brand) {
         const brand = brandsToFetch.find(
@@ -310,7 +313,7 @@ export const useProductsStore = defineStore('products', () => {
       }
 
       // Fetch products from each relevant brand in parallel with limits
-      const fetchPromises = brandsToFetch.map(brand => 
+      const fetchPromises = brandsToFetch.map(brand =>
         fetchProductsFromBrand(brand.id, brand, options, resetPagination)
       )
 
@@ -357,11 +360,11 @@ export const useProductsStore = defineStore('products', () => {
       }
 
       console.log(`✅ Loaded ${uniqueProducts.length} products from ${brandsToFetch.length} brands`)
-      
+
     } catch (err: any) {
       error.value = err.message || 'Failed to load products'
       productNotification.error('Failed to load luxury products')
-      
+
       // Try to load from cache
       loadFromCache()
     } finally {
@@ -373,7 +376,7 @@ export const useProductsStore = defineStore('products', () => {
   /* =========================
    * SPECIAL COLLECTIONS
    * ========================= */
-  
+
   const fetchFeaturedProducts = async () => {
     // If no tenant, clear and return early
     if (!authStore.currentTenant) {
@@ -383,11 +386,11 @@ export const useProductsStore = defineStore('products', () => {
 
     try {
       const featuredProductsList: Product[] = []
-      
+
       const tenantFilteredBrands = brandsStore.activeBrands.filter(
         brand => brand.tenantId === authStore.currentTenant
       )
-      
+
       for (const brand of tenantFilteredBrands.slice(0, 8)) { // Limit brands for performance
         try {
           const productsRef = collection(db, 'brands', brand.id, 'products')
@@ -398,9 +401,9 @@ export const useProductsStore = defineStore('products', () => {
             orderBy('createdAt', 'desc'),
             limit(2) // Just a few per brand
           )
-          
+
           const snapshot = await getDocs(featuredQuery)
-          
+
           const brandFeatured = await Promise.all(
             snapshot.docs.map(async (docSnap) => {
               const data = docSnap.data()
@@ -408,19 +411,19 @@ export const useProductsStore = defineStore('products', () => {
               return product
             })
           )
-          
+
           featuredProductsList.push(...brandFeatured)
-          
+
         } catch (err) {
           console.warn(`Featured products fetch warning for ${brand.name}:`, err)
           continue
         }
       }
-      
+
       featuredProducts.value = featuredProductsList
         .sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0))
         .slice(0, 12)
-        
+
     } catch (err: any) {
       console.error('Featured products fetch error:', err)
       featuredProducts.value = products.value
@@ -438,11 +441,11 @@ export const useProductsStore = defineStore('products', () => {
     try {
       const oneMonthAgo = Math.floor(Date.now() / 1000) - (30 * 24 * 60 * 60)
       const newArrivalsList: Product[] = []
-      
+
       const tenantFilteredBrands = brandsStore.activeBrands.filter(
         brand => brand.tenantId === authStore.currentTenant
       )
-      
+
       for (const brand of tenantFilteredBrands.slice(0, 6)) {
         try {
           const productsRef = collection(db, 'brands', brand.id, 'products')
@@ -452,14 +455,14 @@ export const useProductsStore = defineStore('products', () => {
             orderBy('createdAt', 'desc'),
             limit(3)
           )
-          
+
           const snapshot = await getDocs(newArrivalsQuery)
-          
+
           const brandNewArrivals = await Promise.all(
             snapshot.docs.map(async (docSnap) => {
               const data = docSnap.data()
               const createdAt = data.createdAt?.seconds || 0
-              
+
               if (createdAt > oneMonthAgo) {
                 const product = await transformProductData(docSnap, brand, data)
                 return product
@@ -467,19 +470,19 @@ export const useProductsStore = defineStore('products', () => {
               return null
             })
           )
-          
+
           newArrivalsList.push(...brandNewArrivals.filter(Boolean) as Product[])
-          
+
         } catch (err) {
           console.warn(`New arrivals fetch warning for ${brand.name}:`, err)
           continue
         }
       }
-      
+
       newArrivals.value = newArrivalsList
         .sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0))
         .slice(0, 12)
-        
+
     } catch (err: any) {
       console.error('New arrivals fetch error:', err)
       const oneMonthAgo = Math.floor(Date.now() / 1000) - (30 * 24 * 60 * 60)
@@ -497,11 +500,11 @@ export const useProductsStore = defineStore('products', () => {
 
     try {
       const bestSellersList: Product[] = []
-      
+
       const tenantFilteredBrands = brandsStore.activeBrands.filter(
         brand => brand.tenantId === authStore.currentTenant
       )
-      
+
       for (const brand of tenantFilteredBrands.slice(0, 8)) {
         try {
           const productsRef = collection(db, 'brands', brand.id, 'products')
@@ -512,9 +515,9 @@ export const useProductsStore = defineStore('products', () => {
             orderBy('reviewCount', 'desc'),
             limit(2)
           )
-          
+
           const snapshot = await getDocs(bestSellersQuery)
-          
+
           const brandBestSellers = await Promise.all(
             snapshot.docs.map(async (docSnap) => {
               const data = docSnap.data()
@@ -522,19 +525,19 @@ export const useProductsStore = defineStore('products', () => {
               return product
             })
           )
-          
+
           bestSellersList.push(...brandBestSellers)
-          
+
         } catch (err) {
           console.warn(`Best sellers fetch warning for ${brand.name}:`, err)
           continue
         }
       }
-      
+
       bestSellerProducts.value = bestSellersList
         .sort((a, b) => (b.reviewCount || 0) - (a.reviewCount || 0))
         .slice(0, 12)
-        
+
     } catch (err: any) {
       console.error('Best sellers fetch error:', err)
       bestSellerProducts.value = products.value
@@ -551,11 +554,11 @@ export const useProductsStore = defineStore('products', () => {
 
     try {
       const luxuryProductsList: Product[] = []
-      
+
       const tenantFilteredBrands = brandsStore.activeBrands.filter(
         brand => brand.tenantId === authStore.currentTenant
       )
-      
+
       for (const brand of tenantFilteredBrands) {
         try {
           const productsRef = collection(db, 'brands', brand.id, 'products')
@@ -566,9 +569,9 @@ export const useProductsStore = defineStore('products', () => {
             orderBy('price', 'desc'),
             limit(2)
           )
-          
+
           const snapshot = await getDocs(luxuryQuery)
-          
+
           const brandLuxuryProducts = await Promise.all(
             snapshot.docs.map(async (docSnap) => {
               const data = docSnap.data()
@@ -576,19 +579,19 @@ export const useProductsStore = defineStore('products', () => {
               return product
             })
           )
-          
+
           luxuryProductsList.push(...brandLuxuryProducts)
-          
+
         } catch (err) {
           console.warn(`Luxury collections fetch warning for ${brand.name}:`, err)
           continue
         }
       }
-      
+
       luxuryCollections.value = luxuryProductsList
         .sort((a, b) => b.price - a.price)
         .slice(0, 10)
-        
+
     } catch (err: any) {
       console.error('Luxury collections fetch error:', err)
       luxuryCollections.value = products.value
@@ -601,7 +604,7 @@ export const useProductsStore = defineStore('products', () => {
   /* =========================
    * PRODUCT OPERATIONS
    * ========================= */
-  
+
   const fetchProductBySlug = async (slug: string) => {
     if (!authStore.currentTenant) {
       error.value = 'No tenant context'
@@ -617,7 +620,7 @@ export const useProductsStore = defineStore('products', () => {
       // Check cache first
       const cachedProduct = Array.from(productCache.value.values())
         .find(p => p.slug === slug)
-      
+
       if (cachedProduct) {
         currentProduct.value = cachedProduct
         return cachedProduct
@@ -625,13 +628,13 @@ export const useProductsStore = defineStore('products', () => {
 
       // Check loaded products
       let product = products.value.find(p => p.slug === slug)
-      
+
       if (!product) {
         // Search across all brands of current tenant
         const tenantFilteredBrands = brandsStore.brands.filter(
           brand => brand.tenantId === authStore.currentTenant
         )
-        
+
         for (const brand of tenantFilteredBrands) {
           try {
             const productsRef = collection(db, 'brands', brand.id, 'products')
@@ -640,13 +643,13 @@ export const useProductsStore = defineStore('products', () => {
               where('slug', '==', slug),
               limit(1)
             )
-            
+
             const snapshot = await getDocs(productQuery)
-            
+
             if (!snapshot.empty) {
               const docSnap = snapshot.docs[0]
               const data = docSnap.data()
-              
+
               product = await transformProductData(docSnap, brand, data)
               break
             }
@@ -655,21 +658,21 @@ export const useProductsStore = defineStore('products', () => {
             continue
           }
         }
-        
+
         if (!product) {
           throw new Error(`Product "${slug}" not found`)
         }
       }
-      
+
       currentProduct.value = product
-      
+
       // Pre-fetch related products in background
       setTimeout(() => {
         getRelatedProducts(product!).catch(() => {
           // Silently fail for related products
         })
       }, 100)
-      
+
       return product
     } catch (err: any) {
       error.value = err.message
@@ -698,19 +701,19 @@ export const useProductsStore = defineStore('products', () => {
         where('inStock', '==', true),
         orderBy('createdAt', 'desc')
       )
-      
+
       const snapshot = await getDocs(productsQuery)
-      
+
       const brandProducts = await Promise.all(
         snapshot.docs.map(async (docSnap) => {
           const data = docSnap.data()
           return await transformProductData(docSnap, brand, data)
         })
       )
-      
+
       // Cache the results
       brandProductsCache.value.set(brand.id, brandProducts)
-      
+
       return brandProducts
     } catch (err: any) {
       console.error(`Error fetching products for brand ${brandSlug}:`, err)
@@ -722,18 +725,18 @@ export const useProductsStore = defineStore('products', () => {
     // Check cache first
     const cachedProduct = Array.from(productCache.value.values())
       .find(p => p.id === id)
-    
+
     if (cachedProduct) return cachedProduct
 
     // Check loaded products
     let product = products.value.find(p => p.id === id)
-    
+
     if (!product) {
       // Search across all brands of current tenant
       const tenantFilteredBrands = brandsStore.brands.filter(
         brand => brand.tenantId === authStore.currentTenant
       )
-      
+
       for (const brand of tenantFilteredBrands) {
         try {
           const productDoc = await getDoc(doc(db, 'brands', brand.id, 'products', id))
@@ -748,14 +751,14 @@ export const useProductsStore = defineStore('products', () => {
         }
       }
     }
-    
+
     return product
   }
 
   /* =========================
    * FILTERING & SEARCH
    * ========================= */
-  
+
   const filterProducts = (options: FilterOptions): Product[] => {
     const opts = options as ExtendedFilterOptions
     let filtered = [...products.value]
@@ -763,7 +766,7 @@ export const useProductsStore = defineStore('products', () => {
     // Text search
     if (searchQuery.value) {
       const term = searchQuery.value.toLowerCase()
-      filtered = filtered.filter(product => 
+      filtered = filtered.filter(product =>
         product.name.en.toLowerCase().includes(term) ||
         product.name.ar.toLowerCase().includes(term) ||
         product.description.en.toLowerCase().includes(term) ||
@@ -780,8 +783,8 @@ export const useProductsStore = defineStore('products', () => {
 
     // Filter by brand
     if (options.brand) {
-      filtered = filtered.filter(p => 
-        p.brand === options.brand || 
+      filtered = filtered.filter(p =>
+        p.brand === options.brand ||
         p.brandSlug === options.brand
       )
     }
@@ -813,7 +816,7 @@ export const useProductsStore = defineStore('products', () => {
     // Filter by new arrival
     if (options.newArrival !== undefined) {
       const oneMonthAgo = Math.floor(Date.now() / 1000) - (30 * 24 * 60 * 60)
-      filtered = filtered.filter(p => 
+      filtered = filtered.filter(p =>
         (p.createdAt?.seconds || 0) > oneMonthAgo
       )
     }
@@ -841,8 +844,8 @@ export const useProductsStore = defineStore('products', () => {
     if (!searchTerm.trim()) return []
 
     const term = searchTerm.toLowerCase()
-    
-    return products.value.filter(product => 
+
+    return products.value.filter(product =>
       product.name.en.toLowerCase().includes(term) ||
       product.name.ar.toLowerCase().includes(term) ||
       product.description.en.toLowerCase().includes(term) ||
@@ -860,8 +863,8 @@ export const useProductsStore = defineStore('products', () => {
     try {
       // First try to find in loaded products
       let related = products.value
-        .filter(p => 
-          p.id !== product.id && 
+        .filter(p =>
+          p.id !== product.id &&
           (p.category === product.category || p.brand === product.brand)
         )
         .slice(0, limit)
@@ -872,7 +875,7 @@ export const useProductsStore = defineStore('products', () => {
         const additional = brandProducts
           .filter(p => p.id !== product.id && p.category === product.category)
           .slice(0, limit - related.length)
-        
+
         related = [...related, ...additional]
       }
 
@@ -886,10 +889,10 @@ export const useProductsStore = defineStore('products', () => {
   /* =========================
    * PAGINATION & LOADING
    * ========================= */
-  
+
   const loadMoreProducts = async () => {
     if (!hasMore.value || isLoading.value || isFetchingMore.value) return
-    
+
     await fetchProducts(filters.value, false)
   }
 
@@ -898,20 +901,20 @@ export const useProductsStore = defineStore('products', () => {
     productCache.value.clear()
     brandProductsCache.value.clear()
     localStorage.removeItem('luxury_products_cache')
-    
+
     await fetchProducts(filters.value, true)
   }
 
   /* =========================
    * UTILITY METHODS
    * ========================= */
-  
+
   const applyPostFetchFilters = (products: Product[], options: FilterOptions): Product[] => {
     let filtered = [...products]
 
     // These filters are applied after fetching because Firestore
     // doesn't support OR queries across multiple fields well
-    
+
     // Filter by multiple categories (if needed)
     if (options.categories && Array.isArray(options.categories)) {
       filtered = filtered.filter(p => options.categories!.includes(p.category))
@@ -927,7 +930,7 @@ export const useProductsStore = defineStore('products', () => {
 
   const applySorting = (products: Product[], sortBy: string): Product[] => {
     const sorted = [...products]
-    
+
     switch (sortBy) {
       case 'price-low':
         sorted.sort((a, b) => a.price - b.price)
@@ -958,7 +961,7 @@ export const useProductsStore = defineStore('products', () => {
           return dateB - dateA
         })
     }
-    
+
     return sorted
   }
 
@@ -980,7 +983,7 @@ export const useProductsStore = defineStore('products', () => {
     data: any
   ): Promise<Product> => {
     const cacheKey = `${brand.id}_${docSnap.id}`
-    
+
     // Check cache
     if (productCache.value.has(cacheKey)) {
       return productCache.value.get(cacheKey)!
@@ -989,12 +992,12 @@ export const useProductsStore = defineStore('products', () => {
     // Fetch images
     let imageUrl = data.imageUrl || ''
     let images: string[] = []
-    
+
     try {
       if (data.imagePath) {
         const imageRef = storageRef(storage, data.imagePath)
         imageUrl = await getDownloadURL(imageRef)
-        
+
         // Try to get additional images from the same directory
         const directoryPath = data.imagePath.substring(0, data.imagePath.lastIndexOf('/'))
         const dirRef = storageRef(storage, directoryPath)
@@ -1003,11 +1006,11 @@ export const useProductsStore = defineStore('products', () => {
           imageList.items.map(item => getDownloadURL(item))
         )
       }
-      
+
       if (images.length === 0 && Array.isArray(data.images)) {
         images = data.images
       }
-      
+
       if (!imageUrl && images.length > 0) {
         imageUrl = images[0]
       }
@@ -1052,7 +1055,7 @@ export const useProductsStore = defineStore('products', () => {
 
     // Cache the product
     productCache.value.set(cacheKey, product)
-    
+
     return product
   }
 
@@ -1088,7 +1091,7 @@ export const useProductsStore = defineStore('products', () => {
   /* =========================
    * STORE MANAGEMENT
    * ========================= */
-  
+
   const setFilters = (newFilters: FilterOptions) => {
     filters.value = { ...filters.value, ...newFilters }
   }
@@ -1137,19 +1140,33 @@ export const useProductsStore = defineStore('products', () => {
   )
 
   /* =========================
+   * REACTIVE INITIALIZATION
+   * ========================= */
+  watchEffect(async () => {
+    const tenantId = authStore.currentTenant
+    const brandsLoaded = brandsStore.brands.length > 0
+
+    if (tenantId && brandsLoaded && !isInitialized.value) {
+      await fetchProducts({}, true)
+      isInitialized.value = true
+    }
+  })
+
+  /* =========================
    * INITIALIZATION
    * ========================= */
-  
+
   const initialize = async () => {
-    // Only fetch if there is a tenant and products are empty
-    if (authStore.currentTenant && products.value.length === 0) {
+    // Force re-initialization (useful after tenant change)
+    isInitialized.value = false
+    if (authStore.currentTenant && brandsStore.brands.length > 0) {
       await fetchProducts({}, true)
+      isInitialized.value = true
     }
   }
 
-  // Auto-initialize on store creation, but only after tenant is resolved.
-  // Since tenant resolution happens in main.ts before app mount, by the time this store is used,
-  // tenant should be available. If not, we skip fetching.
+  // Auto-initialize on store creation, but now it will wait for dependencies via watchEffect
+  // We still call initialize() to start the process, but the watchEffect will handle the actual fetch
   initialize()
 
   return {
@@ -1165,7 +1182,7 @@ export const useProductsStore = defineStore('products', () => {
     error,
     lastUpdated,
     hasMore,
-    
+
     // Filter state
     filters,
     searchQuery,
@@ -1189,23 +1206,23 @@ export const useProductsStore = defineStore('products', () => {
     fetchProductBySlug,
     getProductsByBrand,
     getProductById,
-    
+
     // Filtering & Search
     filterProducts,
     searchProducts,
     getRelatedProducts,
-    
+
     // Pagination
     loadMoreProducts,
     refreshProducts,
-    
+
     // Store Management
     setFilters,
     resetFilters,
     setSearchQuery,
     setSort,
     clearError,
-    
+
     // Initialization
     initialize
   }
