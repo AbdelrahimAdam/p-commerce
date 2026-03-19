@@ -1,3 +1,4 @@
+<!-- BrandsPage.vue -->
 <template>
   <div class="min-h-screen bg-white">
     <!-- SEO Head -->
@@ -79,7 +80,7 @@
                 class="w-full h-full object-cover"
                 @error="handleImageError"
               />
-              
+
               <!-- Status Badge - Always Visible -->
               <div class="absolute top-4 left-4 z-10">
                 <span :class="[
@@ -94,7 +95,7 @@
               <div class="absolute inset-0 md:block hidden">
                 <!-- Gradient overlay that fades in on hover -->
                 <div class="absolute inset-0 bg-gradient-to-t from-black/90 via-black/70 to-transparent opacity-0 md:group-hover:opacity-100 transition-opacity duration-300"></div>
-                
+
                 <!-- Content overlay that slides up on hover -->
                 <div class="absolute inset-x-0 bottom-0 p-4 md:p-6 transform translate-y-full md:group-hover:translate-y-0 transition-transform duration-300 ease-out">
                   <h3 class="text-lg md:text-xl font-display-en font-bold text-white mb-1">
@@ -166,10 +167,12 @@ import { computed, onMounted, ref } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useLanguageStore } from '@/stores/language'
 import { useBrandsStore } from '@/stores/brands'
+import { useTenantStore } from '@/stores/tenant'
 import SEOHead from '@/components/UI/SEOHead.vue'
 
 const languageStore = useLanguageStore()
 const brandsStore = useBrandsStore()
+const tenantStore = useTenantStore()
 
 const { currentLanguage, isRTL } = storeToRefs(languageStore)
 const { t } = languageStore
@@ -218,19 +221,23 @@ const handleImageError = (event: Event) => {
   img.src = defaultBrandImage
 }
 
-// Load brands
+// Load brands (manual retry)
 const loadBrands = async () => {
   await brandsStore.loadBrands()
 }
 
 // Initialize
 onMounted(async () => {
-  console.log('🏠 BrandsPage mounted - Initializing...')
-  
-  // Initialize brands store
-  await brandsStore.initialize()
-  
-  console.log('🎉 BrandsPage ready with', activeBrands.value.length, 'active brands')
+  console.log('🏠 BrandsPage mounted - waiting for tenant...')
+  // Wait for tenant to be resolved
+  try {
+    await tenantStore.whenReady()
+    console.log('✅ Tenant ready, initializing brands...')
+    await brandsStore.initialize()
+    console.log('🎉 BrandsPage ready with', activeBrands.value.length, 'active brands')
+  } catch (err) {
+    console.error('❌ Tenant resolution failed:', err)
+  }
 })
 </script>
 
