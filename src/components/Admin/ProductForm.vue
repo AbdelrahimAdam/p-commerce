@@ -26,7 +26,7 @@
                   </span>
                 </div>
               </div>
-              
+
               <!-- Step Navigation -->
               <div class="mb-6">
                 <div class="flex items-center">
@@ -113,13 +113,13 @@
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                   </svg>
                 </div>
-                
+
                 <!-- Loading state -->
                 <div v-if="brandsLoading" class="mt-2 text-center py-4">
                   <div class="inline-block animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-primary-500"></div>
                   <p class="text-sm text-gray-500 mt-2">{{ t('Loading brands...') }}</p>
                 </div>
-                
+
                 <!-- Brand List -->
                 <div v-else-if="filteredBrands.length > 0" class="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-48 overflow-y-auto p-2 border border-gray-200 rounded-lg">
                   <div
@@ -157,7 +157,7 @@
                     </div>
                   </div>
                 </div>
-                
+
                 <!-- No brands found -->
                 <div v-else-if="!brandsLoading" class="mt-3 p-4 text-center border border-gray-200 rounded-lg">
                   <svg class="w-12 h-12 mx-auto text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -168,7 +168,7 @@
                   </p>
                 </div>
               </div>
-              
+
               <!-- Selected Brand Preview -->
               <div v-if="selectedBrand" class="p-4 bg-gray-50 rounded-lg border border-gray-200">
                 <div class="flex items-center justify-between">
@@ -219,7 +219,7 @@
                 <label class="block text-sm font-medium text-gray-700 mb-1">
                   {{ t('Brand Logo/Image') }} *
                 </label>
-                
+
                 <!-- URL Input -->
                 <div class="mb-3">
                   <label class="block text-xs text-gray-600 mb-1">{{ t('Image URL (optional)') }}</label>
@@ -239,7 +239,7 @@
                     </button>
                   </div>
                 </div>
-                
+
                 <!-- File Upload -->
                 <div class="mb-3">
                   <label class="block text-xs text-gray-600 mb-1">{{ t('Or Upload Image') }}</label>
@@ -264,7 +264,7 @@
                     {{ t('Max 100KB for base64. JPG, PNG, GIF. Small images recommended.') }}
                   </p>
                 </div>
-                
+
                 <!-- Image Preview -->
                 <div v-if="brandImagePreview" class="mt-3">
                   <p class="text-sm text-gray-600 mb-1">{{ t('Image Preview') }}:</p>
@@ -407,7 +407,7 @@
               <label class="block text-sm font-medium text-gray-700 mb-1">
                 {{ t('Product Image') }} *
               </label>
-              
+
               <!-- URL Input -->
               <div class="mb-3">
                 <label class="block text-xs text-gray-600 mb-1">{{ t('Image URL (optional)') }}</label>
@@ -428,7 +428,7 @@
                   </button>
                 </div>
               </div>
-              
+
               <!-- File Upload -->
               <div class="mb-3">
                 <label class="block text-xs text-gray-600 mb-1">{{ t('Or Upload Image') }}</label>
@@ -453,9 +453,9 @@
                   {{ t('Max 100KB for base64. JPG, PNG, GIF. Small images recommended.') }}
                 </p>
               </div>
-              
+
               <p v-if="errors.image" class="mt-1 text-sm text-red-600">{{ errors.image }}</p>
-              
+
               <!-- Image Preview -->
               <div v-if="productImagePreview" class="mt-3">
                 <p class="text-sm text-gray-600 mb-1">{{ t('Image Preview') }}:</p>
@@ -737,7 +737,7 @@
                     </button>
                   </div>
                 </div>
-                
+
                 <div>
                   <label class="block text-xs text-gray-600 mb-2">
                     {{ t('Heart Notes') }}
@@ -774,7 +774,7 @@
                     </button>
                   </div>
                 </div>
-                
+
                 <div>
                   <label class="block text-xs text-gray-600 mb-2">
                     {{ t('Base Notes') }}
@@ -848,7 +848,6 @@
                     </svg>
                   </div>
                 </div>
-                <!-- Warning message for fallback SKU -->
                 <p v-if="skuWarning" class="mt-1 text-sm text-yellow-600">{{ skuWarning }}</p>
                 <p v-if="skuError" class="mt-1 text-sm text-red-600">{{ skuError }}</p>
               </div>
@@ -915,7 +914,7 @@
             >
               {{ t('Cancel') }}
             </button>
-            
+
             <!-- Navigation Buttons -->
             <div class="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
               <!-- Back Button -->
@@ -931,7 +930,7 @@
                 </svg>
                 {{ t('Back') }}
               </button>
-              
+
               <!-- Next/Save Button -->
               <button
                 v-if="currentStep === 1"
@@ -945,7 +944,7 @@
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
                 </svg>
               </button>
-              
+
               <button
                 v-else-if="currentStep === 2"
                 type="button"
@@ -971,6 +970,7 @@
     </div>
   </div>
 </template>
+
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { useLanguageStore } from '@/stores/language'
@@ -987,7 +987,6 @@ const productsStore = useProductsStore()
 const brandsStore = useBrandsStore()
 const authStore = useAuthStore()
 
-// Destructure only needed values; isRTL is unused
 const { currentLanguage, t } = languageStore
 
 const props = defineProps<{
@@ -1000,7 +999,7 @@ const emit = defineEmits<{
   save: [data: {
     productData: any
     brandId?: string
-    productId?: string   // for editing
+    productId?: string
     createNewBrand?: boolean
     newBrandData?: any
   }]
@@ -1044,7 +1043,6 @@ const getBrandAbbreviation = (brandName: string): { code: string, isFallback: bo
   if (official) {
     return { code: official, isFallback: false }
   }
-  // Fallback: take first two uppercase letters (remove spaces, take first two chars)
   const fallback = normalized.replace(/\s+/g, '').substring(0, 2).toUpperCase()
   return { code: fallback, isFallback: true }
 }
@@ -1086,7 +1084,7 @@ const productData = reactive({
   price: 0,
   size: '',
   concentration: '',
-  classification: '', // M, F, U
+  classification: '',
   description: { en: '', ar: '' },
   notes: { top: [''], heart: [''], base: [''] },
   imageUrl: '',
@@ -1157,7 +1155,6 @@ const formatBytes = (bytes: number): string => {
 const getCategoryDisplayName = (category: Category) => {
   if (!category) return ''
   if (typeof category === 'string') return category
-  // Use id as fallback instead of name (which doesn't exist on Category)
   return category[currentLanguage as keyof Category] || category.id || ''
 }
 
@@ -1215,7 +1212,6 @@ const handleBrandImageUpload = (event: Event) => {
   }
   reader.readAsDataURL(file)
   
-  // Clear any image errors
   if (brandErrors.image) delete brandErrors.image
 }
 
@@ -1275,7 +1271,6 @@ const handleProductImageUpload = (event: Event) => {
   }
   reader.readAsDataURL(file)
   
-  // Clear any image errors
   if (errors.image) delete errors.image
 }
 
@@ -1458,11 +1453,7 @@ const getBrandImage = (): string => {
 
 // ========== NAVIGATION METHODS ==========
 const goToStep = (step: number) => {
-  console.log('🔀 Navigating to step:', step)
-  
   if (step === 2 && !canProceedToProductDetails.value) {
-    console.log('❌ Cannot proceed to step 2 - validation failed')
-    
     if (brandSelectionMode.value === 'existing' && !selectedBrandId.value) {
       alert(t('Please select a brand'))
     } else if (brandSelectionMode.value === 'new') {
@@ -1470,9 +1461,7 @@ const goToStep = (step: number) => {
     }
     return
   }
-  
   currentStep.value = step
-  console.log('✅ Current step:', currentStep.value)
 }
 
 // ========== SKU GENERATION (STRICT WITH FALLBACK) ==========
@@ -1492,14 +1481,9 @@ watch(
   { deep: true }
 )
 
-/**
- * Generates SKU using the official mapping if available, otherwise falls back to dynamic code.
- * P.N + BrandAbbreviation + GenderCode + 3-digit zero-padded package number (starting from 001)
- */
 const generateStrictSKU = async () => {
   if (editing.value) return
 
-  // Determine brand name
   let brandName = ''
   if (brandSelectionMode.value === 'existing' && selectedBrand.value) {
     brandName = selectedBrand.value.name
@@ -1518,17 +1502,14 @@ const generateStrictSKU = async () => {
   skuWarning.value = ''
 
   try {
-    // 1. Get brand abbreviation (official or fallback)
     const { code: brandAbbr, isFallback } = getBrandAbbreviation(brandName)
     if (isFallback) {
       skuWarning.value = t('Brand not in official mapping, using provisional code. Please update the mapping later.')
     }
 
-    // 2. Determine next package number (starting at 001)
     let packageNumber = '001'
 
     if (brandSelectionMode.value === 'existing' && selectedBrandId.value) {
-      // Query existing products of this brand for SKUs with prefix P.N{brandAbbr}{gender}
       const productsRef = collection(db, 'brands', selectedBrandId.value, 'products')
       const prefix = `P.N${brandAbbr}${gender}`
       const q = query(
@@ -1549,9 +1530,8 @@ const generateStrictSKU = async () => {
           packageNumber = nextNumber.toString().padStart(3, '0')
         }
       }
-    } // For new brand, packageNumber stays '001'
+    }
 
-    // 3. Assemble final SKU
     const sku = `P.N${brandAbbr}${gender}${packageNumber}`
     productData.sku = sku
   } catch (error: any) {
@@ -1582,7 +1562,6 @@ const validateForm = (): boolean => {
   Object.keys(errors).forEach(key => delete errors[key])
   Object.keys(brandErrors).forEach(key => delete brandErrors[key])
 
-  // Validate brand selection
   if (brandSelectionMode.value === 'existing') {
     if (!selectedBrandId.value) {
       brandErrors.selection = t('Please select a brand')
@@ -1610,7 +1589,6 @@ const validateForm = (): boolean => {
     }
   }
 
-  // Validate product data
   if (!productData.classification) {
     errors.classification = t('Classification is required')
     isValid = false
@@ -1671,7 +1649,6 @@ const getChangedFields = (): Record<string, any> => {
   const changed: Record<string, any> = {}
   const orig = originalProduct.value
 
-  // Compare simple fields
   const simpleFields = [
     'slug', 'category', 'price', 'size', 'concentration', 'classification',
     'isBestSeller', 'isFeatured', 'isActive', 'sku', 'imageUrl'
@@ -1682,22 +1659,18 @@ const getChangedFields = (): Record<string, any> => {
     }
   })
 
-  // Compare stock (mapped from stockQuantity in original)
   if (productData.stock !== orig.stockQuantity) {
     changed.stock = productData.stock
   }
 
-  // Compare nested name
   if (JSON.stringify(productData.name) !== JSON.stringify(orig.name)) {
     changed.name = { ...productData.name }
   }
 
-  // Compare description
   if (JSON.stringify(productData.description) !== JSON.stringify(orig.description)) {
     changed.description = { ...productData.description }
   }
 
-  // Compare notes
   if (JSON.stringify(productData.notes) !== JSON.stringify(orig.notes)) {
     changed.notes = { ...productData.notes }
   }
@@ -1707,24 +1680,23 @@ const getChangedFields = (): Record<string, any> => {
 
 // ========== SAVE METHODS ==========
 const saveProduct = async () => {
-  console.log('💾 Save button clicked')
-
   if (!authStore.isAuthenticated) {
     alert(t('You must be logged in to perform this action'))
     return
   }
 
-  // 🔁 REPLACED SUPER-ADMIN CHECK WITH ADMIN CHECK
   if (!authStore.isAdmin) {
     alert(t('You must be logged in as an admin to manage products'))
     return
   }
 
-  if (!validateForm()) {
-    console.log('❌ Form validation failed')
+  // ✅ IMPORTANT: Ensure tenant is resolved
+  if (!authStore.currentTenant) {
+    alert(t('Tenant not resolved. Please refresh the page or contact support.'))
     return
   }
 
+  if (!validateForm()) return
   if (skuLoading.value) {
     alert(t('Please wait while SKU is being generated'))
     return
@@ -1733,18 +1705,15 @@ const saveProduct = async () => {
   loading.value = true
 
   try {
-    // Generate slug if not provided
     if (!productData.slug && productData.name.en) {
       generateProductSlug()
     }
 
-    // Prepare product image
     let productImage = productData.imageUrl
     if (productImageBase64.value) {
       productImage = productImageBase64.value
     }
 
-    // Clean notes - remove empty strings
     const cleanNotes = {
       top: productData.notes.top.filter((n: string) => n && n.trim() !== ''),
       heart: productData.notes.heart.filter((n: string) => n && n.trim() !== ''),
@@ -1773,35 +1742,26 @@ const saveProduct = async () => {
       isActive: productData.isActive !== false
     }
 
-    console.log('📦 Product payload prepared:', productPayload)
-
     if (editing.value) {
-      // EDIT EXISTING PRODUCT
       if (!props.product?.brandId) {
         throw new Error('Product brand ID missing')
       }
 
-      // Get only changed fields
       const changedFields = getChangedFields()
-      console.log('✏️ Changed fields:', changedFields)
-
       if (Object.keys(changedFields).length === 0) {
-        // No changes, just close
         emit('close')
         return
       }
 
       emit('save', { 
-        productData: changedFields,  // Send only changed fields
+        productData: changedFields,
         brandId: props.product.brandId,
         productId: props.product.id
       })
     } else if (brandSelectionMode.value === 'existing' && selectedBrandId.value) {
-      // ADD PRODUCT TO EXISTING BRAND
       const brand = brandsStore.brands.find(b => b.id === selectedBrandId.value)
       if (!brand) throw new Error('Brand not found')
 
-      // Uniqueness check
       const isUnique = await ensureSkuUnique(brand.id, productData.sku)
       if (!isUnique) {
         throw new Error(t('SKU already exists for this brand. Please try again.'))
@@ -1811,7 +1771,6 @@ const saveProduct = async () => {
       const productsRef = collection(db, 'brands', brand.id, 'products')
       const productDocRef = doc(productsRef)
 
-      // ✅ FIX: Include tenantId in the product document (taken from the brand)
       const firestoreData = {
         name: productPayload.name,
         description: productPayload.description,
@@ -1831,7 +1790,7 @@ const saveProduct = async () => {
         brand: brand.name,
         brandSlug: brand.slug,
         brandId: brand.id,
-        tenantId: brand.tenantId,  // <-- ADDED
+        tenantId: brand.tenantId, // ✅ Tenant ID included
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp()
       }
@@ -1842,7 +1801,6 @@ const saveProduct = async () => {
       authNotification.loggedIn(t('Product added successfully'))
       emit('save', { productData: productPayload, brandId: brand.id, createNewBrand: false })
     } else if (brandSelectionMode.value === 'new') {
-      // CREATE NEW BRAND WITH PRODUCT
       let brandImage = newBrand.imageUrl
       if (brandImageBase64.value) {
         brandImage = brandImageBase64.value
@@ -1914,7 +1872,6 @@ onMounted(async () => {
   }
 
   if (props.product) {
-    // Store original for change tracking
     originalProduct.value = { ...props.product }
 
     Object.assign(productData, {
@@ -1955,7 +1912,7 @@ onMounted(async () => {
   }
 })
 </script>
-   
+
 <style scoped>
 /* Custom scrollbar */
 .overflow-y-auto::-webkit-scrollbar,
