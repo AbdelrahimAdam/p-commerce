@@ -188,9 +188,4 @@ const { isRTL, t } = languageStore
 .rtl .flex-row-reverse {
   flex-direction: row-reverse;
 }
-
-/* Keep arrow direction in hero and CTA for RTL */
-.rtl .hero-arrow svg {
-  transform: scaleX(-1);
-}
 </style>
