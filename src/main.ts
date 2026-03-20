@@ -11,6 +11,9 @@ import './assets/styles/main.css'
 // Import vue-i18n
 import { createI18n } from 'vue-i18n'
 
+// Import tenant store early to start resolution immediately
+import { useTenantStore } from '@/stores/tenant'
+
 // List of public paths that don't need authentication
 const PUBLIC_PATHS = [
   '/',
@@ -53,7 +56,7 @@ const i18n = createI18n({
       loggedInAs: 'Logged in as',
       adminPanel: 'Admin Panel',
       logout: 'Logout',
-      
+
       // Navigation
       home: 'Home',
       shop: 'Shop',
@@ -62,7 +65,7 @@ const i18n = createI18n({
       womens: "Women's Collection",
       about: 'About Us',
       contact: 'Contact',
-      
+
       // UI
       search: 'Search',
       account: 'Account',
@@ -72,7 +75,7 @@ const i18n = createI18n({
       close: 'Close',
       profile: 'Profile',
       orders: 'Orders',
-      
+
       // Common
       products: 'Products',
       category: 'Category',
@@ -82,7 +85,7 @@ const i18n = createI18n({
       loading: 'Loading...',
       loadMore: 'Load More',
       noProductsFound: 'No Products Found',
-      
+
       // Brand
       brandCollection: 'Brand Collection',
       exploreCollection: 'Explore our collection of {brand} luxury perfumes',
@@ -91,7 +94,7 @@ const i18n = createI18n({
       browseAllBrands: 'Browse All Brands',
       exploreOtherBrands: 'Explore Other Luxury Brands',
       addFirstProduct: 'Add First Product',
-      
+
       // Product
       priceRange: 'Price Range',
       inStockOnly: 'In Stock Only',
@@ -100,7 +103,7 @@ const i18n = createI18n({
       priceHighToLow: 'Price: High to Low',
       name: 'Name',
       highestRated: 'Highest Rated',
-      
+
       // Store
       export: 'Export',
       refresh: 'Refresh',
@@ -120,7 +123,7 @@ const i18n = createI18n({
       loggedInAs: 'تم تسجيل الدخول كـ',
       adminPanel: 'لوحة التحكم',
       logout: 'تسجيل الخروج',
-      
+
       // Navigation
       home: 'الرئيسية',
       shop: 'المتجر',
@@ -129,7 +132,7 @@ const i18n = createI18n({
       womens: 'نسائي',
       about: 'من نحن',
       contact: 'اتصل بنا',
-      
+
       // UI
       search: 'بحث',
       account: 'حسابي',
@@ -139,7 +142,7 @@ const i18n = createI18n({
       close: 'إغلاق',
       profile: 'الملف الشخصي',
       orders: 'الطلبات',
-      
+
       // Common
       products: 'المنتجات',
       category: 'الفئة',
@@ -149,7 +152,7 @@ const i18n = createI18n({
       loading: 'جاري التحميل...',
       loadMore: 'تحميل المزيد',
       noProductsFound: 'لم يتم العثور على منتجات',
-      
+
       // Brand
       brandCollection: 'مجموعة الماركة',
       exploreCollection: 'استكشف مجموعتنا من عطور {brand} الفاخرة',
@@ -158,7 +161,7 @@ const i18n = createI18n({
       browseAllBrands: 'تصفح جميع الماركات',
       exploreOtherBrands: 'استكشاف ماركات فاخرة أخرى',
       addFirstProduct: 'إضافة المنتج الأول',
-      
+
       // Product
       priceRange: 'نطاق السعر',
       inStockOnly: 'المتوفر فقط',
@@ -167,7 +170,7 @@ const i18n = createI18n({
       priceHighToLow: 'السعر: من الأعلى إلى الأقل',
       name: 'الاسم',
       highestRated: 'الأعلى تقييماً',
-      
+
       // Store
       export: 'تصدير',
       refresh: 'تحديث',
@@ -188,41 +191,47 @@ vueApp.use(router)
 vueApp.use(VueFire, { firebaseApp }) // using renamed import
 vueApp.use(i18n)
 
-// Mount app – but wait for tenant resolution if needed
-// We'll mount after async initialization (similar to original setTimeout)
-// But to keep original behavior, we'll mount immediately and initialize later.
-
+// Mount app
 vueApp.mount('#app')
 
 console.log('🚀 Luxury Perfume Store v1.0.0')
 console.log('🌐 Languages: English & Arabic')
 console.log('🔥 Firebase: Connected')
 
+// Start tenant resolution immediately (non‑blocking)
+const tenantStore = useTenantStore()
+tenantStore.resolveTenantFromDomain().catch(err => {
+  console.warn('Tenant resolution failed, will retry later:', err)
+})
+
 // Initialize stores after app is mounted
 setTimeout(async () => {
   try {
     console.log('🏪 Starting store initialization...')
-    
-    // First, resolve tenant from domain
-    const { useTenantStore } = await import('@/stores/tenant')
-    const tenantStore = useTenantStore()
-    await tenantStore.resolveTenantFromDomain()
-    
+
+    // Wait for tenant to be resolved (or timeout after 5 seconds)
+    await Promise.race([
+      tenantStore.whenReady(),
+      new Promise(resolve => setTimeout(resolve, 5000))
+    ])
+
     if (tenantStore.error) {
       console.error('❌ Tenant resolution failed:', tenantStore.error)
       // Optionally redirect to a "tenant not found" page
       // router.replace('/tenant-not-found')
       // return
-    } else {
+    } else if (tenantStore.tenantId) {
       console.log(`🌍 Tenant resolved: ${tenantStore.tenantId} (${tenantStore.tenantDomain})`)
+    } else {
+      console.warn('⚠️ No tenant resolved. Data may not load.')
     }
-    
+
     // Check if current page is public
     const currentPath = window.location.pathname
     const isPublic = isPublicPath(currentPath)
-    
+
     console.log(`📍 Current path: ${currentPath} (${isPublic ? 'Public' : 'Protected'})`)
-    
+
     // Import stores - Use dynamic imports to avoid circular dependencies
     const { useAuthStore } = await import('@/stores/auth')
     const { useBrandsStore } = await import('@/stores/brands')
@@ -230,7 +239,7 @@ setTimeout(async () => {
     const { useHomepageStore } = await import('@/stores/homepage')
     const { useCartStore } = await import('@/stores/cart')
     const { useLanguageStore } = await import('@/stores/language')
-    
+
     // Get stores
     const authStore = useAuthStore()
     const brandsStore = useBrandsStore()
@@ -238,10 +247,10 @@ setTimeout(async () => {
     const homepageStore = useHomepageStore()
     const cartStore = useCartStore()
     const languageStore = useLanguageStore()
-    
+
     console.log('🔄 Initializing language store...')
     await languageStore.initialize()
-    
+
     // Only check auth on protected pages
     if (!isPublic) {
       console.log('🔐 Protected page - checking authentication...')
@@ -250,7 +259,7 @@ setTimeout(async () => {
       console.log('🌍 Public page - skipping authentication')
       authStore.resetAuthState?.()
     }
-    
+
     console.log('📊 Initializing data stores...')
     // Initialize data stores in parallel
     await Promise.all([
@@ -258,10 +267,10 @@ setTimeout(async () => {
       productsStore.initialize?.(),
       homepageStore.loadHomepageData?.()
     ])
-    
+
     console.log('🛒 Restoring cart...')
     cartStore.restoreCart?.()
-    
+
     // Log initialization status
     console.log('✅ All stores initialized successfully')
     console.log(`  👤 Auth: ${authStore.isAuthenticated ? 'Logged in' : 'Guest'}`)
@@ -269,16 +278,16 @@ setTimeout(async () => {
     console.log(`  📦 Products: ${productsStore.products?.length || 0}`)
     console.log(`  🛒 Cart Items: ${cartStore.items?.length || 0}`)
     console.log(`  🌐 Language: ${languageStore.currentLanguage}`)
-    
+
     // Check if we need sample data (only in development)
     if ((import.meta as any).env.DEV) {
       const brandsCount = brandsStore.brands?.length || 0
       const productsCount = productsStore.products?.length || 0
-      
+
       if (brandsCount === 0 || productsCount === 0) {
         console.log('\n⚠️  Database appears empty')
         console.log('💡 Run initializeSampleData() in console')
-        
+
         try {
           const { initializeSampleData } = await import('@/firebase/init')
           ;(window as any).initializeSampleData = initializeSampleData
@@ -287,24 +296,24 @@ setTimeout(async () => {
         }
       }
     }
-    
+
   } catch (error) {
     console.error('❌ Error initializing stores:', error)
-    
+
     // Try recovery
     try {
       console.log('🔄 Attempting recovery...')
       const currentPath = window.location.pathname
       const isPublic = isPublicPath(currentPath)
-      
+
       const { useAuthStore } = await import('@/stores/auth')
       const { useBrandsStore } = await import('@/stores/brands')
       const { useProductsStore } = await import('@/stores/products')
-      
+
       const authStore = useAuthStore()
       const brandsStore = useBrandsStore()
       const productsStore = useProductsStore()
-      
+
       if (!isPublic) {
         try {
           await authStore.checkAuth()
@@ -312,12 +321,12 @@ setTimeout(async () => {
           console.log('⚠️  Auth recovery failed')
         }
       }
-      
+
       await Promise.all([
         brandsStore.initialize?.().catch(() => {}),
         productsStore.initialize?.().catch(() => {})
       ])
-      
+
     } catch (recoveryError) {
       console.error('❌ Recovery failed')
     }
@@ -340,18 +349,18 @@ vueApp.config.errorHandler = (err) => {
 // Development mode
 if ((import.meta as any).env.DEV) {
   console.log('🔧 Development mode enabled')
-  
+
   // Expose stores for debugging on protected pages
   setTimeout(async () => {
     try {
       const currentPath = window.location.pathname
       const isPublic = isPublicPath(currentPath)
-      
+
       if (!isPublic) {
         const { useAuthStore } = await import('@/stores/auth')
         const { useBrandsStore } = await import('@/stores/brands')
         const { useProductsStore } = await import('@/stores/products')
-        
+
         ;(window as any).stores = {
           auth: useAuthStore(),
           brands: useBrandsStore(),
