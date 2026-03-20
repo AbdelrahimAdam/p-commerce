@@ -39,7 +39,7 @@ const isPublicPath = (path: string): boolean => {
   )
 }
 
-// Setup vue-i18n with minimal required translations
+// Setup vue-i18n with all translations (including landing page)
 const i18n = createI18n({
   legacy: false,
   locale: 'en',
@@ -109,7 +109,40 @@ const i18n = createI18n({
       refresh: 'Refresh',
       loadMoreProducts: 'Load More Products',
       noProductsAvailable: 'There are no products available for this brand yet.',
-      theBrandYouAreLookingForDoesNotExist: 'The brand you are looking for does not exist.'
+      theBrandYouAreLookingForDoesNotExist: 'The brand you are looking for does not exist.',
+
+      // Landing page
+      heroTitle: 'Create Your Own Luxury',
+      heroHighlight: 'Perfume Store',
+      heroSubtitle: 'Launch a beautiful, fully‑managed e‑commerce platform for premium fragrances. Multi‑tenant, multi‑language, ready in minutes.',
+      startStore: 'Start Your Store',
+      exploreDemo: 'Explore Demo',
+      featuresTitle: 'Everything You Need',
+      featuresSubtitle: 'A complete solution for perfume brands to sell online with ease.',
+      featureMultiTenant: 'Multi‑tenant Architecture',
+      featureMultiTenantDesc: 'Each brand gets its own subdomain with isolated data. Perfect for scaling.',
+      featureMultiLang: 'Multi‑language Support',
+      featureMultiLangDesc: 'Arabic & English ready. Seamlessly switch between languages.',
+      featureProductMgmt: 'Product Management',
+      featureProductMgmtDesc: 'Easy product uploads, fragrance notes, collections, and inventory tracking.',
+      featureCart: 'Shopping Cart & Checkout',
+      featureCartDesc: 'Fully functional cart, wishlist, and secure checkout experience.',
+      featureAdmin: 'Admin Dashboard',
+      featureAdminDesc: 'Powerful admin panel to manage orders, products, and settings.',
+      featureSubdomain: 'Instant Subdomain',
+      featureSubdomainDesc: 'Get your own branded subdomain immediately after registration.',
+      stepsTitle: 'Get Started in 3 Simple Steps',
+      stepsSubtitle: 'Launch your perfume store in minutes, not weeks.',
+      step1Title: 'Register Your Company',
+      step1Desc: 'Enter your company name, email, and choose a subdomain.',
+      step2Title: 'Add Your Products',
+      step2Desc: 'Upload your perfume collection with images, notes, and prices.',
+      step3Title: 'Start Selling',
+      step3Desc: 'Your store is live. Manage orders and grow your business.',
+      ctaTitle: 'Ready to Start Your Fragrance Journey?',
+      ctaSubtitle: 'Join dozens of perfume brands using our platform to reach more customers.',
+      ctaButton: 'Create Your Store Now',
+      allRightsReserved: 'All rights reserved.'
     },
     ar: {
       // Auth
@@ -176,7 +209,40 @@ const i18n = createI18n({
       refresh: 'تحديث',
       loadMoreProducts: 'تحميل المزيد من المنتجات',
       noProductsAvailable: 'لا توجد منتجات متاحة لهذه الماركة بعد.',
-      theBrandYouAreLookingForDoesNotExist: 'الماركة التي تبحث عنها غير موجودة.'
+      theBrandYouAreLookingForDoesNotExist: 'الماركة التي تبحث عنها غير موجودة.',
+
+      // Landing page (Arabic translations)
+      heroTitle: 'أنشئ متجر عطورك الفاخر',
+      heroHighlight: 'متجر عطور',
+      heroSubtitle: 'أطلق منصة تجارة إلكترونية جميلة وكاملة الإدارة للعطور الفاخرة. متعدد المستأجرين، متعدد اللغات، جاهز في دقائق.',
+      startStore: 'ابدأ متجرك',
+      exploreDemo: 'استكشف العرض التوضيحي',
+      featuresTitle: 'كل ما تحتاجه',
+      featuresSubtitle: 'حل متكامل للعلامات التجارية للعطور للبيع عبر الإنترنت بسهولة.',
+      featureMultiTenant: 'هندسة متعددة المستأجرين',
+      featureMultiTenantDesc: 'تحصل كل علامة تجارية على نطاق فرعي خاص بها مع بيانات معزولة. مثالي للتوسع.',
+      featureMultiLang: 'دعم متعدد اللغات',
+      featureMultiLangDesc: 'العربية والإنجليزية جاهزتان. التبديل بسلاسة بين اللغات.',
+      featureProductMgmt: 'إدارة المنتجات',
+      featureProductMgmtDesc: 'رفع المنتجات بسهولة، ملاحظات العطر، المجموعات، وتتبع المخزون.',
+      featureCart: 'سلة التسوق والدفع',
+      featureCartDesc: 'سلة تسوق كاملة الوظائف، قائمة الرغبات، وتجربة دفع آمنة.',
+      featureAdmin: 'لوحة تحكم المسؤول',
+      featureAdminDesc: 'لوحة تحكم قوية لإدارة الطلبات والمنتجات والإعدادات.',
+      featureSubdomain: 'نطاق فرعي فوري',
+      featureSubdomainDesc: 'احصل على نطاقك الفرعي الخاص بعد التسجيل مباشرة.',
+      stepsTitle: 'ابدأ في 3 خطوات بسيطة',
+      stepsSubtitle: 'أطلق متجر العطور الخاص بك في دقائق، وليس أسابيع.',
+      step1Title: 'سجل شركتك',
+      step1Desc: 'أدخل اسم شركتك وبريدك الإلكتروني واختر نطاقًا فرعيًا.',
+      step2Title: 'أضف منتجاتك',
+      step2Desc: 'حمِّل مجموعة العطور الخاصة بك مع الصور والملاحظات والأسعار.',
+      step3Title: 'ابدأ البيع',
+      step3Desc: 'متجرك حي. أدر الطلبات وطور عملك.',
+      ctaTitle: 'هل أنت مستعد لبدء رحلتك العطرية؟',
+      ctaSubtitle: 'انضم إلى العشرات من العلامات التجارية للعطور التي تستخدم منصتنا للوصول إلى مزيد من العملاء.',
+      ctaButton: 'أنشئ متجرك الآن',
+      allRightsReserved: 'جميع الحقوق محفوظة.'
     },
   },
 })
