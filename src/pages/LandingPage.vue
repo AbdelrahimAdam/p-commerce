@@ -15,7 +15,7 @@
           </p>
           <div class="flex flex-col sm:flex-row justify-center gap-4">
             <router-link
-              to="/register"
+              to="/register-company"
               class="inline-flex items-center justify-center px-8 py-4 bg-primary-600 text-white font-semibold rounded-lg hover:bg-primary-700 transition-colors shadow-lg hover:shadow-xl"
             >
               {{ t('startStore') }}
@@ -145,7 +145,7 @@
           {{ t('ctaSubtitle') }}
         </p>
         <router-link
-          to="/register"
+          to="/register-company"
           class="inline-flex items-center justify-center px-8 py-4 bg-white text-primary-600 font-semibold rounded-lg hover:bg-gray-100 transition-colors shadow-lg"
         >
           {{ t('ctaButton') }}
@@ -167,7 +167,6 @@
 
 <script setup lang="ts">
 import { useLanguageStore } from '@/stores/language'
-import { storeToRefs } from 'pinia'
 
 const languageStore = useLanguageStore()
 const { isRTL, t } = languageStore
