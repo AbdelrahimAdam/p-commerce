@@ -1,6 +1,6 @@
 /// <reference types="vite/client" />
 
-import { createApp } from 'vue'
+import { createApp, watch } from 'vue'
 import { createPinia } from 'pinia'
 import { VueFire } from 'vuefire'
 import App from './App.vue'
@@ -316,6 +316,12 @@ setTimeout(async () => {
 
     console.log('🔄 Initializing language store...')
     await languageStore.initialize()
+
+    // 🆕 Sync i18n locale with language store
+    i18n.global.locale.value = languageStore.currentLanguage
+    watch(languageStore.currentLanguage, (newLang) => {
+      i18n.global.locale.value = newLang
+    })
 
     // Only check auth on protected pages
     if (!isPublic) {
