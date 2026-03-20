@@ -1,12 +1,15 @@
 import type { RouteRecordRaw } from 'vue-router'
 import type { Language } from '@/types'
 
+// Import HomeRouter for dynamic root routing
+import HomeRouter from '@/components/Layout/HomeRouter.vue'
+
 export const routes: Array<RouteRecordRaw> = [
   // ========== PUBLIC ROUTES (NO LOGIN REQUIRED) ==========
   {
     path: '/',
     name: 'home',
-    component: () => import('@/pages/HomePage.vue'),
+    component: HomeRouter,
     meta: {
       title: {
         en: 'Luxury Perfumes | Premium Fragrances Collection',
@@ -158,7 +161,7 @@ export const routes: Array<RouteRecordRaw> = [
       layout: 'default'
     }
   },
-  
+
   {
     path: '/offer/:slug',
     name: 'offer',
@@ -375,7 +378,7 @@ export const routes: Array<RouteRecordRaw> = [
   },
 
   // ========== ORDER ROUTES (PUBLIC - GUEST CHECKOUT SUPPORTED) ==========
-  
+
   // Order Confirmation - After successful checkout
   {
     path: '/order-confirmation/:orderId',
@@ -612,7 +615,7 @@ export const routes: Array<RouteRecordRaw> = [
       layout: 'admin'
     }
   },
-  
+
   {
     path: '/admin/dashboard',
     redirect: { name: 'admin-dashboard' },
@@ -681,7 +684,7 @@ export const routes: Array<RouteRecordRaw> = [
       layout: 'admin'
     }
   },
-  
+
   {
     path: '/admin/products/new',
     name: 'admin-product-new',
@@ -697,7 +700,7 @@ export const routes: Array<RouteRecordRaw> = [
       layout: 'admin'
     }
   },
-  
+
   {
     path: '/admin/products/edit/:id',
     name: 'admin-product-edit',
@@ -748,7 +751,7 @@ export const routes: Array<RouteRecordRaw> = [
       layout: 'admin'
     }
   },
-  
+
   {
     path: '/admin/brands/new',
     name: 'admin-brand-new',
@@ -764,7 +767,7 @@ export const routes: Array<RouteRecordRaw> = [
       layout: 'admin'
     }
   },
-  
+
   {
     path: '/admin/brands/edit/:id',
     name: 'admin-brand-edit',
@@ -911,7 +914,7 @@ export const routes: Array<RouteRecordRaw> = [
 export const getLocalizedTitle = (routeMeta: any, language: Language = 'en'): string => {
   const title = routeMeta?.title
   if (!title) return 'Luxury Perfume Store'
-  
+
   if (typeof title === 'string') return title
   return title[language] || title.en || 'Luxury Perfume Store'
 }
