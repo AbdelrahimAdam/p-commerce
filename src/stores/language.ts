@@ -48,20 +48,20 @@ export const useLanguageStore = defineStore('language', () => {
   // Luxury Actions
   const setLanguage = async (langCode: Language) => {
     if (currentLanguage.value === langCode) return
-    
+
     isTransitioning.value = true
-    
+
     // Show transition effect
     showLanguageTransition()
-    
+
     // Delay for smooth transition
     await new Promise(resolve => setTimeout(resolve, 300))
-    
+
     currentLanguage.value = langCode
-    
+
     // Update document
     updateDocumentAttributes()
-    
+
     // Show notification using custom event (works with your existing notification system)
     const langObj = availableLanguages.value.find(l => l.code === langCode)
     window.dispatchEvent(new CustomEvent('luxury-notification', {
@@ -72,9 +72,9 @@ export const useLanguageStore = defineStore('language', () => {
         duration: 3000
       }
     }))
-    
+
     isTransitioning.value = false
-    
+
     // Return the language object
     return langObj
   }
@@ -87,7 +87,7 @@ export const useLanguageStore = defineStore('language', () => {
   const initialize = () => {
     // Check saved language or default to English
     const savedLang = localStorage.getItem('luxury_perfume_language') as Language
-    
+
     if (!savedLang) {
       // Try to detect browser language
       const browserLang = navigator.language.split('-')[0]
@@ -122,7 +122,7 @@ export const useLanguageStore = defineStore('language', () => {
     if (typeof document !== 'undefined') {
       document.body.style.opacity = '0.5'
       document.body.style.transition = 'opacity 0.3s ease'
-      
+
       setTimeout(() => {
         document.body.style.opacity = '1'
       }, 300)
@@ -133,50 +133,50 @@ export const useLanguageStore = defineStore('language', () => {
   const t = (key: string, params?: Record<string, string>): string => {
     // Get translation from our computed translations
     const translationObj = translations.value[key as keyof typeof translations.value]
-    
+
     if (!translationObj) {
       console.warn(`Translation key not found: ${key}`)
       return key
     }
-    
+
     // Cast to a record with Language keys to allow indexing
     const dict = translationObj as Record<Language, string>
     let translation = dict[currentLanguage.value] || dict.en || key
-    
+
     // Replace parameters if provided
     if (params) {
       Object.keys(params).forEach(param => {
         translation = translation.replace(`{${param}}`, params[param])
       })
     }
-    
+
     return translation
   }
 
   const formatCurrency = (amount: number, currencyCode: string = 'USD'): string => {
     const locale = currentLanguage.value === 'ar' ? 'ar-SA' : 'en-US'
-    
+
     const formatter = new Intl.NumberFormat(locale, {
       style: 'currency',
       currency: currencyCode,
       minimumFractionDigits: 2,
       maximumFractionDigits: 2
     })
-    
+
     return formatter.format(amount)
   }
 
   const formatDate = (date: Date | string, options?: Intl.DateTimeFormatOptions): string => {
     const locale = currentLanguage.value === 'ar' ? 'ar-SA' : 'en-US'
     const dateObj = typeof date === 'string' ? new Date(date) : date
-    
+
     const defaultOptions: Intl.DateTimeFormatOptions = {
       year: 'numeric',
       month: 'long',
       day: 'numeric',
       ...options
     }
-    
+
     const formatter = new Intl.DateTimeFormat(locale, defaultOptions)
     return formatter.format(dateObj)
   }
@@ -184,10 +184,10 @@ export const useLanguageStore = defineStore('language', () => {
   // Watch for changes
   watch(currentLanguage, () => {
     updateDocumentAttributes()
-    
+
     // Save preference
     localStorage.setItem('luxury_perfume_language', currentLanguage.value)
-    
+
     // Dispatch event for other components
     window.dispatchEvent(new CustomEvent('language-changed', {
       detail: { language: currentLanguage.value }
@@ -214,10 +214,10 @@ export const useLanguageStore = defineStore('language', () => {
     adminPanel: { en: 'Admin Panel', ar: 'لوحة التحكم' },
     logout: { en: 'Logout', ar: 'تسجيل الخروج' },
     menu: { en: 'Menu', ar: 'القائمة' },
-    
+
     // Skip to content (accessibility)
     skipToContent: { en: 'Skip to main content', ar: 'انتقل إلى المحتوى الرئيسي' },
-    
+
     // Language translations
     languageChanged: { en: 'Language Changed', ar: 'تم تغيير اللغة' },
     languageChangedTo: { en: 'Language changed to {language}', ar: 'تم تغيير اللغة إلى {language}' },
@@ -225,12 +225,12 @@ export const useLanguageStore = defineStore('language', () => {
     selectLanguage: { en: 'Select Language', ar: 'اختر اللغة' },
     autoDetectLanguage: { en: 'Auto-detect language', ar: 'كشف اللغة تلقائياً' },
     error: { en: 'Error', ar: 'خطأ' },
-    
+
     // Currency translations
     selectCurrency: { en: 'Select Currency', ar: 'اختر العملة' },
     currencyChanged: { en: 'Currency Changed', ar: 'تم تغيير العملة' },
     currencyChangedTo: { en: 'Currency changed to {currency}', ar: 'تم تغيير العملة إلى {currency}' },
-    
+
     // Cart translations
     yourCart: { en: 'Your Luxury Cart', ar: 'سلة التسوق الفاخرة' },
     cartEmpty: { en: 'Your cart is awaiting luxury', ar: 'سلة التسوق بانتظار الفخامة' },
@@ -257,16 +257,16 @@ export const useLanguageStore = defineStore('language', () => {
     itemRemoved: { en: 'Item removed', ar: 'تمت إزالة المنتج' },
     cartItemsCount: { en: '{count} items', ar: '{count} عناصر' },
     cartEmptyMessage: { en: 'Your cart is currently empty', ar: 'سلة التسوق فارغة حالياً' },
-    
+
     // Products
     products: { en: 'Products', ar: 'المنتجات' },
-    
+
     // Search translations
     searchPlaceholder: { en: 'Search for luxury fragrances...', ar: 'ابحث عن العطور الفاخرة...' },
     recentSearches: { en: 'Recent Searches', ar: 'عمليات البحث الحديثة' },
     clearAll: { en: 'Clear All', ar: 'مسح الكل' },
     popularSearches: { en: 'Popular Searches', ar: 'عمليات البحث الشائعة' },
-    
+
     // Footer translations
     footerDescription: { en: 'Experience the essence of luxury with our curated collection of premium perfumes from around the world.', ar: 'اختبر جوهر الفخامة مع مجموعتنا المختارة من العطور الفاخرة من حول العالم.' },
     quickLinks: { en: 'Quick Links', ar: 'روابط سريعة' },
@@ -291,25 +291,25 @@ export const useLanguageStore = defineStore('language', () => {
     privacyPolicy: { en: 'Privacy Policy', ar: 'سياسة الخصوصية' },
     termsOfService: { en: 'Terms of Service', ar: 'شروط الخدمة' },
     cookiePolicy: { en: 'Cookie Policy', ar: 'سياسة ملفات تعريف الارتباط' },
-    
+
     // 404 Page translations
     pageNotFound: { en: 'Page Not Found', ar: 'الصفحة غير موجودة' },
     pageNotFoundDescription: { en: 'The page you are looking for might have been removed, had its name changed, or is temporarily unavailable.', ar: 'الصفحة التي تبحث عنها ربما تمت إزالتها أو تغيير اسمها أو أنها غير متوفرة مؤقتاً.' },
     backToHome: { en: 'Back to Home', ar: 'العودة إلى الرئيسية' },
     browseProducts: { en: 'Browse Products', ar: 'تصفح المنتجات' },
-    
+
     // Homepage translations (from the provided template)
     // Hero section
     brandName: { en: 'Perfume Stock', ar: 'مخزون العطور' },
     luxuryCollection: { en: 'LUXURY COLLECTION', ar: 'المجموعة الفاخرة' },
     luxury: { en: 'LUXURY', ar: 'فاخر' },
     shopNow: { en: 'Shop Now', ar: 'تسوق الآن' },
-    
+
     // Featured brands section
     featuredBrands: { en: 'Featured Brands', ar: 'العلامات التجارية المميزة' },
     luxuryCollections: { en: 'Luxury Collections', ar: 'المجموعات الفاخرة' },
     viewAllBrands: { en: 'View All Brands', ar: 'عرض كل العلامات التجارية' },
-    
+
     // Brand-specific translations
     brandTomFord: { en: 'TOM FORD', ar: 'توم فورد' },
     brandYsl: { en: 'YVES SAINT LAURENT', ar: 'ايف سان لوران' },
@@ -317,7 +317,7 @@ export const useLanguageStore = defineStore('language', () => {
     brandChanel: { en: 'CHANEL', ar: 'شانيل' },
     brandDior: { en: 'DIOR', ar: 'ديور' },
     brandGucci: { en: 'GUCCI', ar: 'غوتشي' },
-    
+
     // Product signatures
     noirExtreme: { en: 'Noir Extreme', ar: 'نوار إكستريم' },
     blackOpium: { en: 'Black Opium', ar: 'بلاك أوبيوم' },
@@ -325,30 +325,30 @@ export const useLanguageStore = defineStore('language', () => {
     cocoMademoiselle: { en: 'Coco Mademoiselle', ar: 'كوكو ماديموزيل' },
     sauvageElixir: { en: 'Sauvage Elixir', ar: 'سوفاج إكسير' },
     bloom: { en: 'Bloom', ar: 'بلوم' },
-    
+
     // Offer section
     todaysExclusiveOffer: { en: "TODAY'S EXCLUSIVE OFFER", ar: 'العرض الحصري اليوم' },
     cocoChanel: { en: 'COCO CHANEL', ar: 'كوكو شانيل' },
     iconicEauDeParfum: { en: 'Iconic Eau de Parfum', ar: 'عطر أي دو بارفيوم الأيقوني' },
     buyNow: { en: 'Buy Now', ar: 'اشتري الآن' },
-    
+
     // Pricing and currency
     price: { en: 'Price', ar: 'السعر' },
     oldPrice: { en: 'Old Price', ar: 'السعر القديم' },
     newPrice: { en: 'New Price', ar: 'السعر الجديد' },
     le: { en: 'LE', ar: 'ج.م' },
-    
+
     // Navigation
     exploreCollections: { en: 'Explore Collections', ar: 'استكشف المجموعات' },
     discoverMore: { en: 'Discover More', ar: 'اكتشف المزيد' },
     learnMore: { en: 'Learn More', ar: 'اعرف المزيد' },
-    
+
     // Status and availability
     inStock: { en: 'In Stock', ar: 'متوفر' },
     limitedStock: { en: 'Limited Stock', ar: 'كمية محدودة' },
     soldOut: { en: 'Sold Out', ar: 'نفذ من المخزون' },
     comingSoon: { en: 'Coming Soon', ar: 'قريباً' },
-    
+
     // Categories
     mensFragrances: { en: "Men's Fragrances", ar: 'عطور الرجال' },
     womensFragrances: { en: "Women's Fragrances", ar: 'عطور النساء' },
@@ -356,7 +356,7 @@ export const useLanguageStore = defineStore('language', () => {
     limitedEditions: { en: 'Limited Editions', ar: 'الطبعات المحدودة' },
     bestSellers: { en: 'Best Sellers', ar: 'الأكثر مبيعاً' },
     newArrivals: { en: 'New Arrivals', ar: 'وصل حديثاً' },
-    
+
     // Actions
     addToCart: { en: 'Add to Cart', ar: 'أضف إلى السلة' },
     addToWishlist: { en: 'Add to Wishlist', ar: 'أضف إلى قائمة الرغبات' },
@@ -364,7 +364,7 @@ export const useLanguageStore = defineStore('language', () => {
     viewDetails: { en: 'View Details', ar: 'عرض التفاصيل' },
     quickView: { en: 'Quick View', ar: 'نظرة سريعة' },
     compare: { en: 'Compare', ar: 'مقارنة' },
-    
+
     // Product details
     productDescription: { en: 'Product Description', ar: 'وصف المنتج' },
     ingredients: { en: 'Ingredients', ar: 'المكونات' },
@@ -374,7 +374,7 @@ export const useLanguageStore = defineStore('language', () => {
     share: { en: 'Share', ar: 'مشاركة' },
     selectSize: { en: 'Select Size', ar: 'اختر الحجم' },
     selectQuantity: { en: 'Select Quantity', ar: 'اختر الكمية' },
-    
+
     // Checkout
     checkout: { en: 'Checkout', ar: 'الدفع' },
     shippingAddress: { en: 'Shipping Address', ar: 'عنوان الشحن' },
@@ -382,7 +382,7 @@ export const useLanguageStore = defineStore('language', () => {
     paymentMethod: { en: 'Payment Method', ar: 'طريقة الدفع' },
     orderSummary: { en: 'Order Summary', ar: 'ملخص الطلب' },
     placeOrder: { en: 'Place Order', ar: 'تأكيد الطلب' },
-    
+
     // Account
     myAccount: { en: 'My Account', ar: 'حسابي' },
     myOrders: { en: 'My Orders', ar: 'طلباتي' },
@@ -391,21 +391,21 @@ export const useLanguageStore = defineStore('language', () => {
     paymentMethods: { en: 'Payment Methods', ar: 'طرق الدفع' },
     personalInformation: { en: 'Personal Information', ar: 'المعلومات الشخصية' },
     changePassword: { en: 'Change Password', ar: 'تغيير كلمة المرور' },
-    
+
     // Authentication
     signUp: { en: 'Sign Up', ar: 'إنشاء حساب' },
     forgotPassword: { en: 'Forgot Password?', ar: 'نسيت كلمة المرور؟' },
     rememberMe: { en: 'Remember Me', ar: 'تذكرني' },
     resetPassword: { en: 'Reset Password', ar: 'إعادة تعيين كلمة المرور' },
     createNewAccount: { en: 'Create New Account', ar: 'إنشاء حساب جديد' },
-    
+
     // Messages
     success: { en: 'Success', ar: 'نجاح' },
     warning: { en: 'Warning', ar: 'تحذير' },
     info: { en: 'Information', ar: 'معلومات' },
     operationFailed: { en: 'Operation Failed', ar: 'فشلت العملية' },
     tryAgain: { en: 'Try Again', ar: 'حاول مرة أخرى' },
-    
+
     // Filter and sort
     filter: { en: 'Filter', ar: 'تصفية' },
     sortBy: { en: 'Sort By', ar: 'ترتيب حسب' },
@@ -414,7 +414,7 @@ export const useLanguageStore = defineStore('language', () => {
     newest: { en: 'Newest', ar: 'الأحدث' },
     popularity: { en: 'Popularity', ar: 'الشعبية' },
     rating: { en: 'Rating', ar: 'التقييم' },
-    
+
     // Brands (for navigation/filtering)
     chanel: { en: 'Chanel', ar: 'شانيل' },
     dior: { en: 'Dior', ar: 'ديور' },
@@ -425,7 +425,7 @@ export const useLanguageStore = defineStore('language', () => {
     versace: { en: 'Versace', ar: 'فيرساتشي' },
     ysl: { en: 'YSL', ar: 'واي إس إل' },
     gucci: { en: 'Gucci', ar: 'غوتشي' },
-    
+
     // Common UI elements
     loading: { en: 'Loading...', ar: 'جاري التحميل...' },
     saving: { en: 'Saving...', ar: 'جاري الحفظ...' },
@@ -443,14 +443,14 @@ export const useLanguageStore = defineStore('language', () => {
     apply: { en: 'Apply', ar: 'تطبيق' },
     clear: { en: 'Clear', ar: 'مسح' },
     reset: { en: 'Reset', ar: 'إعادة تعيين' },
-    
+
     // Social media and sharing
     followUs: { en: 'Follow Us', ar: 'تابعنا' },
     shareOnFacebook: { en: 'Share on Facebook', ar: 'مشاركة على فيسبوك' },
     shareOnTwitter: { en: 'Share on Twitter', ar: 'مشاركة على تويتر' },
     shareOnInstagram: { en: 'Share on Instagram', ar: 'مشاركة على إنستجرام' },
     shareOnWhatsapp: { en: 'Share on WhatsApp', ar: 'مشاركة على واتساب' },
-    
+
     // Seasonal and promotional
     seasonalCollection: { en: 'Seasonal Collection', ar: 'المجموعة الموسمية' },
     holidaySpecial: { en: 'Holiday Special', ar: 'العرض العطلي' },
@@ -458,32 +458,64 @@ export const useLanguageStore = defineStore('language', () => {
     winterWarmers: { en: 'Winter Warmers', ar: 'دفء الشتاء' },
     giftIdeas: { en: 'Gift Ideas', ar: 'أفكار هدايا' },
     perfectGift: { en: 'Perfect Gift', ar: 'هدية مثالية' },
-    
+
     // Shipping and delivery
     freeShipping: { en: 'Free Shipping', ar: 'شحن مجاني' },
     expressDelivery: { en: 'Express Delivery', ar: 'توصيل سريع' },
     sameDayDelivery: { en: 'Same Day Delivery', ar: 'توصيل في نفس اليوم' },
     estimatedDelivery: { en: 'Estimated Delivery', ar: 'موعد التوصيل المقدر' },
     trackOrder: { en: 'Track Order', ar: 'تتبع الطلب' },
-    
+
     // Quality and guarantee
     qualityGuarantee: { en: 'Quality Guarantee', ar: 'ضمان الجودة' },
     authenticProducts: { en: 'Authentic Products', ar: 'منتجات أصلية' },
     moneyBackGuarantee: { en: 'Money Back Guarantee', ar: 'ضمان استعادة الأموال' },
     satisfactionGuaranteed: { en: 'Satisfaction Guaranteed', ar: 'رضا مضمون' },
-    
+
     // Customer testimonials
     customerReviews: { en: 'Customer Reviews', ar: 'تقييمات العملاء' },
     testimonials: { en: 'Testimonials', ar: 'شهادات العملاء' },
     customerSatisfaction: { en: 'Customer Satisfaction', ar: 'رضا العملاء' },
     ratedByCustomers: { en: 'Rated by Customers', ar: 'تم التقييم من قبل العملاء' },
-    
+
     // Newsletter and updates
     subscribe: { en: 'Subscribe', ar: 'اشتراك' },
     unsubscribe: { en: 'Unsubscribe', ar: 'إلغاء الاشتراك' },
     newsletter: { en: 'Newsletter', ar: 'النشرة الإخبارية' },
     specialOffers: { en: 'Special Offers', ar: 'عروض خاصة' },
-    exclusiveDeals: { en: 'Exclusive Deals', ar: 'صفقات حصرية' }
+    exclusiveDeals: { en: 'Exclusive Deals', ar: 'صفقات حصرية' },
+
+    // ========== LANDING PAGE TRANSLATIONS ==========
+    heroTitle: { en: 'Create Your Own Luxury', ar: 'أنشئ متجر عطورك الفاخر' },
+    heroHighlight: { en: 'Perfume Store', ar: 'متجر عطور' },
+    heroSubtitle: { en: 'Launch a beautiful, fully‑managed e‑commerce platform for premium fragrances. Multi‑tenant, multi‑language, ready in minutes.', ar: 'أطلق منصة تجارة إلكترونية جميلة وكاملة الإدارة للعطور الفاخرة. متعدد المستأجرين، متعدد اللغات، جاهز في دقائق.' },
+    startStore: { en: 'Start Your Store', ar: 'ابدأ متجرك' },
+    exploreDemo: { en: 'Explore Demo', ar: 'استكشف العرض التوضيحي' },
+    featuresTitle: { en: 'Everything You Need', ar: 'كل ما تحتاجه' },
+    featuresSubtitle: { en: 'A complete solution for perfume brands to sell online with ease.', ar: 'حل متكامل للعلامات التجارية للعطور للبيع عبر الإنترنت بسهولة.' },
+    featureMultiTenant: { en: 'Multi‑tenant Architecture', ar: 'هندسة متعددة المستأجرين' },
+    featureMultiTenantDesc: { en: 'Each brand gets its own subdomain with isolated data. Perfect for scaling.', ar: 'تحصل كل علامة تجارية على نطاق فرعي خاص بها مع بيانات معزولة. مثالي للتوسع.' },
+    featureMultiLang: { en: 'Multi‑language Support', ar: 'دعم متعدد اللغات' },
+    featureMultiLangDesc: { en: 'Arabic & English ready. Seamlessly switch between languages.', ar: 'العربية والإنجليزية جاهزتان. التبديل بسلاسة بين اللغات.' },
+    featureProductMgmt: { en: 'Product Management', ar: 'إدارة المنتجات' },
+    featureProductMgmtDesc: { en: 'Easy product uploads, fragrance notes, collections, and inventory tracking.', ar: 'رفع المنتجات بسهولة، ملاحظات العطر، المجموعات، وتتبع المخزون.' },
+    featureCart: { en: 'Shopping Cart & Checkout', ar: 'سلة التسوق والدفع' },
+    featureCartDesc: { en: 'Fully functional cart, wishlist, and secure checkout experience.', ar: 'سلة تسوق كاملة الوظائف، قائمة الرغبات، وتجربة دفع آمنة.' },
+    featureAdmin: { en: 'Admin Dashboard', ar: 'لوحة تحكم المسؤول' },
+    featureAdminDesc: { en: 'Powerful admin panel to manage orders, products, and settings.', ar: 'لوحة تحكم قوية لإدارة الطلبات والمنتجات والإعدادات.' },
+    featureSubdomain: { en: 'Instant Subdomain', ar: 'نطاق فرعي فوري' },
+    featureSubdomainDesc: { en: 'Get your own branded subdomain immediately after registration.', ar: 'احصل على نطاقك الفرعي الخاص بعد التسجيل مباشرة.' },
+    stepsTitle: { en: 'Get Started in 3 Simple Steps', ar: 'ابدأ في 3 خطوات بسيطة' },
+    stepsSubtitle: { en: 'Launch your perfume store in minutes, not weeks.', ar: 'أطلق متجر العطور الخاص بك في دقائق، وليس أسابيع.' },
+    step1Title: { en: 'Register Your Company', ar: 'سجل شركتك' },
+    step1Desc: { en: 'Enter your company name, email, and choose a subdomain.', ar: 'أدخل اسم شركتك وبريدك الإلكتروني واختر نطاقًا فرعيًا.' },
+    step2Title: { en: 'Add Your Products', ar: 'أضف منتجاتك' },
+    step2Desc: { en: 'Upload your perfume collection with images, notes, and prices.', ar: 'حمِّل مجموعة العطور الخاصة بك مع الصور والملاحظات والأسعار.' },
+    step3Title: { en: 'Start Selling', ar: 'ابدأ البيع' },
+    step3Desc: { en: 'Your store is live. Manage orders and grow your business.', ar: 'متجرك حي. أدر الطلبات وطور عملك.' },
+    ctaTitle: { en: 'Ready to Start Your Fragrance Journey?', ar: 'هل أنت مستعد لبدء رحلتك العطرية؟' },
+    ctaSubtitle: { en: 'Join dozens of perfume brands using our platform to reach more customers.', ar: 'انضم إلى العشرات من العلامات التجارية للعطور التي تستخدم منصتنا للوصول إلى مزيد من العملاء.' },
+    ctaButton: { en: 'Create Your Store Now', ar: 'أنشئ متجرك الآن' }
   }))
 
   // Notification helper that works with your existing notification system
