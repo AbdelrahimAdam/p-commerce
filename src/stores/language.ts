@@ -129,7 +129,7 @@ export const useLanguageStore = defineStore('language', () => {
     }
   }
 
-  // Translation helper with interpolation support – FIXED INDEXING
+  // Translation helper with interpolation support
   const t = (key: string, params?: Record<string, string>): string => {
     // Get translation from our computed translations
     const translationObj = translations.value[key as keyof typeof translations.value]
@@ -194,7 +194,7 @@ export const useLanguageStore = defineStore('language', () => {
     }))
   }, { immediate: true })
 
-  // Translations for common phrases (expanded from what we encountered)
+  // Translations for all keys (including landing page)
   const translations = computed(() => ({
     // Header translations
     home: { en: 'Home', ar: 'الرئيسية' },
@@ -298,14 +298,11 @@ export const useLanguageStore = defineStore('language', () => {
     backToHome: { en: 'Back to Home', ar: 'العودة إلى الرئيسية' },
     browseProducts: { en: 'Browse Products', ar: 'تصفح المنتجات' },
 
-    // Homepage translations (from the provided template)
-    // Hero section
+    // Homepage translations
     brandName: { en: 'Perfume Stock', ar: 'مخزون العطور' },
     luxuryCollection: { en: 'LUXURY COLLECTION', ar: 'المجموعة الفاخرة' },
     luxury: { en: 'LUXURY', ar: 'فاخر' },
     shopNow: { en: 'Shop Now', ar: 'تسوق الآن' },
-
-    // Featured brands section
     featuredBrands: { en: 'Featured Brands', ar: 'العلامات التجارية المميزة' },
     luxuryCollections: { en: 'Luxury Collections', ar: 'المجموعات الفاخرة' },
     viewAllBrands: { en: 'View All Brands', ar: 'عرض كل العلامات التجارية' },
@@ -485,7 +482,7 @@ export const useLanguageStore = defineStore('language', () => {
     specialOffers: { en: 'Special Offers', ar: 'عروض خاصة' },
     exclusiveDeals: { en: 'Exclusive Deals', ar: 'صفقات حصرية' },
 
-    // ========== LANDING PAGE TRANSLATIONS ==========
+    // Landing page translations
     heroTitle: { en: 'Create Your Own Luxury', ar: 'أنشئ متجر عطورك الفاخر' },
     heroHighlight: { en: 'Perfume Store', ar: 'متجر عطور' },
     heroSubtitle: { en: 'Launch a beautiful, fully‑managed e‑commerce platform for premium fragrances. Multi‑tenant, multi‑language, ready in minutes.', ar: 'أطلق منصة تجارة إلكترونية جميلة وكاملة الإدارة للعطور الفاخرة. متعدد المستأجرين، متعدد اللغات، جاهز في دقائق.' },
