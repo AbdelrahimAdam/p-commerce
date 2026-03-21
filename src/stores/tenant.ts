@@ -11,24 +11,20 @@ interface CachedTenant {
 }
 
 export const useTenantStore = defineStore('tenant', () => {
-  // ⚡ State
+  // State
   const tenantId = ref<string | null>(null)
   const tenantDomain = ref<string | null>(null)
   const isLoading = ref(false)
   const error = ref<string | null>(null)
   const isInitialized = ref(false)
 
-  // ⚡ Computed
+  // Computed
   const isReady = computed(() => tenantId.value !== null && isInitialized.value)
 
-  // ⚡ Cache expiry: 1 hour
-  const CACHE_EXPIRY = 1000 * 60 * 60
-
-  // ⚡ Retry configuration
+  const CACHE_EXPIRY = 1000 * 60 * 60 // 1 hour
   const MAX_RETRIES = 2
   const RETRY_DELAY_MS = 1000
 
-  // ⚡ Internal promise for whenReady
   let resolveReady: (value: unknown) => void
   let rejectReady: (reason?: any) => void
   const readyPromise = new Promise((resolve, reject) => {
@@ -36,15 +32,8 @@ export const useTenantStore = defineStore('tenant', () => {
     rejectReady = reject
   })
 
-  /**
-   * Helper: sleep for a given milliseconds
-   */
   const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
 
-  /**
-   * Resolve tenant from current hostname (production only)
-   * Uses Firestore + localStorage caching with retry logic
-   */
   const resolveTenantFromDomain = async (retryCount = 0): Promise<void> => {
     if (isInitialized.value) return
 
@@ -57,7 +46,6 @@ export const useTenantStore = defineStore('tenant', () => {
     try {
       console.log('🔍 resolveTenantFromDomain started, hostname:', hostname)
 
-      // 🔹 Load cached tenant
       const cachedStr = localStorage.getItem(cacheKey)
       if (cachedStr) {
         try {
@@ -70,21 +58,19 @@ export const useTenantStore = defineStore('tenant', () => {
             resolveReady(true)
             return
           } else {
-            localStorage.removeItem(cacheKey) // expired
+            localStorage.removeItem(cacheKey)
           }
         } catch {
-          localStorage.removeItem(cacheKey) // corrupted cache
+          localStorage.removeItem(cacheKey)
         }
       }
 
-      // 🔹 Query Firestore for tenant
       const tenantsRef = collection(db, 'tenants')
       const q = query(tenantsRef, where('domain', '==', hostname), limit(1))
       let snapshot
       try {
         snapshot = await getDocs(q)
       } catch (firestoreError) {
-        // Retry on network errors or permission errors (except permission-denied which might be permanent)
         if (retryCount < MAX_RETRIES && firestoreError instanceof Error && 
             (firestoreError.message.includes('network') || firestoreError.message.includes('unavailable'))) {
           console.warn(`⚠️ Firestore error, retrying (${retryCount + 1}/${MAX_RETRIES})...`)
@@ -99,14 +85,12 @@ export const useTenantStore = defineStore('tenant', () => {
         tenantId.value = null
         tenantDomain.value = null
         console.warn(error.value)
-        // Don't redirect automatically - let the page handle it
         rejectReady(new Error(error.value))
         return
       }
 
       const doc = snapshot.docs[0]
       const docData: DocumentData = doc.data()
-
       const resolvedDomain: string = (docData.domain as string) ?? ''
       if (!resolvedDomain) throw new Error('Tenant domain is missing in Firestore')
 
@@ -114,7 +98,6 @@ export const useTenantStore = defineStore('tenant', () => {
       tenantDomain.value = resolvedDomain
       console.info('✅ Tenant resolved from Firestore:', tenantId.value)
 
-      // 🔹 Cache tenant for future visits
       const cacheData: CachedTenant = {
         tenantId: tenantId.value,
         tenantDomain: tenantDomain.value,
@@ -135,9 +118,6 @@ export const useTenantStore = defineStore('tenant', () => {
     }
   }
 
-  /**
-   * After a company is registered, set tenant directly (bypass cache)
-   */
   const setTenantAfterRegistration = (id: string, domain: string) => {
     tenantId.value = id
     tenantDomain.value = domain
@@ -155,9 +135,6 @@ export const useTenantStore = defineStore('tenant', () => {
     resolveReady(true)
   }
 
-  /**
-   * Force refresh tenant (ignore cache)
-   */
   const refreshTenant = async (): Promise<void> => {
     const hostname = window.location.hostname
     localStorage.removeItem(`tenant_${hostname}`)
@@ -165,9 +142,6 @@ export const useTenantStore = defineStore('tenant', () => {
     await resolveTenantFromDomain()
   }
 
-  /**
-   * Wait for tenant to be ready (useful for other stores)
-   */
   const whenReady = (timeoutMs?: number): Promise<void> => {
     if (isReady.value) return Promise.resolve()
     if (timeoutMs) {
@@ -179,9 +153,6 @@ export const useTenantStore = defineStore('tenant', () => {
     return readyPromise as Promise<void>
   }
 
-  /**
-   * Fetch a tenant by its ID (admin use only)
-   */
   const fetchTenantById = async (id: string): Promise<{ id: string; data: DocumentData } | null> => {
     try {
       const tenantDoc = await getDoc(doc(db, 'tenants', id))
@@ -195,9 +166,6 @@ export const useTenantStore = defineStore('tenant', () => {
     }
   }
 
-  /**
-   * Check if a given tenant ID is the current resolved tenant
-   */
   const isCurrentTenant = (id: string): boolean => tenantId.value === id
 
   return {
