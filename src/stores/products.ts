@@ -1,11 +1,9 @@
 // stores/products.ts - PRODUCTION READY WITH BRAND SUBCOLLECTIONS
 import { defineStore } from 'pinia'
-import { ref, computed, watch, watchEffect } from 'vue'
+import { ref, watch, watchEffect } from 'vue'
 import {
   collection,
-  doc,
   getDocs,
-  getDoc,
   query,
   where,
   orderBy,
@@ -22,17 +20,15 @@ import { productNotification } from '@/utils/notifications'
 import { LUXURY_CATEGORIES } from '@/utils/luxuryConstants'
 import { useBrandsStore } from './brands'
 import { useAuthStore } from './auth'
-import { debounce } from 'lodash-es'  // <-- ADDED for debouncing
 
-// Extend FilterOptions locally to include classification (gender)
-type ExtendedFilterOptions = FilterOptions & {
-  classification?: string;
-};
-
-// Performance constants
-const MAX_CONCURRENT_BRAND_FETCHES = 5  // <-- limit parallel requests
-const PRODUCT_CACHE_TTL = 5 * 60 * 1000 // 5 minutes
-const PRODUCT_CACHE_MAX_SIZE = 500      // max number of cached products
+// Simple debounce implementation
+function debounce<F extends (...args: any[]) => any>(func: F, wait: number): (...args: Parameters<F>) => void {
+  let timeout: ReturnType<typeof setTimeout> | null = null
+  return (...args: Parameters<F>) => {
+    if (timeout) clearTimeout(timeout)
+    timeout = setTimeout(() => func(...args), wait)
+  }
+}
 
 export const useProductsStore = defineStore('products', () => {
   const brandsStore = useBrandsStore()
@@ -62,7 +58,7 @@ export const useProductsStore = defineStore('products', () => {
   const searchQuery = ref('')
   const selectedSort = ref<string>('newest')
 
-  // Cache state for performance (with TTL and size limit)
+  // Cache state for performance
   const productCache = ref<Map<string, { product: Product; timestamp: number }>>(new Map())
   const brandProductsCache = ref<Map<string, Product[]>>(new Map())
 
@@ -75,9 +71,39 @@ export const useProductsStore = defineStore('products', () => {
   }, 300)
 
   /* =========================
-   * GETTERS
+   * GETTERS (as functions)
    * ========================= */
-  // ... (all getters unchanged) ...
+  const categories = LUXURY_CATEGORIES
+
+  const luxuryBrands = () => {
+    const brands = new Set(products.value.map(p => p.brand))
+    return Array.from(brands).sort()
+  }
+
+  const byCategory = (categoryId: string) => {
+    return products.value
+      .filter(p => p.category === categoryId)
+      .sort((a, b) => {
+        const dateA = a.createdAt?.seconds ? new Date(a.createdAt.seconds * 1000) : new Date(0)
+        const dateB = b.createdAt?.seconds ? new Date(b.createdAt.seconds * 1000) : new Date(0)
+        return dateB.getTime() - dateA.getTime()
+      })
+  }
+
+  const getCategoryById = (id: string) => LUXURY_CATEGORIES.find(c => c.id === id)
+
+  const totalProducts = () => products.value.length
+
+  const priceRange = () => {
+    if (products.value.length === 0) return { min: 0, max: 0 }
+    const prices = products.value.map(p => p.price)
+    return {
+      min: Math.min(...prices),
+      max: Math.max(...prices)
+    }
+  }
+
+  const isFiltered = () => Object.keys(filters.value).length > 0 || searchQuery.value.length > 0
 
   /* =========================
    * CORE FETCHING METHODS
@@ -123,15 +149,15 @@ export const useProductsStore = defineStore('products', () => {
         snapshot.docs.map(async (docSnap) => {
           const cacheKey = `${brandId}_${docSnap.id}`
 
-          // Check cache with TTL
+          // Check cache first
           const cachedEntry = productCache.value.get(cacheKey)
-          if (cachedEntry && Date.now() - cachedEntry.timestamp < PRODUCT_CACHE_TTL) {
+          if (cachedEntry) {
             return cachedEntry.product
           }
 
           const data = docSnap.data()
 
-          // Enhanced image handling (unchanged)
+          // Enhanced image handling
           let imageUrl = data.imageUrl || ''
           let images: string[] = []
 
@@ -187,15 +213,8 @@ export const useProductsStore = defineStore('products', () => {
             }
           } as Product
 
-          // Cache the product with timestamp
+          // Cache the product
           productCache.value.set(cacheKey, { product, timestamp: Date.now() })
-          // Limit cache size (evict oldest entries)
-          if (productCache.value.size > PRODUCT_CACHE_MAX_SIZE) {
-            const oldestKey = Array.from(productCache.value.entries())
-              .sort((a, b) => a[1].timestamp - b[1].timestamp)[0][0]
-            productCache.value.delete(oldestKey)
-          }
-
           return product
         })
       )
@@ -269,6 +288,7 @@ export const useProductsStore = defineStore('products', () => {
       }
 
       // Process brands in batches to limit concurrency
+      const MAX_CONCURRENT_BRAND_FETCHES = 5
       const allProducts: Product[] = []
       for (let i = 0; i < brandsToFetch.length; i += MAX_CONCURRENT_BRAND_FETCHES) {
         const batch = brandsToFetch.slice(i, i + MAX_CONCURRENT_BRAND_FETCHES)
@@ -286,6 +306,8 @@ export const useProductsStore = defineStore('products', () => {
       // Apply post-fetch filtering and sorting
       let filteredProducts = applyPostFetchFilters(allProducts, options)
       filteredProducts = applySorting(filteredProducts, options.sortBy || selectedSort.value)
+
+      // Deduplicate products
       const uniqueProducts = removeDuplicates(filteredProducts)
 
       // Update products state
@@ -295,16 +317,15 @@ export const useProductsStore = defineStore('products', () => {
         products.value = [...products.value, ...uniqueProducts]
       }
 
-      // Update pagination state (simplified – cross-brand pagination would need more logic)
+      // Update pagination state
       hasMore.value = allProducts.length >= pageSize
       lastUpdated.value = new Date()
 
       // Cache to localStorage for offline support
       cacheProducts(uniqueProducts)
 
-      // Derive special collections from the loaded products to avoid extra queries
+      // Derive special collections from loaded products
       if (resetPagination && authStore.currentTenant) {
-        // Instead of refetching, derive from the loaded product list
         deriveSpecialCollections()
       }
 
@@ -320,9 +341,9 @@ export const useProductsStore = defineStore('products', () => {
     }
   }
 
-  /**
-   * Derive special collections from the main product list (performance improvement)
-   */
+  /* =========================
+   * SPECIAL COLLECTIONS (derived)
+   * ========================= */
   const deriveSpecialCollections = () => {
     featuredProducts.value = products.value
       .filter(p => p.isFeatured && p.inStock)
@@ -346,62 +367,272 @@ export const useProductsStore = defineStore('products', () => {
       .slice(0, 10)
   }
 
-  // The original special collections fetch functions are kept for compatibility,
-  // but they are no longer called by default. If external code calls them,
-  // they will still work, but now they can be disabled by a flag.
-  const fetchFeaturedProducts = async () => {
-    if (!authStore.currentTenant) return
-    deriveSpecialCollections()
-  }
-
-  const fetchNewArrivals = async () => {
-    if (!authStore.currentTenant) return
-    deriveSpecialCollections()
-  }
-
-  const fetchBestSellers = async () => {
-    if (!authStore.currentTenant) return
-    deriveSpecialCollections()
-  }
-
-  const fetchLuxuryCollections = async () => {
-    if (!authStore.currentTenant) return
-    deriveSpecialCollections()
-  }
+  // Keep these methods for compatibility (they now just call deriveSpecialCollections)
+  const fetchFeaturedProducts = async () => deriveSpecialCollections()
+  const fetchNewArrivals = async () => deriveSpecialCollections()
+  const fetchBestSellers = async () => deriveSpecialCollections()
+  const fetchLuxuryCollections = async () => deriveSpecialCollections()
 
   /* =========================
-   * PRODUCT OPERATIONS (unchanged)
+   * PRODUCT OPERATIONS
    * ========================= */
+
   const fetchProductBySlug = async (slug: string) => {
-    // ... (unchanged)
+    if (!authStore.currentTenant) {
+      error.value = 'No tenant context'
+      return null
+    }
+    if (isLoading.value) return null
+
+    isLoading.value = true
+    error.value = null
+
+    try {
+      // Check cache first
+      const cachedProduct = Array.from(productCache.value.values())
+        .find(entry => entry.product.slug === slug)?.product
+
+      if (cachedProduct) {
+        currentProduct.value = cachedProduct
+        return cachedProduct
+      }
+
+      // Check loaded products
+      let product = products.value.find(p => p.slug === slug)
+
+      if (!product) {
+        // Search across all brands of current tenant
+        const tenantFilteredBrands = brandsStore.brands.filter(
+          brand => brand.tenantId === authStore.currentTenant
+        )
+
+        for (const brand of tenantFilteredBrands) {
+          try {
+            const productsRef = collection(db, 'brands', brand.id, 'products')
+            const productQuery = query(
+              productsRef,
+              where('slug', '==', slug),
+              limit(1)
+            )
+
+            const snapshot = await getDocs(productQuery)
+
+            if (!snapshot.empty) {
+              const docSnap = snapshot.docs[0]
+              const data = docSnap.data()
+
+              product = await transformProductData(docSnap, brand, data)
+              break
+            }
+          } catch (err) {
+            console.warn(`Product search warning for ${brand.name}:`, err)
+            continue
+          }
+        }
+
+        if (!product) {
+          throw new Error(`Product "${slug}" not found`)
+        }
+      }
+
+      currentProduct.value = product
+
+      // Pre-fetch related products in background
+      setTimeout(() => {
+        getRelatedProducts(product!).catch(() => {})
+      }, 100)
+
+      return product
+    } catch (err: any) {
+      error.value = err.message
+      productNotification.error(`Failed to load product: ${err.message}`)
+      return null
+    } finally {
+      isLoading.value = false
+    }
   }
 
   const getProductsByBrand = async (brandSlug: string): Promise<Product[]> => {
-    // ... (unchanged)
+    try {
+      const brand = brandsStore.brands.find(b => b.slug === brandSlug)
+      if (!brand) return []
+      if (brand.tenantId !== authStore.currentTenant) return []
+
+      // Check cache
+      const cached = brandProductsCache.value.get(brand.id)
+      if (cached && cached.length > 0) {
+        return cached
+      }
+
+      const productsRef = collection(db, 'brands', brand.id, 'products')
+      const productsQuery = query(
+        productsRef,
+        where('inStock', '==', true),
+        orderBy('createdAt', 'desc')
+      )
+
+      const snapshot = await getDocs(productsQuery)
+
+      const brandProducts = await Promise.all(
+        snapshot.docs.map(async (docSnap) => {
+          const data = docSnap.data()
+          return await transformProductData(docSnap, brand, data)
+        })
+      )
+
+      brandProductsCache.value.set(brand.id, brandProducts)
+      return brandProducts
+    } catch (err: any) {
+      console.error(`Error fetching products for brand ${brandSlug}:`, err)
+      return []
+    }
   }
 
   const getProductById = async (id: string): Promise<Product | undefined> => {
-    // ... (unchanged)
+    // Check cache first
+    const cachedProduct = Array.from(productCache.value.values())
+      .find(entry => entry.product.id === id)?.product
+
+    if (cachedProduct) return cachedProduct
+
+    // Check loaded products
+    let product = products.value.find(p => p.id === id)
+
+    if (!product) {
+      // Search across all brands of current tenant
+      const tenantFilteredBrands = brandsStore.brands.filter(
+        brand => brand.tenantId === authStore.currentTenant
+      )
+
+      for (const brand of tenantFilteredBrands) {
+        try {
+          const productDoc = await getDoc(doc(db, 'brands', brand.id, 'products', id))
+          if (productDoc.exists()) {
+            const data = productDoc.data()
+            product = await transformProductData(productDoc, brand, data)
+            break
+          }
+        } catch (err) {
+          console.warn(`Product by ID search warning for ${brand.name}:`, err)
+          continue
+        }
+      }
+    }
+
+    return product
   }
 
   /* =========================
-   * FILTERING & SEARCH (unchanged)
+   * FILTERING & SEARCH
    * ========================= */
+
   const filterProducts = (options: FilterOptions): Product[] => {
-    // ... (unchanged)
+    let filtered = [...products.value]
+
+    // Text search
+    if (searchQuery.value) {
+      const term = searchQuery.value.toLowerCase()
+      filtered = filtered.filter(product =>
+        product.name.en.toLowerCase().includes(term) ||
+        product.name.ar.toLowerCase().includes(term) ||
+        product.description.en.toLowerCase().includes(term) ||
+        product.description.ar.toLowerCase().includes(term) ||
+        product.brand.toLowerCase().includes(term) ||
+        product.concentration.toLowerCase().includes(term)
+      )
+    }
+
+    // Filter by category
+    if (options.category) {
+      filtered = filtered.filter(p => p.category === options.category)
+    }
+
+    // Filter by brand
+    if (options.brand) {
+      filtered = filtered.filter(p => p.brand === options.brand || p.brandSlug === options.brand)
+    }
+
+    // Filter by price range
+    if (options.minPrice !== undefined) filtered = filtered.filter(p => p.price >= options.minPrice!)
+    if (options.maxPrice !== undefined) filtered = filtered.filter(p => p.price <= options.maxPrice!)
+
+    // Filter by rating
+    if (options.minRating !== undefined) filtered = filtered.filter(p => (p.rating ?? 0) >= options.minRating!)
+
+    // Filter by bestseller
+    if (options.bestseller !== undefined) filtered = filtered.filter(p => p.isBestSeller === options.bestseller)
+
+    // Filter by featured
+    if (options.isFeatured !== undefined) filtered = filtered.filter(p => p.isFeatured === options.isFeatured)
+
+    // Filter by new arrival
+    if (options.newArrival !== undefined) {
+      const oneMonthAgo = Math.floor(Date.now() / 1000) - (30 * 24 * 60 * 60)
+      filtered = filtered.filter(p => (p.createdAt?.seconds || 0) > oneMonthAgo)
+    }
+
+    // Filter by concentration
+    if (options.concentration) filtered = filtered.filter(p => p.concentration === options.concentration)
+
+    // Filter by size
+    if (options.size) filtered = filtered.filter(p => p.size === options.size)
+
+    // Filter by classification (gender)
+    const opts = options as any
+    if (opts.classification) filtered = filtered.filter(p => p.classification === opts.classification)
+
+    // Apply sorting
+    return applySorting(filtered, options.sortBy || selectedSort.value)
   }
 
   const searchProducts = (searchTerm: string): Product[] => {
-    // ... (unchanged)
+    if (!searchTerm.trim()) return []
+    const term = searchTerm.toLowerCase()
+    return products.value.filter(product =>
+      product.name.en.toLowerCase().includes(term) ||
+      product.name.ar.toLowerCase().includes(term) ||
+      product.description.en.toLowerCase().includes(term) ||
+      product.description.ar.toLowerCase().includes(term) ||
+      product.brand.toLowerCase().includes(term) ||
+      product.notes.top.some(note => note.toLowerCase().includes(term)) ||
+      product.notes.heart.some(note => note.toLowerCase().includes(term)) ||
+      product.notes.base.some(note => note.toLowerCase().includes(term)) ||
+      product.concentration.toLowerCase().includes(term) ||
+      product.size.toLowerCase().includes(term)
+    )
   }
 
-  const getRelatedProducts = async (product: Product, limit: number = 4): Promise<Product[]> => {
-    // ... (unchanged)
+  const getRelatedProducts = async (product: Product, limitNum: number = 4): Promise<Product[]> => {
+    try {
+      // First try to find in loaded products
+      let related = products.value
+        .filter(p =>
+          p.id !== product.id &&
+          (p.category === product.category || p.brand === product.brand)
+        )
+        .slice(0, limitNum)
+
+      // If not enough related products, fetch from the same brand
+      if (related.length < limitNum && product.brandId) {
+        const brandProducts = await getProductsByBrand(product.brandSlug!)
+        const additional = brandProducts
+          .filter(p => p.id !== product.id && p.category === product.category)
+          .slice(0, limitNum - related.length)
+
+        related = [...related, ...additional]
+      }
+
+      return related
+    } catch (err) {
+      console.warn('Error fetching related products:', err)
+      return []
+    }
   }
 
   /* =========================
    * PAGINATION & LOADING
    * ========================= */
+
   const loadMoreProducts = async () => {
     if (!hasMore.value || isLoading.value || isFetchingMore.value) return
     await fetchProducts(filters.value, false)
@@ -415,18 +646,43 @@ export const useProductsStore = defineStore('products', () => {
   }
 
   /* =========================
-   * UTILITY METHODS (unchanged)
+   * UTILITY METHODS
    * ========================= */
-  const applyPostFetchFilters = (products: Product[], options: FilterOptions): Product[] => {
-    // ... (unchanged)
+
+  const applyPostFetchFilters = (productsArr: Product[], options: FilterOptions): Product[] => {
+    let filtered = [...productsArr]
+    if (options.categories && Array.isArray(options.categories)) {
+      filtered = filtered.filter(p => options.categories!.includes(p.category))
+    }
+    if (options.brands && Array.isArray(options.brands)) {
+      filtered = filtered.filter(p => options.brands!.includes(p.brand))
+    }
+    return filtered
   }
 
-  const applySorting = (products: Product[], sortBy: string): Product[] => {
-    // ... (unchanged)
+  const applySorting = (productsArr: Product[], sortBy: string): Product[] => {
+    const sorted = [...productsArr]
+    switch (sortBy) {
+      case 'price-low': sorted.sort((a, b) => a.price - b.price); break
+      case 'price-high': sorted.sort((a, b) => b.price - a.price); break
+      case 'rating': sorted.sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0)); break
+      case 'popular': sorted.sort((a, b) => (b.reviewCount || 0) - (a.reviewCount || 0)); break
+      case 'best-selling': sorted.sort((a, b) => (b.isBestSeller ? 1 : 0) - (a.isBestSeller ? 1 : 0)); break
+      case 'name-asc': sorted.sort((a, b) => a.name.en.localeCompare(b.name.en)); break
+      case 'name-desc': sorted.sort((a, b) => b.name.en.localeCompare(a.name.en)); break
+      default: sorted.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0))
+    }
+    return sorted
   }
 
-  const removeDuplicates = (products: Product[]): Product[] => {
-    // ... (unchanged)
+  const removeDuplicates = (productsArr: Product[]): Product[] => {
+    const seen = new Set()
+    return productsArr.filter(product => {
+      const key = `${product.brandId}_${product.slug}`
+      if (seen.has(key)) return false
+      seen.add(key)
+      return true
+    })
   }
 
   const transformProductData = async (
@@ -434,13 +690,77 @@ export const useProductsStore = defineStore('products', () => {
     brand: Brand,
     data: any
   ): Promise<Product> => {
-    // ... (unchanged, but uses the improved cache)
+    const cacheKey = `${brand.id}_${docSnap.id}`
+
+    // Check cache
+    const cachedEntry = productCache.value.get(cacheKey)
+    if (cachedEntry) return cachedEntry.product
+
+    // Fetch images
+    let imageUrl = data.imageUrl || ''
+    let images: string[] = []
+
+    try {
+      if (data.imagePath) {
+        const imageRef = storageRef(storage, data.imagePath)
+        imageUrl = await getDownloadURL(imageRef)
+
+        const directoryPath = data.imagePath.substring(0, data.imagePath.lastIndexOf('/'))
+        const dirRef = storageRef(storage, directoryPath)
+        const imageList = await listAll(dirRef)
+        images = await Promise.all(imageList.items.map(item => getDownloadURL(item)))
+      }
+
+      if (images.length === 0 && Array.isArray(data.images)) images = data.images
+      if (!imageUrl && images.length > 0) imageUrl = images[0]
+    } catch (imgError) {
+      console.warn(`Image transform issue for ${docSnap.id}:`, imgError)
+    }
+
+    const product = {
+      id: docSnap.id,
+      slug: data.slug || docSnap.id,
+      name: data.name || { en: 'Unnamed Product', ar: 'منتج بدون اسم' },
+      description: data.description || { en: '', ar: '' },
+      brand: brand.name,
+      brandSlug: brand.slug,
+      brandId: brand.id,
+      category: data.category || brand.category || 'luxury',
+      price: Number(data.price) || 0,
+      originalPrice: Number(data.originalPrice) || Number(data.price) || 0,
+      size: data.size || '100ml',
+      concentration: data.concentration || 'Eau de Parfum',
+      classification: data.classification || '',
+      sku: data.sku || '',
+      imageUrl: imageUrl,
+      images: images,
+      isBestSeller: data.isBestSeller || false,
+      isFeatured: data.isFeatured || false,
+      rating: data.rating || 0,
+      reviewCount: data.reviewCount || 0,
+      notes: data.notes || { top: [], heart: [], base: [] },
+      inStock: data.inStock !== false,
+      stockQuantity: data.stockQuantity || 0,
+      tenantId: data.tenantId,
+      createdAt: data.createdAt || { seconds: Date.now() / 1000, nanoseconds: 0 },
+      updatedAt: data.updatedAt || { seconds: Date.now() / 1000, nanoseconds: 0 },
+      meta: {
+        weight: data.meta?.weight || '250g',
+        dimensions: data.meta?.dimensions || '8x4x12 cm',
+        origin: data.meta?.origin || brand.name,
+        ...data.meta
+      }
+    } as Product
+
+    // Cache the product
+    productCache.value.set(cacheKey, { product, timestamp: Date.now() })
+    return product
   }
 
-  const cacheProducts = (products: Product[]) => {
+  const cacheProducts = (prods: Product[]) => {
     try {
       const cacheData = {
-        products: products.slice(0, 100),
+        products: prods.slice(0, 100),
         timestamp: Date.now(),
         version: '1.0'
       }
@@ -468,9 +788,9 @@ export const useProductsStore = defineStore('products', () => {
   /* =========================
    * STORE MANAGEMENT
    * ========================= */
+
   const setFilters = (newFilters: FilterOptions) => {
     filters.value = { ...filters.value, ...newFilters }
-    // Use debounced version to avoid excessive calls
     debouncedFetchProducts(filters.value, true)
   }
 
@@ -491,11 +811,9 @@ export const useProductsStore = defineStore('products', () => {
     debouncedFetchProducts(filters.value, true)
   }
 
-  const clearError = () => {
-    error.value = null
-  }
+  const clearError = () => { error.value = null }
 
-  // Watch for filter changes to auto-refresh (now using debounced version)
+  // Watch for filter changes
   watch(
     () => ({ ...filters.value, sort: selectedSort.value }),
     () => {
@@ -506,10 +824,7 @@ export const useProductsStore = defineStore('products', () => {
     { deep: true }
   )
 
-  // Watch search query with debounce (already handled in setSearchQuery)
-  // The existing watch is kept for compatibility but will be overridden by the setter logic.
-  // To avoid double calls, we can keep it but it will be redundant.
-  // We'll keep it for now, but the setter already triggers debouncedFetch.
+  // Watch search query with debounce
   let searchTimeout: NodeJS.Timeout
   watch(
     () => searchQuery.value,
@@ -529,7 +844,6 @@ export const useProductsStore = defineStore('products', () => {
   watchEffect(async () => {
     const tenantId = authStore.currentTenant
     const brandsLoaded = brandsStore.brands.length > 0
-
     if (tenantId && brandsLoaded && !isInitialized.value) {
       await fetchProducts({}, true)
       isInitialized.value = true
@@ -569,7 +883,7 @@ export const useProductsStore = defineStore('products', () => {
     searchQuery,
     selectedSort,
 
-    // Getters
+    // Getters (as functions)
     categories,
     luxuryBrands,
     byCategory,
