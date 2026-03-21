@@ -46,30 +46,17 @@ export const useWishlistStore = defineStore('wishlist', () => {
 
   // Getters
   const totalItems = computed(() => items.value.length)
+  const totalValue = computed(() => items.value.reduce((sum, item) => sum + item.price, 0))
+  const inStockCount = computed(() => items.value.filter(item => item.stockStatus === 'in_stock').length)
+  const lowStockCount = computed(() => items.value.filter(item => item.stockStatus === 'low_stock').length)
+  const hasItem = (productId: string) => items.value.some(item => item.id === productId)
 
-  const totalValue = computed(() => 
-    items.value.reduce((sum, item) => sum + item.price, 0)
-  )
-
-  const inStockCount = computed(() => 
-    items.value.filter(item => item.stockStatus === 'in_stock').length
-  )
-
-  const lowStockCount = computed(() => 
-    items.value.filter(item => item.stockStatus === 'low_stock').length
-  )
-
-  const hasItem = (productId: string) => 
-    items.value.some(item => item.id === productId)
-
-  // Helper to determine stock status
   const determineStockStatus = (product: Product): 'in_stock' | 'low_stock' | 'out_of_stock' => {
     if (!product.inStock) return 'out_of_stock'
     if (product.stockQuantity && product.stockQuantity < 10) return 'low_stock'
     return 'in_stock'
   }
 
-  // Save current wishlist to Firestore for logged-in user
   const saveToFirestore = async () => {
     if (!authStore.isAuthenticated) return
     try {
@@ -91,14 +78,11 @@ export const useWishlistStore = defineStore('wishlist', () => {
     }
   }
 
-  // Load wishlist from Firestore and merge with local items
   const loadFromFirestore = async () => {
     if (!authStore.isAuthenticated) return
-
     try {
       const wishlistRef = doc(db, 'wishlists', authStore.currentUser!.uid)
       const snap = await getDoc(wishlistRef)
-
       if (snap.exists()) {
         const data = snap.data()
         const firestoreItems = data.items || []
@@ -107,22 +91,18 @@ export const useWishlistStore = defineStore('wishlist', () => {
         const localMap = new Map(items.value.map(i => [i.id, i]))
         const merged: WishlistItem[] = []
 
-        firestoreItems.forEach(fsItem => {
+        firestoreItems.forEach((fsItem: WishlistItem) => {
           merged.push(fsItem)
           localMap.delete(fsItem.id)
         })
-        // Add any local items that are not in Firestore (offline additions)
         merged.push(...localMap.values())
 
-        // Update state
         items.value = merged
         privacySetting.value = data.privacy || 'private'
         shareableId.value = data.shareableId || ''
 
-        // Save the merged wishlist back to Firestore to persist offline adds
-        await saveToFirestore()
+        await saveToFirestore() // persist merged list
       } else {
-        // No Firestore wishlist exists – keep the local wishlist and upload it
         await saveToFirestore()
       }
     } catch (error) {
@@ -164,17 +144,13 @@ export const useWishlistStore = defineStore('wishlist', () => {
     }
 
     items.value.push(newItem)
-
-    if (authStore.isAuthenticated) {
-      await saveToFirestore()
-    }
+    if (authStore.isAuthenticated) await saveToFirestore()
 
     showNotification({
       title: 'Added to Wishlist',
       message: `${product.name.en} added to your wishlist`,
       type: 'success'
     })
-
     return true
   }
 
@@ -185,20 +161,15 @@ export const useWishlistStore = defineStore('wishlist', () => {
       items.value.splice(index, 1)
 
       const selectedIndex = selectedItems.value.indexOf(productId)
-      if (selectedIndex > -1) {
-        selectedItems.value.splice(selectedIndex, 1)
-      }
+      if (selectedIndex > -1) selectedItems.value.splice(selectedIndex, 1)
 
-      if (authStore.isAuthenticated) {
-        await saveToFirestore()
-      }
+      if (authStore.isAuthenticated) await saveToFirestore()
 
       showNotification({
         title: 'Removed from Wishlist',
         message: `${item.name.en} removed from your wishlist`,
         type: 'info'
       })
-
       return true
     }
     return false
@@ -224,9 +195,7 @@ export const useWishlistStore = defineStore('wishlist', () => {
     if (confirmed) {
       items.value = []
       selectedItems.value = []
-      if (authStore.isAuthenticated) {
-        await saveToFirestore()
-      }
+      if (authStore.isAuthenticated) await saveToFirestore()
       showNotification({
         title: 'Wishlist Cleared',
         message: 'Your wishlist has been cleared',
@@ -240,9 +209,7 @@ export const useWishlistStore = defineStore('wishlist', () => {
   const removeSelected = async () => {
     items.value = items.value.filter(item => !selectedItems.value.includes(item.id))
     selectedItems.value = []
-    if (authStore.isAuthenticated) {
-      await saveToFirestore()
-    }
+    if (authStore.isAuthenticated) await saveToFirestore()
     showNotification({
       title: 'Items Removed',
       message: 'Selected items removed from wishlist',
@@ -250,15 +217,12 @@ export const useWishlistStore = defineStore('wishlist', () => {
     })
   }
 
-  // Authentication-dependent actions
   const generateShareableLink = () => {
     const userId = authStore.currentUser?.uid
     if (userId) {
       const id = Math.random().toString(36).substring(2, 15)
       shareableId.value = id
-      if (authStore.isAuthenticated) {
-        saveToFirestore()
-      }
+      if (authStore.isAuthenticated) saveToFirestore()
       return `${window.location.origin}/wishlist/shared/${id}?user=${userId}`
     }
 
@@ -269,12 +233,8 @@ export const useWishlistStore = defineStore('wishlist', () => {
 
   const updatePrivacySetting = async (setting: 'private' | 'shared' | 'public') => {
     privacySetting.value = setting
-
-    if (setting !== 'private' && !shareableId.value) {
-      generateShareableLink()
-    } else if (authStore.isAuthenticated) {
-      await saveToFirestore()
-    }
+    if (setting !== 'private' && !shareableId.value) generateShareableLink()
+    if (authStore.isAuthenticated) await saveToFirestore()
 
     showNotification({
       title: 'Privacy Updated',
@@ -283,21 +243,17 @@ export const useWishlistStore = defineStore('wishlist', () => {
     })
   }
 
-  // Load wishlist (from localStorage for guests, from Firebase for logged-in users)
   const loadWishlist = async () => {
     isLoading.value = true
     try {
       if (authStore.isAuthenticated) {
-        // Before loading from Firestore, save a copy of the current guest wishlist
         guestWishlist.value = [...items.value]
         await loadFromFirestore()
       } else {
-        // For guests, we may have a saved guest wishlist to restore (if coming from logout)
         if (guestWishlist.value.length > 0) {
           items.value = guestWishlist.value
           guestWishlist.value = []
         }
-        // Otherwise, the wishlist is already loaded from localStorage (by useLocalStorage)
       }
     } catch (error) {
       console.error('Error loading wishlist:', error)
@@ -311,55 +267,44 @@ export const useWishlistStore = defineStore('wishlist', () => {
     }
   }
 
-  // Update stock status based on current product data
   const updateStockStatus = (products: Product[]) => {
     items.value = items.value.map(item => {
       const product = products.find(p => p.id === item.id)
       if (product) {
-        return {
-          ...item,
-          stockStatus: determineStockStatus(product)
-        }
+        return { ...item, stockStatus: determineStockStatus(product) }
       }
       return item
     })
-    if (authStore.isAuthenticated) {
-      saveToFirestore()
-    }
+    if (authStore.isAuthenticated) saveToFirestore()
   }
 
-  // Watch for authentication changes to reload wishlist
+  // Watch for auth changes to reload wishlist
   watch(() => authStore.isAuthenticated, async (isAuth) => {
     if (isAuth) {
       await loadWishlist()
     } else {
-      // When logging out, restore the guest wishlist (saved before login)
       if (guestWishlist.value.length > 0) {
         items.value = guestWishlist.value
         guestWishlist.value = []
       } else {
-        // No guest wishlist saved; clear the items (the user's private wishlist should not be visible to guests)
         items.value = []
       }
     }
   }, { immediate: true })
 
   return {
-    // State
     items,
     isLoading,
     selectedItems,
     privacySetting,
     shareableId,
 
-    // Getters
     totalItems,
     totalValue,
     inStockCount,
     lowStockCount,
     hasItem,
 
-    // Actions
     addToWishlist,
     removeFromWishlist,
     toggleWishlist,
