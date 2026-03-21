@@ -261,7 +261,7 @@
                     </button>
                   </div>
                   <p class="mt-1 text-xs text-gray-500">
-                    {{ t('Max 100KB for base64. JPG, PNG, GIF. Small images recommended.') }}
+                    {{ t('Brand images are stored as base64 (max 100KB). JPG, PNG, GIF.') }}
                   </p>
                 </div>
 
@@ -450,7 +450,7 @@
                   </button>
                 </div>
                 <p class="mt-1 text-xs text-gray-500">
-                  {{ t('Max 100KB for base64. JPG, PNG, GIF. Small images recommended.') }}
+                  {{ t('Images will be stored in Firebase Storage (no size limit). JPG, PNG, GIF recommended.') }}
                 </p>
               </div>
 
@@ -474,9 +474,6 @@
                     ×
                   </button>
                 </div>
-                <p v-if="productImageBase64" class="mt-1 text-xs text-gray-500">
-                  {{ t('Image size:') }} {{ formatBytes(productImageBase64.length) }}
-                </p>
               </div>
             </div>
 
@@ -979,8 +976,9 @@ import { useBrandsStore } from '@/stores/brands'
 import { useAuthStore } from '@/stores/auth'
 import type { Product, Category, Brand } from '@/types'
 import { authNotification } from '@/utils/notifications'
-import { collection, doc, writeBatch, serverTimestamp, query, where, getDocs, orderBy, limit } from 'firebase/firestore'
-import { db } from '@/firebase/config'
+import { collection, doc, writeBatch, serverTimestamp, query, where, getDocs, orderBy, limit, updateDoc, setDoc } from 'firebase/firestore'
+import { db, storage } from '@/firebase/config'
+import { ref as storageRef, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage'
 
 const languageStore = useLanguageStore()
 const productsStore = useProductsStore()
@@ -1013,18 +1011,38 @@ const cleanForFirestore = (obj: any): any => {
   
   const cleaned: any = {}
   for (const [key, value] of Object.entries(obj)) {
-    // Skip fields that are File objects, undefined, or functions
     if (value instanceof File) continue
     if (value === undefined) continue
     if (typeof value === 'function') continue
-    
-    // Recursively clean nested objects
     cleaned[key] = cleanForFirestore(value)
   }
   return cleaned
 }
 
-// ========== STRICT BRAND ABBREVIATION MAPPING ==========
+// ========== STORAGE HELPERS ==========
+const uploadProductImage = async (file: File, brandId: string, productId: string): Promise<string> => {
+  const path = `brands/${brandId}/products/${productId}/main.jpg`
+  const imageRef = storageRef(storage, path)
+  await uploadBytes(imageRef, file)
+  return await getDownloadURL(imageRef)
+}
+
+const deleteProductImageFromStorage = async (imageUrl: string) => {
+  if (!imageUrl || !imageUrl.includes('firebasestorage.googleapis.com')) return
+  try {
+    const decodedUrl = decodeURIComponent(imageUrl)
+    const match = decodedUrl.match(/\/o\/(.+?)\?/)
+    if (match && match[1]) {
+      const path = decodeURIComponent(match[1])
+      const imageRef = storageRef(storage, path)
+      await deleteObject(imageRef)
+    }
+  } catch (err) {
+    console.warn('Failed to delete old product image from Storage:', err)
+  }
+}
+
+// ========== BRAND ABBREVIATION MAPPING ==========
 const BRAND_CODES: Record<string, string> = {
   "Baccarat": "BC",
   "Burberry Her": "BH",
@@ -1054,7 +1072,6 @@ const BRAND_CODES: Record<string, string> = {
   "Yves Saint Laurent": "YL"
 }
 
-// Helper: get official abbreviation or fallback to dynamic (first two letters)
 const getBrandAbbreviation = (brandName: string): { code: string, isFallback: boolean } => {
   const normalized = brandName.trim()
   const official = BRAND_CODES[normalized]
@@ -1158,7 +1175,7 @@ const canSave = computed(() => {
          productData.concentration &&
          productData.description.en.trim() &&
          productData.description.ar.trim() &&
-         (productData.imageUrl || productImageBase64.value)
+         (productData.imageUrl || productImageFile.value) // file pending upload
 })
 
 // Helper methods
@@ -1271,21 +1288,17 @@ const previewProductImage = (url: string) => {
 const handleProductImageUpload = (event: Event) => {
   const input = event.target as HTMLInputElement
   if (!input.files || !input.files[0]) return
-
   const file = input.files[0]
-  if (file.size > 100 * 1024) {
-    alert(t('Product image must be less than 100KB for base64 storage. Please use a smaller image.'))
-    input.value = ''
-    return
-  }
-
+  
+  // Reset preview
+  productImagePreview.value = ''
+  productImageFile.value = file
+  productImageBase64.value = '' // not used for Storage
+  
+  // Show a preview (local URL)
   const reader = new FileReader()
   reader.onload = (e) => {
-    const base64 = e.target?.result as string
-    productImageBase64.value = compressBase64Image(base64, 100)
-    productImagePreview.value = productImageBase64.value
-    productImageFile.value = file
-    productData.imageUrl = productImageBase64.value
+    productImagePreview.value = e.target?.result as string
   }
   reader.readAsDataURL(file)
   
@@ -1622,7 +1635,8 @@ const validateForm = (): boolean => {
     isValid = false
   }
 
-  if (!productData.imageUrl && !productImageBase64.value) {
+  // Image is required: either URL or a file selected
+  if (!productData.imageUrl && !productImageFile.value) {
     errors.image = t('Product image is required')
     isValid = false
   }
@@ -1669,13 +1683,20 @@ const getChangedFields = (): Record<string, any> => {
 
   const simpleFields = [
     'slug', 'category', 'price', 'size', 'concentration', 'classification',
-    'isBestSeller', 'isFeatured', 'isActive', 'sku', 'imageUrl'
+    'isBestSeller', 'isFeatured', 'isActive', 'sku'
   ] as const
   simpleFields.forEach(field => {
     if (productData[field] !== orig[field]) {
       changed[field] = productData[field]
     }
   })
+
+  // For image, we only handle if a new file was selected
+  if (productImageFile.value) {
+    changed.imageFile = productImageFile.value
+  } else if (productData.imageUrl !== orig.imageUrl) {
+    changed.imageUrl = productData.imageUrl
+  }
 
   if (productData.stock !== orig.stockQuantity) {
     changed.stock = productData.stock
@@ -1693,7 +1714,6 @@ const getChangedFields = (): Record<string, any> => {
     changed.notes = { ...productData.notes }
   }
 
-  // Clean changed fields before returning
   return cleanForFirestore(changed)
 }
 
@@ -1709,7 +1729,6 @@ const saveProduct = async () => {
     return
   }
 
-  // ✅ IMPORTANT: Ensure tenant is resolved
   if (!authStore.currentTenant) {
     alert(t('Tenant not resolved. Please refresh the page or contact support.'))
     return
@@ -1726,11 +1745,6 @@ const saveProduct = async () => {
   try {
     if (!productData.slug && productData.name.en) {
       generateProductSlug()
-    }
-
-    let productImage = productData.imageUrl
-    if (productImageBase64.value) {
-      productImage = productImageBase64.value
     }
 
     const cleanNotes = {
@@ -1751,7 +1765,7 @@ const saveProduct = async () => {
       size: productData.size,
       concentration: productData.concentration,
       classification: productData.classification,
-      imageUrl: productImage,
+      imageUrl: productData.imageUrl || '', // will be set later if upload
       slug: productData.slug || '',
       category: productData.category,
       isBestSeller: productData.isBestSeller || false,
@@ -1761,10 +1775,11 @@ const saveProduct = async () => {
       isActive: productData.isActive !== false
     }
 
-    // Clean the payload (remove any undefined or File fields)
+    // Clean the payload (remove undefined/File fields)
     const cleanPayload = cleanForFirestore(productPayload)
 
     if (editing.value) {
+      // --- UPDATE EXISTING PRODUCT ---
       if (!props.product?.brandId) {
         throw new Error('Product brand ID missing')
       }
@@ -1775,40 +1790,39 @@ const saveProduct = async () => {
         return
       }
 
+      let finalImageUrl = productData.imageUrl
+      if (productImageFile.value) {
+        // Upload new image
+        finalImageUrl = await uploadProductImage(productImageFile.value, props.product.brandId, props.product.id)
+        // Delete old image if it was stored in Storage
+        await deleteProductImageFromStorage(productData.imageUrl)
+        changedFields.imageUrl = finalImageUrl
+      } else if (changedFields.imageUrl) {
+        // Already handled in changedFields
+      }
+
       emit('save', { 
         productData: changedFields,
         brandId: props.product.brandId,
         productId: props.product.id
       })
-    } else if (brandSelectionMode.value === 'existing' && selectedBrandId.value) {
+    } 
+    else if (brandSelectionMode.value === 'existing' && selectedBrandId.value) {
+      // --- ADD PRODUCT TO EXISTING BRAND ---
       const brand = brandsStore.brands.find(b => b.id === selectedBrandId.value)
       if (!brand) throw new Error('Brand not found')
 
-      const isUnique = await ensureSkuUnique(brand.id, productData.sku)
-      if (!isUnique) {
-        throw new Error(t('SKU already exists for this brand. Please try again.'))
-      }
-
+      // First, create the product document without the final image URL
       const batch = writeBatch(db)
       const productsRef = collection(db, 'brands', brand.id, 'products')
       const productDocRef = doc(productsRef)
 
+      // Temporary placeholder image (will be updated after upload)
+      const tempImageUrl = productImageFile.value ? '' : (cleanPayload.imageUrl || '')
+
       const firestoreData = {
-        name: cleanPayload.name,
-        description: cleanPayload.description,
-        notes: cleanPayload.notes,
-        price: cleanPayload.price,
-        size: cleanPayload.size,
-        concentration: cleanPayload.concentration,
-        classification: cleanPayload.classification,
-        imageUrl: productImage,
-        slug: cleanPayload.slug,
-        category: cleanPayload.category,
-        isBestSeller: cleanPayload.isBestSeller,
-        isFeatured: cleanPayload.isFeatured,
-        stockQuantity: cleanPayload.stock,
-        sku: cleanPayload.sku,
-        inStock: true,
+        ...cleanPayload,
+        imageUrl: tempImageUrl,
         brand: brand.name,
         brandSlug: brand.slug,
         brandId: brand.id,
@@ -1817,15 +1831,27 @@ const saveProduct = async () => {
         updatedAt: serverTimestamp()
       }
 
-      // Final safety clean (though already clean)
-      const cleanFirestoreData = cleanForFirestore(firestoreData)
-
-      batch.set(productDocRef, cleanFirestoreData)
+      batch.set(productDocRef, firestoreData)
       await batch.commit()
+
+      const newProductId = productDocRef.id
+
+      // If a file was uploaded, upload it to Storage and update the document
+      let finalImageUrl = ''
+      if (productImageFile.value) {
+        finalImageUrl = await uploadProductImage(productImageFile.value, brand.id, newProductId)
+        await updateDoc(productDocRef, { imageUrl: finalImageUrl, updatedAt: serverTimestamp() })
+        cleanPayload.imageUrl = finalImageUrl
+      } else if (cleanPayload.imageUrl) {
+        finalImageUrl = cleanPayload.imageUrl
+      }
 
       authNotification.loggedIn(t('Product added successfully'))
       emit('save', { productData: cleanPayload, brandId: brand.id, createNewBrand: false })
-    } else if (brandSelectionMode.value === 'new') {
+    } 
+    else if (brandSelectionMode.value === 'new') {
+      // --- CREATE NEW BRAND WITH PRODUCT ---
+      // First, create the brand (without product) to get its ID
       let brandImage = newBrand.imageUrl
       if (brandImageBase64.value) {
         brandImage = brandImageBase64.value
@@ -1844,27 +1870,40 @@ const saveProduct = async () => {
       // Clean brand data
       const cleanBrandData = cleanForFirestore(brandData)
 
-      const productForBrand = {
+      // Create brand first (no product yet)
+      const brandId = await brandsStore.addBrandWithProducts(cleanBrandData, [])
+      if (!brandId) throw new Error('Failed to create brand')
+
+      // Now create the product under that brand
+      const productsRef = collection(db, 'brands', brandId, 'products')
+      const productDocRef = doc(productsRef)
+
+      const firestoreData = {
         ...cleanPayload,
-        brand: cleanBrandData.name,
-        brandSlug: cleanBrandData.slug
+        imageUrl: '', // placeholder
+        brand: brandData.name,
+        brandSlug: brandData.slug,
+        brandId,
+        tenantId: authStore.currentTenant,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
       }
 
-      // Clean product for brand
-      const cleanProductForBrand = cleanForFirestore(productForBrand)
+      await setDoc(productDocRef, firestoreData)
+      const newProductId = productDocRef.id
 
-      const totalSize = JSON.stringify([cleanProductForBrand]).length
-      if (totalSize > 1 * 1024 * 1024) {
-        throw new Error('Total data exceeds Firestore 1MB limit. Please reduce image sizes.')
+      let finalImageUrl = ''
+      if (productImageFile.value) {
+        finalImageUrl = await uploadProductImage(productImageFile.value, brandId, newProductId)
+        await updateDoc(productDocRef, { imageUrl: finalImageUrl, updatedAt: serverTimestamp() })
+      } else if (productData.imageUrl) {
+        finalImageUrl = productData.imageUrl
+        await updateDoc(productDocRef, { imageUrl: finalImageUrl, updatedAt: serverTimestamp() })
       }
 
-      const brandId = await brandsStore.addBrandWithProducts(cleanBrandData, [cleanProductForBrand])
-      if (brandId) {
-        authNotification.loggedIn(t('Brand and product added successfully'))
-        emit('save', { productData: cleanPayload, createNewBrand: true, newBrandData: cleanBrandData })
-      } else {
-        throw new Error('Failed to create brand')
-      }
+      cleanPayload.imageUrl = finalImageUrl
+      authNotification.loggedIn(t('Brand and product added successfully'))
+      emit('save', { productData: cleanPayload, createNewBrand: true, newBrandData: cleanBrandData })
     }
 
     await productsStore.refreshProducts()
@@ -1877,8 +1916,6 @@ const saveProduct = async () => {
       alert(error.message)
     } else if (error.message?.includes('permission') || error.message?.includes('Missing or insufficient')) {
       alert(t('Permission denied. Please check if you have admin privileges.'))
-    } else if (error.message?.includes('longer than 1048487 bytes')) {
-      alert(t('Image file is too large. Please use smaller images (under 100KB each).'))
     } else {
       alert(t('Failed to save: ') + (error.message || t('Unknown error')))
     }
