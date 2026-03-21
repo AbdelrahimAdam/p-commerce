@@ -8,25 +8,25 @@
         isMobile && !isMobileMenuOpen ? '-translate-x-full' : 'translate-x-0'
       ]"
     />
-    
+
     <!-- Mobile Overlay -->
     <div 
       v-if="isMobileMenuOpen && isMobile"
       class="fixed inset-0 bg-black bg-opacity-50 z-30 lg:hidden"
       @click="isMobileMenuOpen = false"
     ></div>
-    
+
     <!-- Main Content Area -->
-    <div class="lg:ml-64 transition-all duration-200">
+    <div class="lg:ml-64 transition-all duration-200 flex flex-col h-screen">
       <!-- Top Navigation Bar (sticky header) -->
-      <header class="bg-white border-b border-gray-200 sticky top-0 z-20">
+      <header class="bg-white border-b border-gray-200 sticky top-0 z-20 flex-shrink-0">
         <div class="px-4 sm:px-6 lg:px-8">
           <div class="flex items-center justify-between h-16">
             <!-- Mobile Menu Button -->
             <div class="lg:hidden">
               <button
                 @click="toggleMobileMenu"
-                class="p-2 text-gray-600 hover:text-primary-600"
+                class="p-2 text-gray-600 hover:text-primary-600 min-w-[44px] min-h-[44px]"
                 :aria-label="isMobileMenuOpen ? 'Close menu' : 'Open menu'"
               >
                 <svg 
@@ -49,10 +49,10 @@
                 </svg>
               </button>
             </div>
-            
+
             <!-- Logo (Mobile) -->
             <div class="lg:hidden">
-              <router-link to="/admin" class="flex items-center">
+              <router-link to="/admin" class="flex items-center min-h-[44px]">
                 <div class="w-8 h-8 rounded-full bg-gradient-gold flex items-center justify-center">
                   <svg class="w-4 h-4 text-black" viewBox="0 0 24 24" fill="none">
                     <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" 
@@ -64,31 +64,34 @@
                 </span>
               </router-link>
             </div>
-            
+
             <!-- Page Title (desktop) -->
             <div class="hidden lg:block flex-1">
               <h1 class="text-xl font-display-en font-bold text-gray-900">
                 {{ pageTitle }}
               </h1>
             </div>
-            
+
             <!-- Right Side Actions -->
-            <div class="flex items-center space-x-4">
+            <div class="flex items-center space-x-2 sm:space-x-4">
               <!-- Language Switcher -->
               <button
                 @click="toggleLanguage"
-                class="p-2 text-gray-600 hover:text-primary-600"
+                class="p-2 text-gray-600 hover:text-primary-600 min-w-[44px] min-h-[44px]"
                 :title="currentLanguage === 'en' ? 'Switch to Arabic' : 'Switch to English'"
               >
-                <span class="text-sm font-medium">
+                <span class="text-sm font-medium hidden sm:inline">
                   {{ currentLanguage === 'en' ? 'العربية' : 'English' }}
                 </span>
+                <span class="text-sm font-medium sm:hidden">
+                  {{ currentLanguage === 'en' ? 'AR' : 'EN' }}
+                </span>
               </button>
-              
+
               <!-- Dark Mode Toggle -->
               <button
                 @click="toggleDarkMode"
-                class="p-2 text-gray-600 hover:text-primary-600"
+                class="p-2 text-gray-600 hover:text-primary-600 min-w-[44px] min-h-[44px]"
                 :title="isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'"
               >
                 <svg v-if="isDarkMode" class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
@@ -98,12 +101,12 @@
                   <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"/>
                 </svg>
               </button>
-              
+
               <!-- Notifications -->
               <div class="relative">
                 <button
                   @click="toggleNotifications"
-                  class="p-2 text-gray-600 hover:text-primary-600 relative"
+                  class="p-2 text-gray-600 hover:text-primary-600 relative min-w-[44px] min-h-[44px]"
                 >
                   <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
@@ -113,10 +116,10 @@
                     v-if="unreadNotifications > 0"
                     class="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center"
                   >
-                    {{ unreadNotifications }}
+                    {{ unreadNotifications > 9 ? '9+' : unreadNotifications }}
                   </span>
                 </button>
-                
+
                 <!-- Notifications Dropdown -->
                 <div 
                   v-if="showNotifications"
@@ -165,26 +168,26 @@
                             {{ formatTimeAgo(notification.timestamp) }}
                           </p>
                         </div>
-                        <div v-if="!notification.read" class="w-2 h-2 bg-primary-500 rounded-full"></div>
+                        <div v-if="!notification.read" class="w-2 h-2 bg-primary-500 rounded-full mt-1"></div>
                       </div>
                     </div>
                   </div>
                   <div class="p-3 border-t border-gray-200">
                     <button
                       @click="markAllAsRead"
-                      class="w-full text-center text-sm text-primary-600 hover:text-primary-700 font-medium"
+                      class="w-full text-center text-sm text-primary-600 hover:text-primary-700 font-medium py-2"
                     >
                       {{ t('Mark all as read') }}
                     </button>
                   </div>
                 </div>
               </div>
-              
+
               <!-- User Profile Dropdown -->
               <div class="relative">
                 <button
                   @click="toggleUserMenu"
-                  class="flex items-center space-x-3 p-2 hover:bg-gray-100 rounded-lg"
+                  class="flex items-center space-x-2 sm:space-x-3 p-2 hover:bg-gray-100 rounded-lg min-h-[44px]"
                 >
                   <div class="w-8 h-8 rounded-full bg-primary-100 flex items-center justify-center">
                     <span class="text-primary-600 font-bold text-sm">
@@ -203,7 +206,7 @@
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
                   </svg>
                 </button>
-                
+
                 <!-- User Menu Dropdown -->
                 <div 
                   v-if="showUserMenu"
@@ -243,7 +246,7 @@
                     >
                       <svg class="w-4 h-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
-                              d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+                              d="M17 16l4-4m0 0l-4 4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
                       </svg>
                       {{ t('Sign Out') }}
                     </button>
@@ -254,9 +257,9 @@
           </div>
         </div>
       </header>
-      
-      <!-- Main Content -->
-      <main class="p-4 sm:p-6 lg:p-8">
+
+      <!-- Main Content (scrolls independently) -->
+      <main class="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
         <!-- Page Header (mobile) -->
         <div class="mb-6">
           <div class="lg:hidden">
@@ -268,7 +271,7 @@
             {{ pageDescription }}
           </div>
         </div>
-        
+
         <!-- Router View -->
         <div class="admin-content">
           <router-view v-slot="{ Component }">
@@ -278,9 +281,9 @@
           </router-view>
         </div>
       </main>
-      
-      <!-- Footer -->
-      <footer class="px-4 sm:px-6 lg:px-8 py-6 border-t border-gray-200">
+
+      <!-- Footer (optional) -->
+      <footer class="px-4 sm:px-6 lg:px-8 py-6 border-t border-gray-200 flex-shrink-0">
         <div class="flex flex-col md:flex-row justify-between items-center">
           <div class="text-sm text-gray-600 mb-4 md:mb-0">
             © {{ currentYear }} Parfum. {{ t('All rights reserved.') }}
@@ -517,7 +520,7 @@ watch(
   transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Scrollbar styling */
+/* Scrollbar styling for main content */
 :deep(.admin-content) {
   scrollbar-width: thin;
   scrollbar-color: #cbd5e1 #f1f5f9;
