@@ -23,7 +23,6 @@ import { db } from '@/firebase/config'
 import { useAuthStore } from './auth'
 import { useCartStore } from './cart'
 import { useProductsStore } from './products'
-import { useBrandsStore } from './brands'
 import { authNotification } from '@/utils/notifications'
 import type { 
   Order, 
@@ -33,14 +32,14 @@ import type {
   PaymentMethod,
   PaymentStatus,
   StatusHistoryItem,
-  FirestoreOrder
+  FirestoreOrder,
+  Product
 } from '@/types'
 
 export const useOrdersStore = defineStore('orders', () => {
   const authStore = useAuthStore()
   const cartStore = useCartStore()
   const productsStore = useProductsStore()
-  const brandsStore = useBrandsStore()
 
   // State
   const orders = ref<Order[]>([])
@@ -61,6 +60,11 @@ export const useOrdersStore = defineStore('orders', () => {
     averageOrderValue: number
     monthlyRevenue: number
   } | null>(null)
+
+  // Helper to get product reference in brand subcollection
+  const getProductRef = (brandId: string, productId: string) => {
+    return doc(db, 'brands', brandId, 'products', productId)
+  }
 
   // Getters
   const pendingOrdersCount = computed(() => 
@@ -379,12 +383,7 @@ export const useOrdersStore = defineStore('orders', () => {
     }
   }
 
-  // Helper to get product reference (in brand subcollection)
-  const getProductRef = (brandId: string, productId: string) => {
-    return doc(db, 'brands', brandId, 'products', productId)
-  }
-
-  // ========== createOrder (with correct stock updates) ==========
+  // ========== createOrder ==========
   const createOrder = async (
     shippingAddress: ShippingAddress,
     paymentMethod: PaymentMethod = 'cash_on_delivery',
@@ -395,7 +394,6 @@ export const useOrdersStore = defineStore('orders', () => {
       return null
     }
 
-    // Guard: tenant must be resolved
     if (!authStore.currentTenant) {
       error.value = 'Tenant not resolved – cannot create order'
       authNotification.error('Unable to place order: missing tenant context')
@@ -414,16 +412,16 @@ export const useOrdersStore = defineStore('orders', () => {
         const currentUserEmail = getCurrentUserEmail()
         const currentUserName = getCurrentUserName()
 
-        // Prepare order items with product details and stock validation
+        // Prepare order items with stock validation
         const orderItems: OrderItem[] = []
         for (const cartItem of cartStore.items) {
-          // Find the product in the products store (already loaded)
-          const product = productsStore.products.find(p => p.id === cartItem.id)
+          const product = productsStore.products.find((p: Product) => p.id === cartItem.id)
           if (!product) {
             throw new Error(`Product ${cartItem.id} not found`)
           }
-
-          // Get the product reference in the brand subcollection
+          if (!product.brandId) {
+            throw new Error(`Product ${cartItem.id} has no brandId`)
+          }
           const productRef = getProductRef(product.brandId, product.id)
           const productDoc = await transaction.get(productRef)
 
@@ -439,7 +437,6 @@ export const useOrdersStore = defineStore('orders', () => {
             throw new Error(`Insufficient stock for ${product.name.en || product.name}`)
           }
 
-          // Reduce stock (will commit in transaction)
           transaction.update(productRef, {
             stockQuantity: currentStock - requestedQty,
             updatedAt: serverTimestamp()
@@ -479,7 +476,6 @@ export const useOrdersStore = defineStore('orders', () => {
 
         const shippingAddressString = `${shippingAddress.address}, ${shippingAddress.city}, ${shippingAddress.country || 'Egypt'}`
 
-        // Build order data dynamically to avoid undefined fields
         const orderData: any = {
           orderNumber,
           customer: {
@@ -511,20 +507,9 @@ export const useOrdersStore = defineStore('orders', () => {
           updatedAt: serverTimestamp()
         }
 
-        // Add userId only if authenticated
-        if (isAuthenticated && currentUserId) {
-          orderData.userId = currentUserId
-        }
-
-        // Add guestId only if not authenticated
-        if (!isAuthenticated && guestId) {
-          orderData.guestId = guestId
-        }
-
-        // Add userEmail only if authenticated and available
-        if (isAuthenticated && currentUserEmail) {
-          orderData.userEmail = currentUserEmail
-        }
+        if (isAuthenticated && currentUserId) orderData.userId = currentUserId
+        if (!isAuthenticated && guestId) orderData.guestId = guestId
+        if (isAuthenticated && currentUserEmail) orderData.userEmail = currentUserEmail
 
         const ordersCollection = collection(db, 'orders')
         const docRef = await addDoc(ordersCollection, orderData)
@@ -560,13 +545,10 @@ export const useOrdersStore = defineStore('orders', () => {
         localStorage.setItem('guest_order_id', createdOrder.guestId)
         localStorage.setItem('last_order_email', createdOrder.customer.email)
         localStorage.setItem('last_order_number', createdOrder.orderNumber)
-
-        // Save full order to sessionStorage for guest access (to bypass permission issues)
         sessionStorage.setItem('last_created_order', JSON.stringify(createdOrder))
       }
 
       authNotification.loggedIn(`Order #${createdOrder.orderNumber} placed successfully`)
-
       return createdOrder
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Failed to create order'
@@ -640,7 +622,7 @@ export const useOrdersStore = defineStore('orders', () => {
     }
   }
 
-  // ========== updateOrderStatus (with correct stock restoration) ==========
+  // ========== updateOrderStatus ==========
   const updateOrderStatus = async (
     orderId: string,
     status: OrderStatus,
@@ -715,21 +697,21 @@ export const useOrdersStore = defineStore('orders', () => {
 
         // Restore stock for each product
         for (const item of order.items) {
-          const product = productsStore.products.find(p => p.id === item.productId)
-          if (!product) {
-            console.warn(`Product ${item.productId} not found in store, cannot restore stock`)
-            continue
-          }
-          const productRef = getProductRef(product.brandId, product.id)
-          const productDoc = await getDoc(productRef)
-          if (productDoc.exists()) {
-            const currentStock = productDoc.data().stockQuantity || 0
-            await updateDoc(productRef, {
-              stockQuantity: currentStock + item.quantity,
-              updatedAt: serverTimestamp()
-            })
+          const product = productsStore.products.find((p: Product) => p.id === item.productId)
+          if (product && product.brandId) {
+            const productRef = getProductRef(product.brandId, product.id)
+            const productDoc = await getDoc(productRef)
+            if (productDoc.exists()) {
+              const currentStock = productDoc.data().stockQuantity || 0
+              await updateDoc(productRef, {
+                stockQuantity: currentStock + item.quantity,
+                updatedAt: serverTimestamp()
+              })
+            } else {
+              console.warn(`Product document for ${item.productId} not found in Firestore`)
+            }
           } else {
-            console.warn(`Product document for ${item.productId} not found in Firestore`)
+            console.warn(`Product ${item.productId} not found in store, cannot restore stock`)
           }
         }
       }
@@ -747,9 +729,7 @@ export const useOrdersStore = defineStore('orders', () => {
         ...(status === 'cancelled' && { cancelledAt: new Date() })
       }
 
-      if (updateData.paymentStatus) {
-        updatedOrder.paymentStatus = updateData.paymentStatus
-      }
+      if (updateData.paymentStatus) updatedOrder.paymentStatus = updateData.paymentStatus
 
       const orderIndex = orders.value.findIndex(o => o.id === orderId)
       if (orderIndex !== -1) {
@@ -796,7 +776,6 @@ export const useOrdersStore = defineStore('orders', () => {
     loading.value = true
     try {
       const orderDoc = doc(db, 'orders', orderId)
-      // Verify tenant
       const orderSnap = await getDoc(orderDoc)
       if (orderSnap.exists() && orderSnap.data().tenantId !== authStore.currentTenant) {
         throw new Error('Order not in current tenant')
@@ -805,7 +784,6 @@ export const useOrdersStore = defineStore('orders', () => {
         paymentStatus, 
         updatedAt: serverTimestamp() 
       })
-      // Update local array
       const index = orders.value.findIndex(o => o.id === orderId)
       if (index !== -1) {
         orders.value[index] = { ...orders.value[index], paymentStatus, updatedAt: new Date() }
@@ -822,7 +800,7 @@ export const useOrdersStore = defineStore('orders', () => {
     }
   }
 
-  // ========== Stub functions (with warnings) ==========
+  // ========== Stub functions ==========
   const updateOrder = async (_orderId: string, _updateData: Partial<Order>) => {
     console.warn('updateOrder not implemented')
     return false
