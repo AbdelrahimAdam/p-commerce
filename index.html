@@ -3,28 +3,28 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, minimum-scale=1.0, viewport-fit=cover">
-  <title>P.NOTES | Luxury Perfume Store</title>
-  <meta name="description" content="Discover P.NOTES - A curated collection of the world's most exquisite luxury fragrances, niche perfumes, and exclusive aromatic experiences.">
- 
+  <title>P.COMMERCE | Luxury Perfume Store</title>
+  <meta name="description" content="Discover P.COMMERCE - A curated collection of the world's most exquisite luxury fragrances, niche perfumes, and exclusive aromatic experiences.">
+
   <!-- Open Graph & Twitter -->
-  <meta property="og:title" content="P.NOTES | Luxury Perfume Store">
+  <meta property="og:title" content="P.COMMERCE | Luxury Perfume Store">
   <meta property="og:description" content="Discover our curated collection of the world's most exquisite luxury fragrances and niche perfumes.">
   <meta property="og:image" content="/images/og-luxury-perfumes.jpg">
-  <meta property="og:url" content="https://pnotes.com">
+  <meta property="og:url" content="https://pcommerce.com">
   <meta property="og:type" content="website">
-  <meta property="og:site_name" content="P.NOTES">
+  <meta property="og:site_name" content="P.COMMERCE">
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="P.NOTES | Luxury Perfume Store">
+  <meta name="twitter:title" content="P.COMMERCE | Luxury Perfume Store">
   <meta name="twitter:description" content="Discover our curated collection of the world's most exquisite luxury fragrances and niche perfumes.">
   <meta name="twitter:image" content="/images/og-luxury-perfumes.jpg">
- 
+
   <!-- Favicons -->
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
   <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
   <link rel="manifest" href="/site.webmanifest">
- 
+
   <!-- Preconnect for performance -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -37,10 +37,9 @@
   <link rel="preconnect" href="https://securetoken.googleapis.com" crossorigin>
   <link rel="preconnect" href="https://*.firebaseio.com" crossorigin>
   <link rel="preconnect" href="https://*.firebasestorage.app" crossorigin>
-  <!-- ADDED: Missing Firebase domains for dynamic config and installations -->
   <link rel="preconnect" href="https://firebase.googleapis.com" crossorigin>
   <link rel="preconnect" href="https://firebaseinstallations.googleapis.com" crossorigin>
- 
+
   <!-- Content Security Policy - Updated with all required Firebase domains -->
   <meta http-equiv="Content-Security-Policy" content="
     default-src 'self' https://*.firebaseio.com https://*.firebasestorage.app https://firestore.googleapis.com https://firebasestorage.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://www.googleapis.com;
@@ -70,21 +69,21 @@
     media-src 'self' https:;
     worker-src 'self' blob:;
   ">
- 
+
   <!-- Theme & PWA -->
   <meta name="theme-color" content="#0a0a0a">
   <meta name="color-scheme" content="dark light">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="P.NOTES">
- 
+  <meta name="apple-mobile-web-app-title" content="P.COMMERCE">
+
   <!-- SEO & Accessibility -->
   <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
   <meta name="format-detection" content="telephone=no">
   <meta name="msapplication-TileColor" content="#0a0a0a">
   <meta name="msapplication-config" content="/browserconfig.xml">
-  
+
   <!-- Critical CSS -->
   <style>
     /* CSS Reset - Minimal */
@@ -93,7 +92,7 @@
       padding: 0;
       box-sizing: border-box;
     }
-    
+
     /* Responsive Root Spacing */
     :root {
       --spacing-xs: 0.25rem;
@@ -107,14 +106,14 @@
       --header-height-desktop: 80px;
       --content-max-width: 1400px;
     }
-    
+
     html {
       scroll-behavior: smooth;
       -webkit-text-size-adjust: 100%;
       -ms-text-size-adjust: 100%;
       text-size-adjust: 100%;
     }
-    
+
     body {
       margin: 0;
       padding: 0;
@@ -128,23 +127,23 @@
       line-height: 1.5;
       font-size: 16px;
     }
-    
+
     @media (max-width: 640px) {
       body { font-size: 14px; }
     }
-    
+
     @media (min-width: 641px) and (max-width: 1024px) {
       body { font-size: 15px; }
     }
-    
+
     #app {
       min-height: 100vh;
       min-height: 100dvh;
       display: block;
       width: 100%;
     }
-    
-    /* Preloader - Updated to show P.NOTES */
+
+    /* Preloader - Updated to show P.COMMERCE */
     #luxury-preloader {
       position: fixed;
       top: 0;
@@ -159,7 +158,7 @@
       z-index: 9999;
       padding: var(--spacing-md);
     }
-    
+
     .preloader-logo {
       display: flex;
       flex-direction: column;
@@ -168,7 +167,7 @@
       margin-bottom: 16px;
       animation: pulse 1.5s infinite;
     }
-    
+
     .preloader-brand {
       font-family: 'Cormorant Garamond', serif;
       font-size: 36px;
@@ -178,7 +177,7 @@
       letter-spacing: 2px;
       margin-bottom: 4px;
     }
-    
+
     .preloader-subtitle {
       font-family: 'Inter', sans-serif;
       font-size: 10px;
@@ -188,7 +187,7 @@
       opacity: 0.9;
       font-weight: 400;
     }
-    
+
     .preloader-text {
       font-family: 'Inter', sans-serif;
       font-size: 12px;
@@ -199,33 +198,33 @@
       font-weight: 400;
       margin-top: 8px;
     }
-    
+
     @keyframes pulse {
       0% { transform: scale(1); opacity: 1; }
       50% { transform: scale(1.03); opacity: 0.9; }
       100% { transform: scale(1); opacity: 1; }
     }
-    
+
     @keyframes fadeOut {
       from { opacity: 1; visibility: visible; }
       to { opacity: 0; visibility: hidden; }
     }
-    
+
     body.loaded #luxury-preloader {
       animation: fadeOut 0.3s ease-out forwards;
     }
-    
+
     /* Focus Styles */
     :focus-visible {
       outline: 2px solid #d4af37;
       outline-offset: 2px;
     }
-    
+
     ::selection {
       background-color: rgba(212, 175, 55, 0.2);
       color: #f4e7c1;
     }
-    
+
     /* Container Utilities */
     .container {
       width: 100%;
@@ -235,34 +234,34 @@
       padding-left: var(--spacing-md);
       padding-right: var(--spacing-md);
     }
-    
+
     @media (min-width: 640px) {
       .container {
         padding-left: var(--spacing-lg);
         padding-right: var(--spacing-lg);
       }
     }
-    
+
     @media (min-width: 1024px) {
       .container {
         padding-left: var(--spacing-xl);
         padding-right: var(--spacing-xl);
       }
     }
-    
+
     /* Responsive Spacing */
     .section {
       margin-bottom: var(--spacing-xl);
       padding: var(--spacing-lg) 0;
     }
-    
+
     @media (min-width: 768px) {
       .section {
         margin-bottom: var(--spacing-2xl);
         padding: var(--spacing-xl) 0;
       }
     }
-    
+
     /* Print Styles */
     @media print {
       #luxury-preloader,
@@ -274,7 +273,7 @@
         color: black !important;
       }
     }
-    
+
     /* Reduced Motion */
     @media (prefers-reduced-motion: reduce) {
       * {
@@ -284,7 +283,7 @@
         scroll-behavior: auto !important;
       }
     }
-    
+
     /* Touch Targets */
     @media (max-width: 768px) {
       button, 
@@ -296,7 +295,7 @@
         min-width: 44px;
       }
     }
-    
+
     /* No Rounded Edges */
     .preloader-logo,
     button,
@@ -310,21 +309,21 @@
   </style>
 </head>
 <body>
-  <!-- Luxury Preloader - Updated to show P.NOTES -->
+  <!-- Luxury Preloader - Updated to show P.COMMERCE -->
   <div id="luxury-preloader" aria-hidden="true">
     <div class="preloader-logo">
-      <div class="preloader-brand">P.NOTES</div>
+      <div class="preloader-brand">P.COMMERCE</div>
       <div class="preloader-subtitle">PERFUME STORE</div>
     </div>
     <div class="preloader-text">LOADING LUXURY...</div>
   </div>
- 
+
   <!-- Main App -->
   <div id="app"></div>
- 
+
   <!-- Scripts -->
   <script type="module" src="/src/main.ts" crossorigin="anonymous" defer></script>
- 
+
   <!-- No JavaScript Fallback -->
   <noscript>
     <style>
@@ -376,7 +375,7 @@
       }
     </style>
     <div class="no-js-message">
-      <h1>P.NOTES</h1>
+      <h1>P.COMMERCE</h1>
       <div class="brand-subtitle">PERFUME STORE</div>
       <p>JavaScript is required to experience our luxury perfume collection. Please enable JavaScript in your browser settings to continue.</p>
       <p style="margin-top: 24px; font-size: 14px;">
