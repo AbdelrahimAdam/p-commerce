@@ -261,7 +261,7 @@
                     </button>
                   </div>
                   <p class="mt-1 text-xs text-gray-500">
-                    {{ t('Brand images are stored as base64 (max 100KB). JPG, PNG, GIF.') }}
+                    {{ t('Images will be stored in Firebase Storage (no size limit). JPG, PNG, GIF recommended.') }}
                   </p>
                 </div>
 
@@ -283,9 +283,6 @@
                       ×
                     </button>
                   </div>
-                  <p v-if="brandImageBase64" class="mt-1 text-xs text-gray-500">
-                    {{ t('Image size:') }} {{ formatBytes(brandImageBase64.length) }}
-                  </p>
                 </div>
               </div>
 
@@ -1020,6 +1017,7 @@ const cleanForFirestore = (obj: any): any => {
 }
 
 // ========== STORAGE HELPERS ==========
+// Upload product image
 const uploadProductImage = async (file: File, brandId: string, productId: string): Promise<string> => {
   const path = `brands/${brandId}/products/${productId}/main.jpg`
   const imageRef = storageRef(storage, path)
@@ -1027,6 +1025,7 @@ const uploadProductImage = async (file: File, brandId: string, productId: string
   return await getDownloadURL(imageRef)
 }
 
+// Delete product image from Storage
 const deleteProductImageFromStorage = async (imageUrl: string) => {
   if (!imageUrl || !imageUrl.includes('firebasestorage.googleapis.com')) return
   try {
@@ -1040,6 +1039,14 @@ const deleteProductImageFromStorage = async (imageUrl: string) => {
   } catch (err) {
     console.warn('Failed to delete old product image from Storage:', err)
   }
+}
+
+// Upload brand image (for new brand creation)
+const uploadBrandImage = async (file: File, brandId: string): Promise<string> => {
+  const path = `brands/${brandId}/logo.jpg`
+  const imageRef = storageRef(storage, path)
+  await uploadBytes(imageRef, file)
+  return await getDownloadURL(imageRef)
 }
 
 // ========== BRAND ABBREVIATION MAPPING ==========
@@ -1107,7 +1114,6 @@ const newBrand = reactive({
 
 // Brand image state
 const brandImageFile = ref<File | null>(null)
-const brandImageBase64 = ref('')
 const brandImagePreview = ref('')
 const brandImageInput = ref<HTMLInputElement | null>(null)
 
@@ -1136,7 +1142,6 @@ const originalProduct = ref<Product | null>(null)
 
 // Product image state
 const productImageFile = ref<File | null>(null)
-const productImageBase64 = ref('')
 const productImagePreview = ref('')
 const productImageInput = ref<HTMLInputElement | null>(null)
 
@@ -1206,20 +1211,11 @@ const isValidUrl = (url: string): boolean => {
   }
 }
 
-const compressBase64Image = (base64: string, maxSizeKB = 100): string => {
-  if (base64.length <= maxSizeKB * 1024) {
-    return base64
-  }
-  console.warn(`Image is too large: ${formatBytes(base64.length)}. Please use a smaller image.`)
-  return base64
-}
-
 // ========== BRAND IMAGE METHODS ==========
 const previewBrandImage = (url: string) => {
   if (url && isValidUrl(url)) {
     brandImagePreview.value = url
     newBrand.imageFile = null
-    brandImageBase64.value = ''
     newBrand.imageUrl = url
   } else {
     alert(t('Please enter a valid image URL or upload an image'))
@@ -1229,31 +1225,21 @@ const previewBrandImage = (url: string) => {
 const handleBrandImageUpload = (event: Event) => {
   const input = event.target as HTMLInputElement
   if (!input.files || !input.files[0]) return
-
   const file = input.files[0]
-  if (file.size > 100 * 1024) {
-    alert(t('Image must be less than 100KB for base64 storage. Please use a smaller image.'))
-    input.value = ''
-    return
-  }
-
+  // Store the file for later upload
+  brandImageFile.value = file
+  brandImagePreview.value = '' // will be set after local preview
   const reader = new FileReader()
   reader.onload = (e) => {
-    const base64 = e.target?.result as string
-    brandImageBase64.value = compressBase64Image(base64, 100)
-    brandImagePreview.value = brandImageBase64.value
-    brandImageFile.value = file
-    newBrand.imageUrl = brandImageBase64.value
+    brandImagePreview.value = e.target?.result as string
   }
   reader.readAsDataURL(file)
-  
   if (brandErrors.image) delete brandErrors.image
 }
 
 const removeBrandImage = () => {
   newBrand.imageUrl = ''
-  newBrand.imageFile = null
-  brandImageBase64.value = ''
+  brandImageFile.value = null
   brandImagePreview.value = ''
   if (brandImageInput.value) {
     brandImageInput.value.value = ''
@@ -1263,8 +1249,7 @@ const removeBrandImage = () => {
 const clearBrandImagePreview = () => {
   brandImagePreview.value = ''
   newBrand.imageUrl = ''
-  newBrand.imageFile = null
-  brandImageBase64.value = ''
+  brandImageFile.value = null
 }
 
 const handleBrandImageError = () => {
@@ -1278,7 +1263,6 @@ const previewProductImage = (url: string) => {
   if (url && isValidUrl(url)) {
     productImagePreview.value = url
     productImageFile.value = null
-    productImageBase64.value = ''
     productData.imageUrl = url
   } else {
     alert(t('Please enter a valid image URL or upload an image'))
@@ -1290,25 +1274,19 @@ const handleProductImageUpload = (event: Event) => {
   if (!input.files || !input.files[0]) return
   const file = input.files[0]
   
-  // Reset preview
-  productImagePreview.value = ''
   productImageFile.value = file
-  productImageBase64.value = '' // not used for Storage
-  
-  // Show a preview (local URL)
+  productImagePreview.value = ''
   const reader = new FileReader()
   reader.onload = (e) => {
     productImagePreview.value = e.target?.result as string
   }
   reader.readAsDataURL(file)
-  
   if (errors.image) delete errors.image
 }
 
 const removeProductImage = () => {
   productData.imageUrl = ''
   productImageFile.value = null
-  productImageBase64.value = ''
   productImagePreview.value = ''
   if (productImageInput.value) {
     productImageInput.value.value = ''
@@ -1319,7 +1297,6 @@ const clearProductImagePreview = () => {
   productImagePreview.value = ''
   productData.imageUrl = ''
   productImageFile.value = null
-  productImageBase64.value = ''
 }
 
 const handleProductImageError = () => {
@@ -1602,7 +1579,7 @@ const validateForm = (): boolean => {
       isValid = false
     }
 
-    if (!newBrand.imageUrl && !brandImageBase64.value) {
+    if (!newBrand.imageUrl && !brandImageFile.value) {
       brandErrors.image = t('Brand image is required')
       isValid = false
     }
@@ -1793,14 +1770,18 @@ const saveProduct = async () => {
       })
     } 
     else if (brandSelectionMode.value === 'existing' && selectedBrandId.value) {
+      // --- ADD PRODUCT TO EXISTING BRAND ---
       const brand = brandsStore.brands.find(b => b.id === selectedBrandId.value)
       if (!brand) throw new Error('Brand not found')
 
+      // First, create the product document without the final image URL
       const batch = writeBatch(db)
       const productsRef = collection(db, 'brands', brand.id, 'products')
       const productDocRef = doc(productsRef)
 
+      // Temporary placeholder image (will be updated after upload)
       const tempImageUrl = productImageFile.value ? '' : (cleanPayload.imageUrl || '')
+
       const firestoreData = {
         ...cleanPayload,
         imageUrl: tempImageUrl,
@@ -1817,6 +1798,7 @@ const saveProduct = async () => {
 
       const newProductId = productDocRef.id
 
+      // If a file was uploaded, upload it to Storage and update the document
       let finalImageUrl = ''
       if (productImageFile.value) {
         finalImageUrl = await uploadProductImage(productImageFile.value, brand.id, newProductId)
@@ -1830,11 +1812,9 @@ const saveProduct = async () => {
       emit('save', { productData: cleanPayload, brandId: brand.id, createNewBrand: false })
     } 
     else if (brandSelectionMode.value === 'new') {
-      let brandImage = newBrand.imageUrl
-      if (brandImageBase64.value) {
-        brandImage = brandImageBase64.value
-      }
-
+      // --- CREATE NEW BRAND WITH PRODUCT ---
+      // First, create the brand document without the image URL
+      const brandId = doc(collection(db, 'brands')).id
       const brandData = {
         name: newBrand.name,
         slug: newBrand.slug,
@@ -1842,41 +1822,61 @@ const saveProduct = async () => {
         description: newBrand.description || '',
         signature: newBrand.signature || '',
         isActive: newBrand.isActive !== false,
-        image: brandImage
-      }
-
-      const cleanBrandData = cleanForFirestore(brandData)
-
-      const brandId = await brandsStore.addBrandWithProducts(cleanBrandData, [])
-      if (!brandId) throw new Error('Failed to create brand')
-
-      const productsRef = collection(db, 'brands', brandId, 'products')
-      const productDocRef = doc(productsRef)
-
-      const firestoreData = {
-        ...cleanPayload,
-        imageUrl: '',
-        brand: brandData.name,
-        brandSlug: brandData.slug,
-        brandId,
+        imageUrl: '', // temporary
         tenantId: authStore.currentTenant,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp()
       }
 
-      await setDoc(productDocRef, firestoreData)
+      const batch = writeBatch(db)
+      const brandRef = doc(db, 'brands', brandId)
+      batch.set(brandRef, brandData)
+
+      // Create product under the brand
+      const productsRef = collection(db, 'brands', brandId, 'products')
+      const productDocRef = doc(productsRef)
+
+      const productDataForBrand = {
+        ...cleanPayload,
+        imageUrl: '', // placeholder
+        brand: newBrand.name,
+        brandSlug: newBrand.slug,
+        brandId,
+        tenantId: authStore.currentTenant,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+      }
+      batch.set(productDocRef, productDataForBrand)
+
+      await batch.commit()
+
       const newProductId = productDocRef.id
 
-      let finalImageUrl = ''
-      if (productImageFile.value) {
-        finalImageUrl = await uploadProductImage(productImageFile.value, brandId, newProductId)
-        await updateDoc(productDocRef, { imageUrl: finalImageUrl, updatedAt: serverTimestamp() })
-      } else if (productData.imageUrl) {
-        finalImageUrl = productData.imageUrl
-        await updateDoc(productDocRef, { imageUrl: finalImageUrl, updatedAt: serverTimestamp() })
+      // Now upload brand image if provided
+      let brandImageUrl = ''
+      if (brandImageFile.value) {
+        brandImageUrl = await uploadBrandImage(brandImageFile.value, brandId)
+        await updateDoc(brandRef, { imageUrl: brandImageUrl, updatedAt: serverTimestamp() })
+      } else if (newBrand.imageUrl) {
+        brandImageUrl = newBrand.imageUrl
+        await updateDoc(brandRef, { imageUrl: brandImageUrl, updatedAt: serverTimestamp() })
       }
 
-      cleanPayload.imageUrl = finalImageUrl
+      // Upload product image if provided
+      let productImageUrl = ''
+      if (productImageFile.value) {
+        productImageUrl = await uploadProductImage(productImageFile.value, brandId, newProductId)
+        await updateDoc(productDocRef, { imageUrl: productImageUrl, updatedAt: serverTimestamp() })
+      } else if (cleanPayload.imageUrl) {
+        productImageUrl = cleanPayload.imageUrl
+      }
+
+      cleanPayload.imageUrl = productImageUrl
+      const cleanBrandData = {
+        ...brandData,
+        imageUrl: brandImageUrl
+      }
+
       authNotification.loggedIn(t('Brand and product added successfully'))
       emit('save', { productData: cleanPayload, createNewBrand: true, newBrandData: cleanBrandData })
     }
@@ -1887,13 +1887,9 @@ const saveProduct = async () => {
 
   } catch (error: any) {
     console.error('❌ Error saving product:', error)
-    if (error.message?.includes('SKU already exists')) {
-      alert(error.message)
-    } else if (error.message?.includes('permission') || error.message?.includes('Missing or insufficient')) {
-      alert(t('Permission denied. Please check if you have admin privileges.'))
-    } else {
-      alert(t('Failed to save: ') + (error.message || t('Unknown error')))
-    }
+    // Show a generic error message and also log to console for debugging
+    const errorMsg = error.message || t('Unknown error')
+    alert(t('Failed to save: ') + errorMsg)
   } finally {
     loading.value = false
   }
