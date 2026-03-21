@@ -1574,18 +1574,6 @@ const generateStrictSKU = async () => {
   }
 }
 
-// ========== UNIQUENESS CHECK ==========
-const ensureSkuUnique = async (brandId: string, sku: string): Promise<boolean> => {
-  const productsRef = collection(db, 'brands', brandId, 'products')
-  const q = query(productsRef, where('sku', '==', sku))
-  const snapshot = await getDocs(q)
-
-  if (editing.value && props.product?.id) {
-    return snapshot.docs.every(doc => doc.id !== props.product!.id)
-  }
-  return snapshot.empty
-}
-
 // ========== VALIDATION METHODS ==========
 const validateForm = (): boolean => {
   let isValid = true
@@ -1765,7 +1753,7 @@ const saveProduct = async () => {
       size: productData.size,
       concentration: productData.concentration,
       classification: productData.classification,
-      imageUrl: productData.imageUrl || '', // will be set later if upload
+      imageUrl: productData.imageUrl || '',
       slug: productData.slug || '',
       category: productData.category,
       isBestSeller: productData.isBestSeller || false,
@@ -1775,11 +1763,10 @@ const saveProduct = async () => {
       isActive: productData.isActive !== false
     }
 
-    // Clean the payload (remove undefined/File fields)
+    // Clean the payload (remove any undefined or File fields)
     const cleanPayload = cleanForFirestore(productPayload)
 
     if (editing.value) {
-      // --- UPDATE EXISTING PRODUCT ---
       if (!props.product?.brandId) {
         throw new Error('Product brand ID missing')
       }
@@ -1792,9 +1779,7 @@ const saveProduct = async () => {
 
       let finalImageUrl = productData.imageUrl
       if (productImageFile.value) {
-        // Upload new image
         finalImageUrl = await uploadProductImage(productImageFile.value, props.product.brandId, props.product.id)
-        // Delete old image if it was stored in Storage
         await deleteProductImageFromStorage(productData.imageUrl)
         changedFields.imageUrl = finalImageUrl
       } else if (changedFields.imageUrl) {
@@ -1808,18 +1793,14 @@ const saveProduct = async () => {
       })
     } 
     else if (brandSelectionMode.value === 'existing' && selectedBrandId.value) {
-      // --- ADD PRODUCT TO EXISTING BRAND ---
       const brand = brandsStore.brands.find(b => b.id === selectedBrandId.value)
       if (!brand) throw new Error('Brand not found')
 
-      // First, create the product document without the final image URL
       const batch = writeBatch(db)
       const productsRef = collection(db, 'brands', brand.id, 'products')
       const productDocRef = doc(productsRef)
 
-      // Temporary placeholder image (will be updated after upload)
       const tempImageUrl = productImageFile.value ? '' : (cleanPayload.imageUrl || '')
-
       const firestoreData = {
         ...cleanPayload,
         imageUrl: tempImageUrl,
@@ -1836,7 +1817,6 @@ const saveProduct = async () => {
 
       const newProductId = productDocRef.id
 
-      // If a file was uploaded, upload it to Storage and update the document
       let finalImageUrl = ''
       if (productImageFile.value) {
         finalImageUrl = await uploadProductImage(productImageFile.value, brand.id, newProductId)
@@ -1850,8 +1830,6 @@ const saveProduct = async () => {
       emit('save', { productData: cleanPayload, brandId: brand.id, createNewBrand: false })
     } 
     else if (brandSelectionMode.value === 'new') {
-      // --- CREATE NEW BRAND WITH PRODUCT ---
-      // First, create the brand (without product) to get its ID
       let brandImage = newBrand.imageUrl
       if (brandImageBase64.value) {
         brandImage = brandImageBase64.value
@@ -1867,20 +1845,17 @@ const saveProduct = async () => {
         image: brandImage
       }
 
-      // Clean brand data
       const cleanBrandData = cleanForFirestore(brandData)
 
-      // Create brand first (no product yet)
       const brandId = await brandsStore.addBrandWithProducts(cleanBrandData, [])
       if (!brandId) throw new Error('Failed to create brand')
 
-      // Now create the product under that brand
       const productsRef = collection(db, 'brands', brandId, 'products')
       const productDocRef = doc(productsRef)
 
       const firestoreData = {
         ...cleanPayload,
-        imageUrl: '', // placeholder
+        imageUrl: '',
         brand: brandData.name,
         brandSlug: brandData.slug,
         brandId,
