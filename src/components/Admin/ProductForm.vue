@@ -2035,7 +2035,3 @@ button, input, select, textarea {
   animation: spin 1s linear infinite;
 }
 </style>
-   
-     
-
-  
