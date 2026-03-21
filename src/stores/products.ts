@@ -1,6 +1,6 @@
 // stores/products.ts - PRODUCTION READY WITH BRAND SUBCOLLECTIONS
 import { defineStore } from 'pinia'
-import { ref, watch, watchEffect } from 'vue'
+import { ref, computed, watch, watchEffect } from 'vue'
 import {
   collection,
   getDocs,
@@ -64,48 +64,48 @@ export const useProductsStore = defineStore('products', () => {
   const productCache = ref<Map<string, { product: Product; timestamp: number }>>(new Map())
   const brandProductsCache = ref<Map<string, Product[]>>(new Map())
 
-  // Initialization flag to prevent redundant fetches
+  // Initialization flag
   const isInitialized = ref(false)
 
-  // Debounced version of fetchProducts (applies to filter changes)
+  // Debounced version of fetchProducts
   const debouncedFetchProducts = debounce(async (options: FilterOptions = {}, resetPagination: boolean = true) => {
     await fetchProducts(options, resetPagination)
   }, 300)
 
   /* =========================
-   * GETTERS (as functions)
+   * GETTERS (computed)
    * ========================= */
-  const categories = LUXURY_CATEGORIES
+  const categories = computed(() => LUXURY_CATEGORIES)
 
-  const luxuryBrands = () => {
+  const luxuryBrands = computed(() => {
     const brands = new Set(products.value.map(p => p.brand))
     return Array.from(brands).sort()
-  }
+  })
 
-  const byCategory = (categoryId: string) => {
-    return products.value
+  const byCategory = computed(() => (categoryId: string) =>
+    products.value
       .filter(p => p.category === categoryId)
       .sort((a, b) => {
         const dateA = a.createdAt?.seconds ? new Date(a.createdAt.seconds * 1000) : new Date(0)
         const dateB = b.createdAt?.seconds ? new Date(b.createdAt.seconds * 1000) : new Date(0)
         return dateB.getTime() - dateA.getTime()
       })
-  }
+  )
 
-  const getCategoryById = (id: string) => LUXURY_CATEGORIES.find(c => c.id === id)
+  const getCategoryById = computed(() => (id: string) => LUXURY_CATEGORIES.find(c => c.id === id))
 
-  const totalProducts = () => products.value.length
+  const totalProducts = computed(() => products.value.length)
 
-  const priceRange = () => {
+  const priceRange = computed(() => {
     if (products.value.length === 0) return { min: 0, max: 0 }
     const prices = products.value.map(p => p.price)
     return {
       min: Math.min(...prices),
       max: Math.max(...prices)
     }
-  }
+  })
 
-  const isFiltered = () => Object.keys(filters.value).length > 0 || searchQuery.value.length > 0
+  const isFiltered = computed(() => Object.keys(filters.value).length > 0 || searchQuery.value.length > 0)
 
   /* =========================
    * CORE FETCHING METHODS
@@ -153,9 +153,7 @@ export const useProductsStore = defineStore('products', () => {
 
           // Check cache first
           const cachedEntry = productCache.value.get(cacheKey)
-          if (cachedEntry) {
-            return cachedEntry.product
-          }
+          if (cachedEntry) return cachedEntry.product
 
           const data = docSnap.data()
 
@@ -282,6 +280,7 @@ export const useProductsStore = defineStore('products', () => {
         brandsToFetch = brand ? [brand] : []
       }
 
+      // If no brands to fetch, we are done
       if (brandsToFetch.length === 0) {
         products.value = []
         hasMore.value = false
@@ -332,7 +331,6 @@ export const useProductsStore = defineStore('products', () => {
       }
 
       console.log(`✅ Loaded ${uniqueProducts.length} products from ${brandsToFetch.length} brands`)
-
     } catch (err: any) {
       error.value = err.message || 'Failed to load products'
       productNotification.error('Failed to load luxury products')
@@ -545,14 +543,10 @@ export const useProductsStore = defineStore('products', () => {
     }
 
     // Filter by category
-    if (options.category) {
-      filtered = filtered.filter(p => p.category === options.category)
-    }
+    if (options.category) filtered = filtered.filter(p => p.category === options.category)
 
     // Filter by brand
-    if (options.brand) {
-      filtered = filtered.filter(p => p.brand === options.brand || p.brandSlug === options.brand)
-    }
+    if (options.brand) filtered = filtered.filter(p => p.brand === options.brand || p.brandSlug === options.brand)
 
     // Filter by price range
     if (options.minPrice !== undefined) filtered = filtered.filter(p => p.price >= options.minPrice!)
@@ -693,12 +687,9 @@ export const useProductsStore = defineStore('products', () => {
     data: any
   ): Promise<Product> => {
     const cacheKey = `${brand.id}_${docSnap.id}`
-
-    // Check cache
     const cachedEntry = productCache.value.get(cacheKey)
     if (cachedEntry) return cachedEntry.product
 
-    // Fetch images
     let imageUrl = data.imageUrl || ''
     let images: string[] = []
 
@@ -706,13 +697,11 @@ export const useProductsStore = defineStore('products', () => {
       if (data.imagePath) {
         const imageRef = storageRef(storage, data.imagePath)
         imageUrl = await getDownloadURL(imageRef)
-
         const directoryPath = data.imagePath.substring(0, data.imagePath.lastIndexOf('/'))
         const dirRef = storageRef(storage, directoryPath)
         const imageList = await listAll(dirRef)
         images = await Promise.all(imageList.items.map(item => getDownloadURL(item)))
       }
-
       if (images.length === 0 && Array.isArray(data.images)) images = data.images
       if (!imageUrl && images.length > 0) imageUrl = images[0]
     } catch (imgError) {
@@ -754,7 +743,6 @@ export const useProductsStore = defineStore('products', () => {
       }
     } as Product
 
-    // Cache the product
     productCache.value.set(cacheKey, { product, timestamp: Date.now() })
     return product
   }
@@ -815,7 +803,7 @@ export const useProductsStore = defineStore('products', () => {
 
   const clearError = () => { error.value = null }
 
-  // Watch for filter changes
+  // Watch for filter changes to auto-refresh
   watch(
     () => ({ ...filters.value, sort: selectedSort.value }),
     () => {
@@ -885,7 +873,7 @@ export const useProductsStore = defineStore('products', () => {
     searchQuery,
     selectedSort,
 
-    // Getters (as functions)
+    // Getters (computed)
     categories,
     luxuryBrands,
     byCategory,
