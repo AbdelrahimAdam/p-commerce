@@ -13,23 +13,23 @@
     </div>
 
     <!-- Main Dashboard Content -->
-    <div v-else class="space-y-6 lg:space-y-8">
+    <div v-else class="space-y-6">
       <!-- Stats Cards Grid (homepage only) -->
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6">
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         <!-- Hero Banner Card -->
-        <div class="bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow p-4 lg:p-6">
+        <div class="bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow p-4">
           <div class="flex items-center justify-between">
             <div>
               <p class="text-sm text-gray-600">{{ t('Hero Banner') }}</p>
-              <p class="text-2xl lg:text-3xl font-bold text-gray-900 mt-1 lg:mt-2">
+              <p class="text-2xl font-bold text-gray-900 mt-1">
                 {{ heroBanner.imageUrl ? '1' : '0' }}
               </p>
-              <p class="text-xs lg:text-sm text-gray-500 mt-1">
+              <p class="text-xs text-gray-500 mt-1">
                 {{ heroBanner.imageUrl ? t('Active') : t('No Banner') }}
               </p>
             </div>
-            <div class="w-10 h-10 lg:w-12 lg:h-12 rounded-full bg-blue-100 flex items-center justify-center">
-              <svg class="w-5 h-5 lg:w-6 lg:h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div class="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
+              <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
                       d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
               </svg>
@@ -38,19 +38,19 @@
         </div>
 
         <!-- Special Offers Card -->
-        <div class="bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow p-4 lg:p-6">
+        <div class="bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow p-4">
           <div class="flex items-center justify-between">
             <div>
               <p class="text-sm text-gray-600">{{ t('Special Offers') }}</p>
-              <p class="text-2xl lg:text-3xl font-bold text-gray-900 mt-1 lg:mt-2">
+              <p class="text-2xl font-bold text-gray-900 mt-1">
                 {{ activeOffers.length }}
               </p>
-              <p class="text-xs lg:text-sm text-gray-500 mt-1">
+              <p class="text-xs text-gray-500 mt-1">
                 {{ t('Current promotions') }}
               </p>
             </div>
-            <div class="w-10 h-10 lg:w-12 lg:h-12 rounded-full bg-emerald-100 flex items-center justify-center">
-              <svg class="w-5 h-5 lg:w-6 lg:h-6 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div class="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center">
+              <svg class="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
                       d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
               </svg>
@@ -59,19 +59,19 @@
         </div>
 
         <!-- Dark Mode Status (example) -->
-        <div class="bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow p-4 lg:p-6">
+        <div class="bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow p-4">
           <div class="flex items-center justify-between">
             <div>
               <p class="text-sm text-gray-600">{{ t('Dark Mode') }}</p>
-              <p class="text-2xl lg:text-3xl font-bold text-gray-900 mt-1 lg:mt-2">
+              <p class="text-2xl font-bold text-gray-900 mt-1">
                 {{ settings.isDarkMode ? t('On') : t('Off') }}
               </p>
-              <p class="text-xs lg:text-sm text-gray-500 mt-1">
+              <p class="text-xs text-gray-500 mt-1">
                 {{ settings.isDarkMode ? t('Enabled') : t('Disabled') }}
               </p>
             </div>
-            <div class="w-10 h-10 lg:w-12 lg:h-12 rounded-full bg-purple-100 flex items-center justify-center">
-              <svg class="w-5 h-5 lg:w-6 lg:h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div class="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center">
+              <svg class="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
                       d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/>
               </svg>
@@ -81,23 +81,25 @@
       </div>
 
       <!-- Management Sections Grid (homepage only) -->
-      <div class="grid lg:grid-cols-2 gap-4 lg:gap-6">
+      <div class="grid lg:grid-cols-2 gap-4">
         <!-- Hero Banner Management -->
         <div class="bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow overflow-hidden">
-          <div class="p-4 lg:p-6 border-b border-gray-200">
+          <div class="p-4 border-b border-gray-200">
             <h2 class="text-lg font-bold text-gray-900">{{ t('Hero Banner Management') }}</h2>
           </div>
-          <div class="p-4 lg:p-6">
+          <div class="p-4">
             <div class="space-y-4">
-              <div class="relative h-40 lg:h-48 bg-gray-100 rounded-lg overflow-hidden">
+              <div class="relative h-40 bg-gray-100 rounded-lg overflow-hidden">
                 <img
                   v-if="heroBanner.imageUrl"
                   :src="heroBanner.imageUrl"
                   :alt="t('Hero Banner')"
                   class="w-full h-full object-cover"
+                  loading="lazy"
+                  @error="handleImageError"
                 />
                 <div v-else class="w-full h-full flex items-center justify-center text-gray-400">
-                  <svg class="w-10 h-10 lg:w-12 lg:h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
                           d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
                   </svg>
@@ -110,7 +112,7 @@
                     <input
                       v-model="heroBanner.imageUrl"
                       type="text"
-                      class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                      class="flex-1 px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                       :placeholder="t('Image URL or upload new')"
                     />
                     <input
@@ -122,7 +124,7 @@
                     />
                     <button
                       @click="bannerFileInput?.click()"
-                      class="px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50"
+                      class="px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
                     >
                       {{ t('Upload') }}
                     </button>
@@ -160,12 +162,12 @@
 
         <!-- Special Offers Management -->
         <div class="bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow overflow-hidden">
-          <div class="p-4 lg:p-6 border-b border-gray-200">
+          <div class="p-4 border-b border-gray-200">
             <div class="flex items-center justify-between">
               <h2 class="text-lg font-bold text-gray-900">{{ t('Special Offers Management') }}</h2>
               <button
                 @click="openAddOfferModal"
-                class="bg-primary-600 text-white px-3 py-1.5 text-xs lg:text-sm font-medium rounded-lg hover:bg-primary-700 transition-colors"
+                class="bg-primary-600 text-white px-3 py-1.5 text-xs font-medium rounded-lg hover:bg-primary-700 transition-colors min-h-[32px]"
               >
                 {{ t('Add Offer') }}
               </button>
@@ -175,40 +177,41 @@
             <div
               v-for="offer in activeOffers"
               :key="offer.id"
-              class="p-4 lg:p-6 hover:bg-gray-50 transition-colors border-b border-gray-100 last:border-0"
+              class="p-4 hover:bg-gray-50 transition-colors border-b border-gray-100 last:border-0"
             >
-              <div class="flex items-center gap-3 lg:gap-4">
+              <div class="flex items-center gap-3">
                 <img
                   :src="offer.imageUrl"
                   :alt="offer.title"
-                  class="w-12 h-12 lg:w-16 lg:h-16 flex-shrink-0 object-cover rounded-lg"
+                  class="w-12 h-12 flex-shrink-0 object-cover rounded-lg"
+                  loading="lazy"
                   @error="handleOfferImageError(offer)"
                 />
                 <div class="flex-1 min-w-0">
                   <h3 class="font-medium text-gray-900 truncate">{{ offer.title }}</h3>
-                  <p class="text-xs lg:text-sm text-gray-600 mt-0.5 truncate">{{ offer.subtitle }}</p>
+                  <p class="text-xs text-gray-600 mt-0.5 truncate">{{ offer.subtitle }}</p>
                   <div class="flex items-center gap-2 mt-1">
                     <span class="text-xs line-through text-gray-500">{{ offer.oldPrice }} {{ t('currencyLE') }}</span>
                     <span class="text-sm font-bold text-emerald-600">{{ offer.newPrice }} {{ t('currencyLE') }}</span>
                   </div>
                 </div>
-                <div class="flex items-center gap-1 lg:gap-2 flex-shrink-0">
+                <div class="flex items-center gap-1 flex-shrink-0">
                   <button
                     @click="editOffer(offer)"
-                    class="p-1.5 lg:p-2 text-blue-600 hover:text-blue-700"
+                    class="p-1.5 text-blue-600 hover:text-blue-700 transition-colors min-h-[32px] min-w-[32px]"
                     :title="t('Edit')"
                   >
-                    <svg class="w-3.5 h-3.5 lg:w-4 lg:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
                             d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
                     </svg>
                   </button>
                   <button
                     @click="removeOffer(offer.id!)"
-                    class="p-1.5 lg:p-2 text-red-600 hover:text-red-700"
+                    class="p-1.5 text-red-600 hover:text-red-700 transition-colors min-h-[32px] min-w-[32px]"
                     :title="t('Remove')"
                   >
-                    <svg class="w-3.5 h-3.5 lg:w-4 lg:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
                             d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
                     </svg>
@@ -225,33 +228,30 @@
             </div>
           </div>
         </div>
-
-        <!-- Optional: Settings / Dark Mode Toggle (if you want to add) -->
-        <!-- You could add a small section to toggle dark mode and language -->
       </div>
 
       <!-- Quick Actions -->
-      <div class="bg-white rounded-xl shadow-sm p-4 lg:p-6">
+      <div class="bg-white rounded-xl shadow-sm p-4">
         <h3 class="text-lg font-bold text-gray-900 mb-4">{{ t('Quick Actions') }}</h3>
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           <button
             @click="toggleDarkMode"
             :disabled="homepageStore.isLoading"
-            class="bg-purple-600 text-white py-3 px-4 rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            class="bg-purple-600 text-white py-3 px-4 rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium min-h-[44px]"
           >
             {{ settings.isDarkMode ? t('Disable Dark Mode') : t('Enable Dark Mode') }}
           </button>
           <button
             @click="resetToDefaults"
             :disabled="homepageStore.isLoading"
-            class="bg-gray-600 text-white py-3 px-4 rounded-lg hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            class="bg-gray-600 text-white py-3 px-4 rounded-lg hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium min-h-[44px]"
           >
             {{ t('Reset to Defaults') }}
           </button>
           <button
             @click="reloadData"
             :disabled="homepageStore.isLoading"
-            class="bg-blue-600 text-white py-3 px-4 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            class="bg-blue-600 text-white py-3 px-4 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium min-h-[44px]"
           >
             {{ t('Reload Data') }}
           </button>
@@ -271,6 +271,7 @@
     />
   </div>
 </template>
+
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useLanguageStore } from '@/stores/language'
@@ -284,7 +285,7 @@ const languageStore = useLanguageStore()
 const homepageStore = useHomepageStore()
 const authStore = useAuthStore()
 
-// ✅ Admin guard
+// Admin guard
 if (!authStore.isAdmin) {
   router.push('/admin')
 }
@@ -295,7 +296,6 @@ const { t, formatDate } = languageStore
 const homepageData = computed(() => homepageStore.homepageData)
 const heroBanner = computed({
   get: () => homepageData.value?.heroBanner || { imageUrl: '', linkText: '', linkUrl: '' },
-  // used for v-model, we'll update via store
   set: (_val) => { /* empty setter for v-model compatibility */ }
 })
 const activeOffers = computed(() => homepageData.value?.activeOffers || [])
@@ -314,6 +314,11 @@ onMounted(async () => {
 })
 
 // --- Hero Banner ---
+const handleImageError = (event: Event) => {
+  const img = event.target as HTMLImageElement
+  img.src = '' // fallback placeholder
+}
+
 const handleBannerImageUpload = async (event: Event) => {
   const input = event.target as HTMLInputElement
   if (!input.files?.[0]) return
@@ -426,26 +431,33 @@ const fileToBase64 = (file: File): Promise<string> => {
 }
 
 /* Custom scrollbar for overflow areas */
-.max-h-80::-webkit-scrollbar,
-.max-h-\[500px\]::-webkit-scrollbar {
+.max-h-80::-webkit-scrollbar {
   width: 6px;
 }
-
-.max-h-80::-webkit-scrollbar-track,
-.max-h-\[500px\]::-webkit-scrollbar-track {
+.max-h-80::-webkit-scrollbar-track {
   background: #f1f1f1;
   border-radius: 3px;
 }
-
-.max-h-80::-webkit-scrollbar-thumb,
-.max-h-\[500px\]::-webkit-scrollbar-thumb {
+.max-h-80::-webkit-scrollbar-thumb {
   background: #888;
   border-radius: 3px;
 }
-
-.max-h-80::-webkit-scrollbar-thumb:hover,
-.max-h-\[500px\]::-webkit-scrollbar-thumb:hover {
+.max-h-80::-webkit-scrollbar-thumb:hover {
   background: #555;
+}
+
+/* Ensure buttons have adequate touch targets */
+button {
+  min-height: 44px;
+  min-width: 44px;
+}
+
+/* Make buttons smaller on desktop? No, keep consistency */
+@media (min-width: 768px) {
+  button {
+    min-height: 40px;
+    min-width: 40px;
+  }
 }
 
 /* Smooth transitions */
@@ -458,7 +470,6 @@ button:hover {
   transform: translateY(-1px);
   transition: transform 0.2s ease;
 }
-
 button:active {
   transform: translateY(0);
 }
@@ -466,9 +477,9 @@ button:active {
 /* Improve image loading */
 img {
   transition: opacity 0.3s ease;
+  background-color: #f3f4f6;
 }
-
-img:not([src]), img[src=""] {
+img[src=""], img:not([src]) {
   opacity: 0;
 }
 
@@ -482,18 +493,7 @@ img:hover {
 input:focus,
 button:focus {
   outline: none;
-  ring: 2px;
-  ring-color: #4f46e5;
-}
-
-/* Brands grid animations */
-.brand-card {
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.brand-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+  ring: 2px solid #4f46e5;
 }
 
 /* Upload button styles */
@@ -524,15 +524,12 @@ input[type="file"] {
   .grid-cols-1 {
     gap: 1rem;
   }
-  
   .p-4 {
     padding: 1rem;
   }
-  
   .text-sm {
     font-size: 0.875rem;
   }
-  
   .text-xs {
     font-size: 0.75rem;
   }
