@@ -1,6 +1,6 @@
 // src/stores/wishlist.ts
 import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useLocalStorage } from '@vueuse/core'
 import { showNotification } from '@/utils/notifications'
 import { showConfirmation } from '@/utils/confirmation'
@@ -42,10 +42,11 @@ export const useWishlistStore = defineStore('wishlist', () => {
   const selectedItems = ref<string[]>([])
   const privacySetting = ref<'private' | 'shared' | 'public'>('private')
   const shareableId = useLocalStorage('wishlist_shareable_id', '')
+  const guestWishlist = ref<WishlistItem[]>([]) // holds a copy of the guest wishlist before login
 
   // Getters
   const totalItems = computed(() => items.value.length)
-  
+
   const totalValue = computed(() => 
     items.value.reduce((sum, item) => sum + item.price, 0)
   )
@@ -90,17 +91,39 @@ export const useWishlistStore = defineStore('wishlist', () => {
     }
   }
 
-  // Load wishlist from Firestore for logged-in user
+  // Load wishlist from Firestore and merge with local items
   const loadFromFirestore = async () => {
     if (!authStore.isAuthenticated) return
+
     try {
       const wishlistRef = doc(db, 'wishlists', authStore.currentUser!.uid)
       const snap = await getDoc(wishlistRef)
+
       if (snap.exists()) {
         const data = snap.data()
-        items.value = data.items || []
+        const firestoreItems = data.items || []
+
+        // Merge: Firestore items take precedence, but keep local items not in Firestore
+        const localMap = new Map(items.value.map(i => [i.id, i]))
+        const merged: WishlistItem[] = []
+
+        firestoreItems.forEach(fsItem => {
+          merged.push(fsItem)
+          localMap.delete(fsItem.id)
+        })
+        // Add any local items that are not in Firestore (offline additions)
+        merged.push(...localMap.values())
+
+        // Update state
+        items.value = merged
         privacySetting.value = data.privacy || 'private'
         shareableId.value = data.shareableId || ''
+
+        // Save the merged wishlist back to Firestore to persist offline adds
+        await saveToFirestore()
+      } else {
+        // No Firestore wishlist exists – keep the local wishlist and upload it
+        await saveToFirestore()
       }
     } catch (error) {
       console.error('Error loading wishlist from Firestore:', error)
@@ -141,7 +164,7 @@ export const useWishlistStore = defineStore('wishlist', () => {
     }
 
     items.value.push(newItem)
-    
+
     if (authStore.isAuthenticated) {
       await saveToFirestore()
     }
@@ -151,7 +174,7 @@ export const useWishlistStore = defineStore('wishlist', () => {
       message: `${product.name.en} added to your wishlist`,
       type: 'success'
     })
-    
+
     return true
   }
 
@@ -160,7 +183,7 @@ export const useWishlistStore = defineStore('wishlist', () => {
     if (index !== -1) {
       const item = items.value[index]
       items.value.splice(index, 1)
-      
+
       const selectedIndex = selectedItems.value.indexOf(productId)
       if (selectedIndex > -1) {
         selectedItems.value.splice(selectedIndex, 1)
@@ -175,7 +198,7 @@ export const useWishlistStore = defineStore('wishlist', () => {
         message: `${item.name.en} removed from your wishlist`,
         type: 'info'
       })
-      
+
       return true
     }
     return false
@@ -238,7 +261,7 @@ export const useWishlistStore = defineStore('wishlist', () => {
       }
       return `${window.location.origin}/wishlist/shared/${id}?user=${userId}`
     }
-    
+
     const sessionId = localStorage.getItem('session_id') || Math.random().toString(36).substring(2, 15)
     localStorage.setItem('session_id', sessionId)
     return `${window.location.origin}/wishlist/shared/session/${sessionId}`
@@ -246,13 +269,13 @@ export const useWishlistStore = defineStore('wishlist', () => {
 
   const updatePrivacySetting = async (setting: 'private' | 'shared' | 'public') => {
     privacySetting.value = setting
-    
+
     if (setting !== 'private' && !shareableId.value) {
       generateShareableLink()
     } else if (authStore.isAuthenticated) {
       await saveToFirestore()
     }
-    
+
     showNotification({
       title: 'Privacy Updated',
       message: 'Your wishlist privacy settings have been updated',
@@ -265,10 +288,16 @@ export const useWishlistStore = defineStore('wishlist', () => {
     isLoading.value = true
     try {
       if (authStore.isAuthenticated) {
+        // Before loading from Firestore, save a copy of the current guest wishlist
+        guestWishlist.value = [...items.value]
         await loadFromFirestore()
       } else {
-        // For guests, wishlist is already loaded from localStorage (by useLocalStorage)
-        // Optionally, could try to load from a guest session ID? Not implemented.
+        // For guests, we may have a saved guest wishlist to restore (if coming from logout)
+        if (guestWishlist.value.length > 0) {
+          items.value = guestWishlist.value
+          guestWishlist.value = []
+        }
+        // Otherwise, the wishlist is already loaded from localStorage (by useLocalStorage)
       }
     } catch (error) {
       console.error('Error loading wishlist:', error)
@@ -298,6 +327,22 @@ export const useWishlistStore = defineStore('wishlist', () => {
       saveToFirestore()
     }
   }
+
+  // Watch for authentication changes to reload wishlist
+  watch(() => authStore.isAuthenticated, async (isAuth) => {
+    if (isAuth) {
+      await loadWishlist()
+    } else {
+      // When logging out, restore the guest wishlist (saved before login)
+      if (guestWishlist.value.length > 0) {
+        items.value = guestWishlist.value
+        guestWishlist.value = []
+      } else {
+        // No guest wishlist saved; clear the items (the user's private wishlist should not be visible to guests)
+        items.value = []
+      }
+    }
+  }, { immediate: true })
 
   return {
     // State
