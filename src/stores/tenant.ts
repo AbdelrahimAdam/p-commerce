@@ -1,7 +1,7 @@
 // stores/tenant.ts
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { collection, query, where, getDocs, limit, DocumentData } from 'firebase/firestore'
+import { collection, query, where, getDocs, limit, DocumentData, doc, getDoc } from 'firebase/firestore'
 import { db } from '@/firebase/config'
 
 interface CachedTenant {
@@ -24,6 +24,10 @@ export const useTenantStore = defineStore('tenant', () => {
   // ⚡ Cache expiry: 1 hour
   const CACHE_EXPIRY = 1000 * 60 * 60
 
+  // ⚡ Retry configuration
+  const MAX_RETRIES = 2
+  const RETRY_DELAY_MS = 1000
+
   // ⚡ Internal promise for whenReady
   let resolveReady: (value: unknown) => void
   let rejectReady: (reason?: any) => void
@@ -33,10 +37,15 @@ export const useTenantStore = defineStore('tenant', () => {
   })
 
   /**
-   * Resolve tenant from current hostname (production only)
-   * Uses Firestore + localStorage caching
+   * Helper: sleep for a given milliseconds
    */
-  const resolveTenantFromDomain = async (): Promise<void> => {
+  const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
+
+  /**
+   * Resolve tenant from current hostname (production only)
+   * Uses Firestore + localStorage caching with retry logic
+   */
+  const resolveTenantFromDomain = async (retryCount = 0): Promise<void> => {
     if (isInitialized.value) return
 
     isLoading.value = true
@@ -71,7 +80,19 @@ export const useTenantStore = defineStore('tenant', () => {
       // 🔹 Query Firestore for tenant
       const tenantsRef = collection(db, 'tenants')
       const q = query(tenantsRef, where('domain', '==', hostname), limit(1))
-      const snapshot = await getDocs(q)
+      let snapshot
+      try {
+        snapshot = await getDocs(q)
+      } catch (firestoreError) {
+        // Retry on network errors or permission errors (except permission-denied which might be permanent)
+        if (retryCount < MAX_RETRIES && firestoreError instanceof Error && 
+            (firestoreError.message.includes('network') || firestoreError.message.includes('unavailable'))) {
+          console.warn(`⚠️ Firestore error, retrying (${retryCount + 1}/${MAX_RETRIES})...`)
+          await sleep(RETRY_DELAY_MS)
+          return resolveTenantFromDomain(retryCount + 1)
+        }
+        throw firestoreError
+      }
 
       if (snapshot.empty) {
         error.value = `No tenant configured for domain "${hostname}"`
@@ -147,10 +168,37 @@ export const useTenantStore = defineStore('tenant', () => {
   /**
    * Wait for tenant to be ready (useful for other stores)
    */
-  const whenReady = (): Promise<void> => {
+  const whenReady = (timeoutMs?: number): Promise<void> => {
     if (isReady.value) return Promise.resolve()
+    if (timeoutMs) {
+      return Promise.race([
+        readyPromise as Promise<void>,
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Tenant resolution timeout')), timeoutMs))
+      ])
+    }
     return readyPromise as Promise<void>
   }
+
+  /**
+   * Fetch a tenant by its ID (admin use only)
+   */
+  const fetchTenantById = async (id: string): Promise<{ id: string; data: DocumentData } | null> => {
+    try {
+      const tenantDoc = await getDoc(doc(db, 'tenants', id))
+      if (tenantDoc.exists()) {
+        return { id: tenantDoc.id, data: tenantDoc.data() }
+      }
+      return null
+    } catch (err) {
+      console.error('Error fetching tenant by ID:', err)
+      return null
+    }
+  }
+
+  /**
+   * Check if a given tenant ID is the current resolved tenant
+   */
+  const isCurrentTenant = (id: string): boolean => tenantId.value === id
 
   return {
     tenantId,
@@ -162,6 +210,8 @@ export const useTenantStore = defineStore('tenant', () => {
     resolveTenantFromDomain,
     setTenantAfterRegistration,
     refreshTenant,
-    whenReady
+    whenReady,
+    fetchTenantById,
+    isCurrentTenant
   }
 })
