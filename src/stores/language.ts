@@ -482,26 +482,29 @@ export const useLanguageStore = defineStore('language', () => {
     specialOffers: { en: 'Special Offers', ar: 'عروض خاصة' },
     exclusiveDeals: { en: 'Exclusive Deals', ar: 'صفقات حصرية' },
 
-    // Landing page translations
+    // ========== LANDING PAGE TRANSLATIONS ==========
     heroTitle: { en: 'Create Your Own Luxury', ar: 'أنشئ متجر عطورك الفاخر' },
     heroHighlight: { en: 'Perfume Store', ar: 'متجر عطور' },
-    heroSubtitle: { en: 'Launch a beautiful, fully‑managed e‑commerce platform for premium fragrances. Multi‑tenant, multi‑language, ready in minutes.', ar: 'أطلق منصة تجارة إلكترونية جميلة وكاملة الإدارة للعطور الفاخرة. متعدد المستأجرين، متعدد اللغات، جاهز في دقائق.' },
+    heroSubtitle: { en: 'Launch a beautiful, fully‑managed e‑commerce platform for premium fragrances. One store, many brands, ready in minutes.', ar: 'أطلق منصة تجارة إلكترونية جميلة وكاملة الإدارة للعطور الفاخرة. متجر واحد، العديد من العلامات التجارية، جاهز في دقائق.' },
     startStore: { en: 'Start Your Store', ar: 'ابدأ متجرك' },
     exploreDemo: { en: 'Explore Demo', ar: 'استكشف العرض التوضيحي' },
     featuresTitle: { en: 'Everything You Need', ar: 'كل ما تحتاجه' },
     featuresSubtitle: { en: 'A complete solution for perfume brands to sell online with ease.', ar: 'حل متكامل للعلامات التجارية للعطور للبيع عبر الإنترنت بسهولة.' },
-    featureMultiTenant: { en: 'Multi‑tenant Architecture', ar: 'هندسة متعددة المستأجرين' },
-    featureMultiTenantDesc: { en: 'Each brand gets its own subdomain with isolated data. Perfect for scaling.', ar: 'تحصل كل علامة تجارية على نطاق فرعي خاص بها مع بيانات معزولة. مثالي للتوسع.' },
-    featureMultiLang: { en: 'Multi‑language Support', ar: 'دعم متعدد اللغات' },
-    featureMultiLangDesc: { en: 'Arabic & English ready. Seamlessly switch between languages.', ar: 'العربية والإنجليزية جاهزتان. التبديل بسلاسة بين اللغات.' },
+
+    // Feature cards (updated first card)
+    featureMultiTenant: { en: 'Multiple Brands', ar: 'علامات تجارية متعددة' },
+    featureMultiTenantDesc: { en: 'Add and manage dozens of perfume brands, each with its own identity and products.', ar: 'أضف وأدر العشرات من العلامات التجارية للعطور، لكل منها هويتها ومنتجاتها الخاصة.' },
     featureProductMgmt: { en: 'Product Management', ar: 'إدارة المنتجات' },
     featureProductMgmtDesc: { en: 'Easy product uploads, fragrance notes, collections, and inventory tracking.', ar: 'رفع المنتجات بسهولة، ملاحظات العطر، المجموعات، وتتبع المخزون.' },
+    featureMultiLang: { en: 'Multilingual Support', ar: 'دعم متعدد اللغات' },
+    featureMultiLangDesc: { en: 'Arabic & English ready. Seamlessly switch between languages for global customers.', ar: 'العربية والإنجليزية جاهزتان. التبديل بسلاسة بين اللغات للعملاء العالميين.' },
     featureCart: { en: 'Shopping Cart & Checkout', ar: 'سلة التسوق والدفع' },
     featureCartDesc: { en: 'Fully functional cart, wishlist, and secure checkout experience.', ar: 'سلة تسوق كاملة الوظائف، قائمة الرغبات، وتجربة دفع آمنة.' },
     featureAdmin: { en: 'Admin Dashboard', ar: 'لوحة تحكم المسؤول' },
     featureAdminDesc: { en: 'Powerful admin panel to manage orders, products, and settings.', ar: 'لوحة تحكم قوية لإدارة الطلبات والمنتجات والإعدادات.' },
-    featureSubdomain: { en: 'Instant Subdomain', ar: 'نطاق فرعي فوري' },
+    featureSubdomain: { en: 'Custom Brand URL', ar: 'عنوان URL مخصص للعلامة التجارية' },
     featureSubdomainDesc: { en: 'Get your own branded subdomain immediately after registration.', ar: 'احصل على نطاقك الفرعي الخاص بعد التسجيل مباشرة.' },
+
     stepsTitle: { en: 'Get Started in 3 Simple Steps', ar: 'ابدأ في 3 خطوات بسيطة' },
     stepsSubtitle: { en: 'Launch your perfume store in minutes, not weeks.', ar: 'أطلق متجر العطور الخاص بك في دقائق، وليس أسابيع.' },
     step1Title: { en: 'Register Your Company', ar: 'سجل شركتك' },
