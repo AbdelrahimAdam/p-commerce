@@ -55,8 +55,8 @@
           <!-- Feature Card 1: Multiple Brands -->
           <div class="feature-card">
             <img
-              src="https://images.unsplash.com/photo-1615634262417-6c9f5f4b0c5c?auto=format&fit=crop&w=400&q=80"
-              alt="Brand logos"
+              src="https://images.unsplash.com/photo-1559583985-c80d8ad9b29f?auto=format&fit=crop&w=400&q=80"
+              alt="Abstract shapes representing multiple brands"
             />
             <h3>{{ t('featureMultiTenant') }}</h3>
             <p>{{ t('featureMultiTenantDesc') }}</p>
@@ -65,8 +65,8 @@
           <!-- Feature Card 2: Product Management -->
           <div class="feature-card">
             <img
-              src="https://images.unsplash.com/photo-1600180758890-6b94519a8ba6?auto=format&fit=crop&w=400&q=80"
-              alt="Perfume bottles"
+              src="https://images.unsplash.com/photo-1593642632559-0c6d3fc62b89?auto=format&fit=crop&w=400&q=80"
+              alt="Digital product management interface"
             />
             <h3>{{ t('featureProductMgmt') }}</h3>
             <p>{{ t('featureProductMgmtDesc') }}</p>
@@ -75,8 +75,8 @@
           <!-- Feature Card 3: Multilingual Support -->
           <div class="feature-card">
             <img
-              src="https://images.unsplash.com/photo-1526772662000-3f88f10405ff?auto=format&fit=crop&w=400&q=80"
-              alt="Languages"
+              src="https://images.unsplash.com/photo-1456406644174-8ddd4cd52a06?auto=format&fit=crop&w=400&q=80"
+              alt="Global communication icons"
             />
             <h3>{{ t('featureMultiLang') }}</h3>
             <p>{{ t('featureMultiLangDesc') }}</p>
@@ -85,8 +85,8 @@
           <!-- Feature Card 4: Shopping Cart & Checkout -->
           <div class="feature-card">
             <img
-              src="https://images.unsplash.com/photo-1607083206968-13611e3d76db?auto=format&fit=crop&w=400&q=80"
-              alt="Shopping cart"
+              src="https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?auto=format&fit=crop&w=400&q=80"
+              alt="Abstract shopping cart concept"
             />
             <h3>{{ t('featureCart') }}</h3>
             <p>{{ t('featureCartDesc') }}</p>
@@ -95,8 +95,8 @@
           <!-- Feature Card 5: Admin Dashboard -->
           <div class="feature-card">
             <img
-              src="https://images.unsplash.com/photo-1559028012-481c04fa702d?auto=format&fit=crop&w=400&q=80"
-              alt="Admin dashboard"
+              src="https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=400&q=80"
+              alt="Abstract dashboard analytics"
             />
             <h3>{{ t('featureAdmin') }}</h3>
             <p>{{ t('featureAdminDesc') }}</p>
@@ -106,7 +106,7 @@
           <div class="feature-card">
             <img
               src="https://images.unsplash.com/photo-1591696331111-ef9586a5b17f?auto=format&fit=crop&w=400&q=80"
-              alt="Custom URL"
+              alt="Custom URL concept"
             />
             <h3>{{ t('featureSubdomain') }}</h3>
             <p>{{ t('featureSubdomainDesc') }}</p>
@@ -115,7 +115,7 @@
       </div>
     </section>
 
-    <!-- How It Works (optional, keep if needed) -->
+    <!-- How It Works -->
     <section class="py-16 bg-[#1a1a1a]">
       <div class="container mx-auto px-4 text-center">
         <h2 class="text-3xl md:text-4xl font-bold text-amber-400 mb-12">
@@ -170,16 +170,18 @@ const { t, isRTL } = useLanguageStore()
 <style scoped>
 /* Card Style */
 .feature-card {
-  background: #1a1a1a;
-  border: 1px solid rgba(251, 191, 36, 0.2);
+  background: linear-gradient(135deg, #1a1a1a 0%, #111111 100%);
+  border: 1px solid rgba(251, 191, 36, 0.25);
   padding: 1rem;
   border-radius: 1rem;
   transition: all 0.3s ease;
+  text-align: center;
 }
 
 .feature-card:hover {
   transform: translateY(-6px);
-  box-shadow: 0 10px 30px rgba(251, 191, 36, 0.2);
+  box-shadow: 0 10px 30px rgba(251, 191, 36, 0.25);
+  border-color: rgba(251, 191, 36, 0.5);
 }
 
 .feature-card img {
@@ -194,6 +196,7 @@ const { t, isRTL } = useLanguageStore()
   color: #fbbf24;
   font-weight: bold;
   margin-bottom: 0.5rem;
+  font-size: 1.1rem;
 }
 
 .feature-card p {
@@ -202,9 +205,13 @@ const { t, isRTL } = useLanguageStore()
   line-height: 1.4;
 }
 
-/* RTL */
+/* RTL adjustments */
 .rtl {
   direction: rtl;
   text-align: right;
+}
+
+.rtl .feature-card {
+  text-align: center; /* keep cards centered even in RTL */
 }
 </style>
