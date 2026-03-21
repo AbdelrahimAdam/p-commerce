@@ -1,4 +1,3 @@
-<!-- App.vue -->
 <template>
   <div id="vue-app" :class="[isRTL ? 'rtl' : 'ltr', appClasses]" class="min-h-screen-mobile">
     <!-- SEO Head Component -->
@@ -70,7 +69,7 @@
                       </svg>
                     </div>
                     <span class="ml-2 text-lg font-display-en font-bold text-gray-900 truncate">
-                      Parfum<span class="text-primary-500">.</span>
+                      P.COMMERCE<span class="text-primary-500">.</span>
                     </span>
                   </router-link>
 
@@ -256,7 +255,7 @@
                         >
                           <svg class="w-4 h-4 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
-                                  d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+                                  d="M17 16l4-4m0 0l-4 4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
                           </svg>
                           <span class="truncate">{{ safeTranslate('Sign Out') }}</span>
                         </button>
@@ -302,7 +301,7 @@
           <footer class="px-4 sm:px-6 lg:px-8 py-4 border-t border-gray-200 bg-white flex-shrink-0">
             <div class="flex flex-col sm:flex-row justify-between items-center space-y-3 sm:space-y-0">
               <div class="text-sm text-gray-600 text-center sm:text-left">
-                © {{ currentYear }} Parfum. {{ safeTranslate('All rights reserved.') }}
+                © {{ currentYear }} P.COMMERCE. {{ safeTranslate('All rights reserved.') }}
               </div>
               <div class="flex flex-wrap justify-center items-center gap-3 sm:gap-6 text-sm text-gray-600">
                 <router-link to="/" class="hover:text-primary-600 transition-colors">
@@ -381,7 +380,7 @@
       >
         <div class="text-center">
           <div class="preloader-logo mb-4 md:mb-6">
-            <div class="preloader-brand">P.NOTES</div>
+            <div class="preloader-brand">P.COMMERCE</div>
             <div class="preloader-subtitle">PERFUME STORE</div>
           </div>
           <p class="preloader-text text-gold-light text-sm md:text-base font-['Inter'] font-medium tracking-widest uppercase">
@@ -805,7 +804,7 @@ const handleOnlineStatus = () => {
 
 const updatePageTitle = () => {
   const routeTitle = route.meta.title as string | { [key: string]: string } | undefined
-  const appName = safeTranslate({ en: 'P.NOTES', ar: 'بي.نوتس' })
+  const appName = safeTranslate({ en: 'P.COMMERCE', ar: 'بي.كوميرس' })
   
   if (routeTitle) {
     if (typeof routeTitle === 'object') {
