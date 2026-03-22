@@ -379,12 +379,10 @@
 <script setup lang="ts">
 import { ref, reactive, watch, computed, onMounted } from 'vue'
 import { useLanguageStore } from '@/stores/language'
-import { useAuthStore } from '@/stores/auth'
 import { ref as storageRef, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage'
 import { storage } from '@/firebase/config'
 
 const languageStore = useLanguageStore()
-const authStore = useAuthStore()
 const { t } = languageStore
 
 const props = defineProps<{
