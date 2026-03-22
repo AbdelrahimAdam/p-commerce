@@ -372,10 +372,10 @@
       <LuxuryNotificationCenter />
     </template>
 
-    <!-- Loading Overlay (Shared across all layouts) - UPDATED to match HTML preloader -->
+    <!-- Loading Overlay – only on initial load or when product list is empty -->
     <transition name="fade">
       <div
-        v-if="globalLoading"
+        v-if="showFullScreenLoader"
         class="luxury-loading-overlay fixed inset-0 bg-[#0a0a0a] z-[100] flex items-center justify-center safe-top safe-bottom"
       >
         <div class="text-center">
@@ -411,7 +411,7 @@ import LuxuryCartSidebar from '@/components/Cart/LuxuryCartSidebar.vue'
 import LuxurySearchModal from '@/components/search/SearchModal.vue'
 import LuxuryNotificationCenter from '@/components/UI/LuxuryNotificationCenter.vue'
 import AdminSidebar from '@/components/Admin/AdminSidebar.vue'
-import LandingLayout from '@/components/Layout/LandingLayout.vue' // ✅ Import landing layout
+import LandingLayout from '@/components/Layout/LandingLayout.vue'
 
 // Router
 const router = useRouter()
@@ -426,7 +426,7 @@ const tenantStore = useTenantStore()
 
 // Use storeToRefs for reactive state/computed
 const { currentLanguage, isRTL } = storeToRefs(languageStore)
-const { isLoading: globalLoading } = storeToRefs(productsStore)
+const { products, isLoading } = storeToRefs(productsStore)  // added products ref
 
 // State with safe defaults
 const scrollY = ref(0)
@@ -494,10 +494,13 @@ const isPublicRoute = computed(() => {
   )
 })
 
+// New computed: show full‑screen loader only when loading and product list is empty
+const showFullScreenLoader = computed(() => isLoading.value && products.value.length === 0)
+
 const appClasses = computed(() => ({
   'rtl': isRTL.value,
   'ltr': !isRTL.value,
-  'scroll-locked': (globalLoading.value) || false,
+  'scroll-locked': (showFullScreenLoader.value) || false,
   'mobile': isMobile.value,
   'desktop': !isMobile.value,
   'fonts-loaded': fontsLoaded.value,
