@@ -6,6 +6,7 @@ import {
   getDocs,
   getDoc,
   doc,
+  deleteDoc,                         // ✅ added for product deletion
   query,
   where,
   orderBy,
@@ -14,7 +15,7 @@ import {
   QueryConstraint,
   QueryDocumentSnapshot
 } from 'firebase/firestore'
-import { ref as storageRef, getDownloadURL, listAll } from 'firebase/storage'
+import { ref as storageRef, getDownloadURL, listAll, deleteObject } from 'firebase/storage'  // ✅ added deleteObject
 import { db, storage } from '@/firebase/config'
 import type { Product, FilterOptions, Brand } from '@/types'
 import { useLocalStorage } from '@vueuse/core'
@@ -523,6 +524,71 @@ export const useProductsStore = defineStore('products', () => {
   }
 
   /* =========================
+   * DELETE PRODUCT
+   * ========================= */
+  const deleteProduct = async (productId: string, brandId: string): Promise<boolean> => {
+    if (!authStore.isAdmin) {
+      productNotification.error('You do not have permission to delete products')
+      return false
+    }
+
+    try {
+      // Reference to the product document in the brand's subcollection
+      const productRef = doc(db, 'brands', brandId, 'products', productId)
+
+      // Get product data to check if it has an image stored in Storage
+      const productSnap = await getDoc(productRef)
+      if (productSnap.exists()) {
+        const productData = productSnap.data()
+        const imageUrl = productData.imageUrl
+
+        // If the image is stored in Firebase Storage, delete it
+        if (imageUrl && imageUrl.includes('firebasestorage.googleapis.com')) {
+          try {
+            const decodedUrl = decodeURIComponent(imageUrl)
+            const match = decodedUrl.match(/\/o\/(.+?)\?/)
+            if (match && match[1]) {
+              const path = decodeURIComponent(match[1])
+              const imageRef = storageRef(storage, path)
+              await deleteObject(imageRef)
+            }
+          } catch (err) {
+            console.warn('Failed to delete product image from Storage:', err)
+            // Non‑critical, continue
+          }
+        }
+      }
+
+      // Delete the Firestore document
+      await deleteDoc(productRef)
+
+      // Remove from local cache and state
+      productCache.value.delete(`${brandId}_${productId}`)
+
+      const brandCache = brandProductsCache.value.get(brandId)
+      if (brandCache) {
+        brandProductsCache.value.set(
+          brandId,
+          brandCache.filter(p => p.id !== productId)
+        )
+      }
+
+      // Remove from main products list
+      products.value = products.value.filter(p => p.id !== productId)
+
+      // Refresh special collections
+      deriveSpecialCollections()
+
+      console.log(`✅ Product ${productId} deleted successfully`)
+      return true
+    } catch (err: any) {
+      console.error('Error deleting product:', err)
+      productNotification.error(err.message || 'Failed to delete product')
+      return false
+    }
+  }
+
+  /* =========================
    * FILTERING & SEARCH
    * ========================= */
 
@@ -891,6 +957,7 @@ export const useProductsStore = defineStore('products', () => {
     fetchProductBySlug,
     getProductsByBrand,
     getProductById,
+    deleteProduct,                      // ✅ added
 
     // Filtering & Search
     filterProducts,
