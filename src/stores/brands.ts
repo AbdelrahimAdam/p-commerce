@@ -12,7 +12,8 @@ import {
   writeBatch,
   serverTimestamp
 } from 'firebase/firestore'
-import { db } from '@/firebase/config'
+import { ref as storageRef, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage'
+import { db, storage } from '@/firebase/config'
 import type { Brand, BrandWithProducts } from '@/types'
 import type { Product } from '@/types'
 import { useProductsStore } from '@/stores/products'
@@ -29,7 +30,7 @@ export const useBrandsStore = defineStore('brands', () => {
   const currentBrand = ref<BrandWithProducts | null>(null)
   const isLoading = ref(false)
   const error = ref<string>('')
-  const isInitialized = ref(false) // optional flag to prevent redundant loads
+  const isInitialized = ref(false)
 
   /* =========================
    * GETTERS
@@ -58,6 +59,30 @@ export const useBrandsStore = defineStore('brands', () => {
     createdAt: docData?.createdAt?.toDate?.() ?? new Date(),
     updatedAt: docData?.updatedAt?.toDate?.() ?? new Date()
   })
+
+  // Upload brand image to Firebase Storage
+  const uploadBrandImage = async (file: File, brandId: string): Promise<string> => {
+    const path = `brands/${brandId}/logo.jpg`
+    const imageRef = storageRef(storage, path)
+    await uploadBytes(imageRef, file)
+    return await getDownloadURL(imageRef)
+  }
+
+  // Delete brand image from Storage if it belongs to our storage path
+  const deleteBrandImageFromStorage = async (imageUrl: string) => {
+    if (!imageUrl || !imageUrl.includes('firebasestorage.googleapis.com')) return
+    try {
+      const decodedUrl = decodeURIComponent(imageUrl)
+      const match = decodedUrl.match(/\/o\/(.+?)\?/)
+      if (match && match[1]) {
+        const path = decodeURIComponent(match[1])
+        const imageRef = storageRef(storage, path)
+        await deleteObject(imageRef)
+      }
+    } catch (err) {
+      console.warn('Failed to delete brand image from Storage:', err)
+    }
+  }
 
   /* =========================
    * LOAD BRANDS (FIXED TENANT SOURCE)
@@ -144,7 +169,7 @@ export const useBrandsStore = defineStore('brands', () => {
   }
 
   /* =========================
-   * ADD BRAND + PRODUCTS
+   * ADD BRAND + PRODUCTS (UPDATED: SUPPORTS FILE UPLOAD)
    * ========================= */
   const addBrandWithProducts = async (
     brandData: Partial<Brand>,
@@ -162,25 +187,45 @@ export const useBrandsStore = defineStore('brands', () => {
       const brandRef = doc(collection(db, 'brands'))
       const brandId = brandRef.id
 
-      batch.set(brandRef, {
-        ...brandData,
+      // Prepare brand data: if brandData.image is a File, upload it first
+      let imageUrl = ''
+      if (brandData.image instanceof File) {
+        imageUrl = await uploadBrandImage(brandData.image, brandId)
+      } else if (typeof brandData.image === 'string') {
+        imageUrl = brandData.image // could be base64 or existing URL
+      }
+
+      const brandPayload = {
+        name: brandData.name,
+        slug: brandData.slug,
+        category: brandData.category,
+        description: brandData.description || '',
+        signature: brandData.signature || '',
+        isActive: brandData.isActive !== false,
+        image: imageUrl,
         tenantId,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp()
-      })
+      }
+
+      batch.set(brandRef, brandPayload)
 
       const productIds: string[] = []
 
       for (const product of productsData) {
         const productRef = doc(collection(db, 'brands', brandId, 'products'))
 
-        batch.set(productRef, {
+        // If product has an image file, we would need to upload it, but the product form now handles that separately.
+        // Here we assume product.image is already a URL (from product form upload or base64).
+        const productPayload = {
           ...product,
           tenantId,
           brandId,
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp()
-        })
+        }
+
+        batch.set(productRef, productPayload)
 
         productIds.push(productRef.id)
       }
@@ -212,11 +257,27 @@ export const useBrandsStore = defineStore('brands', () => {
   ): Promise<boolean> => {
     try {
       const refDoc = doc(db, 'brands', brandId)
+      const updatePayload: any = { ...updates, updatedAt: serverTimestamp() }
 
-      await updateDoc(refDoc, {
-        ...updates,
-        updatedAt: serverTimestamp()
-      })
+      // If a new image file is provided, upload it and replace the URL
+      if (updates.image instanceof File) {
+        // Fetch current brand to get old image URL for deletion later
+        const currentBrandDoc = await getDoc(refDoc)
+        const oldImageUrl = currentBrandDoc.data()?.image
+
+        // Upload new image
+        const newImageUrl = await uploadBrandImage(updates.image, brandId)
+        updatePayload.image = newImageUrl
+
+        // Delete old image if it was stored in Storage
+        if (oldImageUrl && typeof oldImageUrl === 'string') {
+          await deleteBrandImageFromStorage(oldImageUrl)
+        }
+      } else if (typeof updates.image === 'string') {
+        updatePayload.image = updates.image
+      }
+
+      await updateDoc(refDoc, updatePayload)
 
       await loadBrands()
       return true
@@ -231,9 +292,11 @@ export const useBrandsStore = defineStore('brands', () => {
    * ========================= */
   const deleteBrand = async (brandId: string): Promise<boolean> => {
     try {
-      const batch = writeBatch(db)
-
       const brandRef = doc(db, 'brands', brandId)
+      const brandSnap = await getDoc(brandRef)
+      const brandImage = brandSnap.exists() ? brandSnap.data().image : null
+
+      const batch = writeBatch(db)
       batch.delete(brandRef)
 
       const productsRef = collection(db, 'brands', brandId, 'products')
@@ -242,6 +305,11 @@ export const useBrandsStore = defineStore('brands', () => {
       productsSnap.docs.forEach(d => batch.delete(d.ref))
 
       await batch.commit()
+
+      // Delete brand image from Storage if it was stored there
+      if (brandImage && typeof brandImage === 'string') {
+        await deleteBrandImageFromStorage(brandImage)
+      }
 
       await loadBrands()
       return true
@@ -255,8 +323,6 @@ export const useBrandsStore = defineStore('brands', () => {
    * INIT (manual, kept for compatibility)
    * ========================= */
   const initialize = async () => {
-    // This will load brands if not already loaded, but the watchEffect below
-    // will automatically handle it when tenant becomes available.
     if (!brands.value.length && authStore.currentTenant) {
       await loadBrands()
     }
@@ -268,10 +334,8 @@ export const useBrandsStore = defineStore('brands', () => {
   watchEffect(async () => {
     const tenantId = authStore.currentTenant
     if (tenantId) {
-      // Load brands whenever tenant becomes available (including initial load)
       await loadBrands()
     } else {
-      // Clear brands when tenant is removed (logout, etc.)
       brands.value = []
     }
   })
