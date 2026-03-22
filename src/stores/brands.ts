@@ -5,6 +5,7 @@ import {
   collection,
   doc,
   getDocs,
+  getDoc,
   updateDoc,
   query,
   where,
@@ -82,6 +83,11 @@ export const useBrandsStore = defineStore('brands', () => {
     } catch (err) {
       console.warn('Failed to delete brand image from Storage:', err)
     }
+  }
+
+  // Type guard to check if a value is a File
+  const isFile = (value: unknown): value is File => {
+    return value instanceof File
   }
 
   /* =========================
@@ -172,7 +178,7 @@ export const useBrandsStore = defineStore('brands', () => {
    * ADD BRAND + PRODUCTS (UPDATED: SUPPORTS FILE UPLOAD)
    * ========================= */
   const addBrandWithProducts = async (
-    brandData: Partial<Brand>,
+    brandData: Partial<Brand> & { image?: string | File },
     productsData: Partial<Product>[]
   ): Promise<string | null> => {
     isLoading.value = true
@@ -189,10 +195,12 @@ export const useBrandsStore = defineStore('brands', () => {
 
       // Prepare brand data: if brandData.image is a File, upload it first
       let imageUrl = ''
-      if (brandData.image instanceof File) {
-        imageUrl = await uploadBrandImage(brandData.image, brandId)
-      } else if (typeof brandData.image === 'string') {
-        imageUrl = brandData.image // could be base64 or existing URL
+      if (brandData.image) {
+        if (isFile(brandData.image)) {
+          imageUrl = await uploadBrandImage(brandData.image, brandId)
+        } else if (typeof brandData.image === 'string') {
+          imageUrl = brandData.image // could be base64 or existing URL
+        }
       }
 
       const brandPayload = {
@@ -253,28 +261,30 @@ export const useBrandsStore = defineStore('brands', () => {
    * ========================= */
   const updateBrand = async (
     brandId: string,
-    updates: Partial<Brand>
+    updates: Partial<Brand> & { image?: string | File }
   ): Promise<boolean> => {
     try {
       const refDoc = doc(db, 'brands', brandId)
       const updatePayload: any = { ...updates, updatedAt: serverTimestamp() }
 
       // If a new image file is provided, upload it and replace the URL
-      if (updates.image instanceof File) {
-        // Fetch current brand to get old image URL for deletion later
-        const currentBrandDoc = await getDoc(refDoc)
-        const oldImageUrl = currentBrandDoc.data()?.image
+      if (updates.image) {
+        if (isFile(updates.image)) {
+          // Fetch current brand to get old image URL for deletion later
+          const currentBrandDoc = await getDoc(refDoc)
+          const oldImageUrl = currentBrandDoc.data()?.image
 
-        // Upload new image
-        const newImageUrl = await uploadBrandImage(updates.image, brandId)
-        updatePayload.image = newImageUrl
+          // Upload new image
+          const newImageUrl = await uploadBrandImage(updates.image, brandId)
+          updatePayload.image = newImageUrl
 
-        // Delete old image if it was stored in Storage
-        if (oldImageUrl && typeof oldImageUrl === 'string') {
-          await deleteBrandImageFromStorage(oldImageUrl)
+          // Delete old image if it was stored in Storage
+          if (oldImageUrl && typeof oldImageUrl === 'string') {
+            await deleteBrandImageFromStorage(oldImageUrl)
+          }
+        } else if (typeof updates.image === 'string') {
+          updatePayload.image = updates.image
         }
-      } else if (typeof updates.image === 'string') {
-        updatePayload.image = updates.image
       }
 
       await updateDoc(refDoc, updatePayload)
