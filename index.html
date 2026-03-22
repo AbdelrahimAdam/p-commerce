@@ -2,20 +2,24 @@
 <html lang="en" dir="ltr">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, minimum-scale=1.0, viewport-fit=cover">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, 
+minimum-scale=1.0, viewport-fit=cover">
   <title>P.COMMERCE | Luxury Perfume Store</title>
-  <meta name="description" content="Discover P.COMMERCE - A curated collection of the world's most exquisite luxury fragrances, niche perfumes, and exclusive aromatic experiences.">
+  <meta name="description" content="Discover P.COMMERCE - A curated collection of the world's most 
+exquisite luxury fragrances, niche perfumes, and exclusive aromatic experiences.">
 
   <!-- Open Graph & Twitter -->
   <meta property="og:title" content="P.COMMERCE | Luxury Perfume Store">
-  <meta property="og:description" content="Discover our curated collection of the world's most exquisite luxury fragrances and niche perfumes.">
+  <meta property="og:description" content="Discover our curated collection of the world's most exquisite 
+luxury fragrances and niche perfumes.">
   <meta property="og:image" content="/images/og-luxury-perfumes.jpg">
   <meta property="og:url" content="https://pcommerce.com">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="P.COMMERCE">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="P.COMMERCE | Luxury Perfume Store">
-  <meta name="twitter:description" content="Discover our curated collection of the world's most exquisite luxury fragrances and niche perfumes.">
+  <meta name="twitter:description" content="Discover our curated collection of the world's most exquisite 
+luxury fragrances and niche perfumes.">
   <meta name="twitter:image" content="/images/og-luxury-perfumes.jpg">
 
   <!-- Favicons -->
@@ -25,25 +29,19 @@
   <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
   <link rel="manifest" href="/site.webmanifest">
 
-  <!-- Preconnect for performance -->
+  <!-- Preconnect for performance (updated for Supabase) -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="preconnect" href="https://api.exchangerate-api.com" crossorigin>
   <link rel="preconnect" href="https://www.google-analytics.com" crossorigin>
   <link rel="preconnect" href="https://www.googletagmanager.com" crossorigin>
-  <link rel="preconnect" href="https://firestore.googleapis.com" crossorigin>
-  <link rel="preconnect" href="https://firebasestorage.googleapis.com" crossorigin>
-  <link rel="preconnect" href="https://identitytoolkit.googleapis.com" crossorigin>
-  <link rel="preconnect" href="https://securetoken.googleapis.com" crossorigin>
-  <link rel="preconnect" href="https://*.firebaseio.com" crossorigin>
-  <link rel="preconnect" href="https://*.firebasestorage.app" crossorigin>
-  <link rel="preconnect" href="https://firebase.googleapis.com" crossorigin>
-  <link rel="preconnect" href="https://firebaseinstallations.googleapis.com" crossorigin>
+  <link rel="preconnect" href="https://*.supabase.co" crossorigin>
 
-  <!-- Content Security Policy - Updated with all required Firebase domains -->
+  <!-- Content Security Policy - Updated for Supabase -->
   <meta http-equiv="Content-Security-Policy" content="
-    default-src 'self' https://*.firebaseio.com https://*.firebasestorage.app https://firestore.googleapis.com https://firebasestorage.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://www.googleapis.com;
-    script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com https://www.google-analytics.com https://apis.google.com https://www.gstatic.com;
+    default-src 'self' https://*.supabase.co wss://*.supabase.co;
+    script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com 
+https://www.google-analytics.com https://apis.google.com https://www.gstatic.com;
     style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
     font-src 'self' https://fonts.gstatic.com https://fonts.googleapis.com;
     img-src 'self' data: blob: https: http:;
@@ -53,15 +51,8 @@
       https://fonts.googleapis.com 
       https://fonts.gstatic.com 
       https://www.googletagmanager.com
-      https://*.firebaseio.com 
-      https://*.firebasestorage.app 
-      https://firestore.googleapis.com 
-      https://firebasestorage.googleapis.com 
-      https://identitytoolkit.googleapis.com 
-      https://securetoken.googleapis.com 
-      https://www.googleapis.com
-      https://firebase.googleapis.com
-      https://firebaseinstallations.googleapis.com;
+      https://*.supabase.co
+      wss://*.supabase.co;
     frame-src 'self' https://www.google.com;
     object-src 'none';
     base-uri 'self';
@@ -79,12 +70,13 @@
   <meta name="apple-mobile-web-app-title" content="P.COMMERCE">
 
   <!-- SEO & Accessibility -->
-  <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
+  <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, 
+max-video-preview:-1">
   <meta name="format-detection" content="telephone=no">
   <meta name="msapplication-TileColor" content="#0a0a0a">
   <meta name="msapplication-config" content="/browserconfig.xml">
 
-  <!-- Critical CSS -->
+  <!-- Critical CSS (unchanged) -->
   <style>
     /* CSS Reset - Minimal */
     *, *::before, *::after {
@@ -377,7 +369,8 @@
     <div class="no-js-message">
       <h1>P.COMMERCE</h1>
       <div class="brand-subtitle">PERFUME STORE</div>
-      <p>JavaScript is required to experience our luxury perfume collection. Please enable JavaScript in your browser settings to continue.</p>
+      <p>JavaScript is required to experience our luxury perfume collection. Please enable JavaScript in 
+your browser settings to continue.</p>
       <p style="margin-top: 24px; font-size: 14px;">
         <a href="https://www.enable-javascript.com/">Enable JavaScript</a>
       </p>

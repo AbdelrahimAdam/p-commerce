@@ -30,6 +30,7 @@
   },
   "dependencies": {
     "@heroicons/vue": "^2.2.0",
+    "@supabase/supabase-js": "^2.99.3",
     "@vueuse/core": "^10.7.0",
     "date-fns": "^4.1.0",
     "firebase": "^10.14.1",

@@ -1,7 +1,7 @@
-// src/stores/admin.ts
+// stores/admin.ts – SUPABASE VERSION (FINAL)
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import { AdminService } from '@/services/adminService'
+import { supabase } from '@/supabase/client'
 import type { AdminUser, CreateAdminDto, UpdateAdminDto } from '@/types/admin'
 import { useAuthStore } from './auth'
 
@@ -18,17 +18,52 @@ export const useAdminStore = defineStore('admin', () => {
     inactiveAdmins: 0
   })
 
+  // Helper to convert Supabase row to AdminUser
+  const rowToAdmin = (row: any): AdminUser => ({
+    uid: row.id,
+    email: row.email,
+    displayName: row.display_name,
+    role: row.role,
+    tenantId: row.tenant_id,
+    photoURL: row.photo_url,
+    isActive: row.is_active,
+    permissions: row.permissions,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+    lastLoginAt: row.last_login
+  })
+
+  // Update local stats from admins array
+  const updateStats = () => {
+    stats.value = {
+      total: admins.value.length,
+      superAdmins: admins.value.filter(admin => admin.role === 'super-admin').length,
+      activeAdmins: admins.value.filter(admin => admin.isActive).length,
+      inactiveAdmins: admins.value.filter(admin => !admin.isActive).length
+    }
+  }
+
   // Fetch all admins for the current tenant
   const fetchAdmins = async () => {
     loading.value = true
     error.value = null
     try {
-      const adminList = await AdminService.getAdmins(authStore.currentTenant ?? undefined)
-      admins.value = adminList.map(admin => ({
-        ...admin,
-        createdAt: admin.createdAt || new Date().toISOString(),
-        lastLoginAt: admin.lastLoginAt || new Date().toISOString()
-      }))
+      const tenantId = authStore.currentTenant
+      if (!tenantId) {
+        admins.value = []
+        updateStats()
+        return
+      }
+
+      const { data, error: fetchError } = await supabase
+        .from('admins')
+        .select('*')
+        .eq('tenant_id', tenantId)
+        .order('created_at', { ascending: false })
+
+      if (fetchError) throw fetchError
+
+      admins.value = (data || []).map(rowToAdmin)
       updateStats()
     } catch (err: any) {
       error.value = err.message || 'Failed to fetch admins'
@@ -39,21 +74,54 @@ export const useAdminStore = defineStore('admin', () => {
     }
   }
 
-  // Create new admin – include tenantId from current context
+  // Create new admin – two‑step: Auth sign‑up then insert admin record
   const createAdmin = async (adminData: CreateAdminDto) => {
     loading.value = true
     error.value = null
     try {
-      // Ensure tenantId is provided
       const tenantId = adminData.tenantId || authStore.currentTenant
       if (!tenantId) {
         throw new Error('Tenant ID is required to create an admin')
       }
-      const dataWithTenant = {
-        ...adminData,
-        tenantId
+
+      // 1. Create the user in Supabase Auth
+      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+        email: adminData.email,
+        password: adminData.password,
+        options: {
+          data: { displayName: adminData.displayName }
+        }
+      })
+      if (signUpError) throw signUpError
+      if (!signUpData.user) throw new Error('User creation failed')
+
+      const userId = signUpData.user.id
+
+      // 2. Insert the admin record into the admins table using a database function
+      const { error: insertError } = await supabase.rpc('insert_admin_record', {
+        _user_id: userId,
+        _tenant_id: tenantId,
+        _email: adminData.email,
+        _display_name: adminData.displayName,
+        _role: adminData.role || 'admin',
+        _is_active: adminData.isActive !== false
+      })
+      if (insertError) throw insertError
+
+      const newAdmin: AdminUser = {
+        uid: userId,
+        email: adminData.email,
+        displayName: adminData.displayName,
+        role: adminData.role || 'admin',
+        tenantId,
+        photoURL: adminData.photoURL,
+        isActive: adminData.isActive !== false,
+        permissions: adminData.permissions || [],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        lastLoginAt: null
       }
-      const newAdmin = await AdminService.createAdmin(dataWithTenant)
+
       admins.value.unshift(newAdmin)
       updateStats()
       return newAdmin
@@ -71,10 +139,25 @@ export const useAdminStore = defineStore('admin', () => {
     loading.value = true
     error.value = null
     try {
-      await AdminService.updateAdmin(uid, updateData)
+      const updatePayload: any = {
+        updated_at: new Date().toISOString()
+      }
+      if (updateData.displayName !== undefined) updatePayload.display_name = updateData.displayName
+      if (updateData.role !== undefined) updatePayload.role = updateData.role
+      if (updateData.isActive !== undefined) updatePayload.is_active = updateData.isActive
+      if (updateData.permissions !== undefined) updatePayload.permissions = updateData.permissions
+
+      const { error: updateError } = await supabase
+        .from('admins')
+        .update(updatePayload)
+        .eq('id', uid)
+
+      if (updateError) throw updateError
+
       const index = admins.value.findIndex(admin => admin.uid === uid)
       if (index !== -1) {
-        admins.value[index] = { ...admins.value[index], ...updateData }
+        admins.value[index] = { ...admins.value[index], ...updateData, updatedAt: new 
+Date().toISOString() }
       }
       updateStats()
     } catch (err: any) {
@@ -91,7 +174,13 @@ export const useAdminStore = defineStore('admin', () => {
     loading.value = true
     error.value = null
     try {
-      await AdminService.deleteAdmin(uid)
+      const { error: deleteError } = await supabase
+        .from('admins')
+        .delete()
+        .eq('id', uid)
+
+      if (deleteError) throw deleteError
+
       admins.value = admins.value.filter(admin => admin.uid !== uid)
       updateStats()
     } catch (err: any) {
@@ -103,12 +192,15 @@ export const useAdminStore = defineStore('admin', () => {
     }
   }
 
-  // Reset admin password
+  // Reset admin password – uses Supabase's built‑in password reset
   const resetAdminPassword = async (email: string) => {
     loading.value = true
     error.value = null
     try {
-      await AdminService.resetAdminPassword(email)
+      const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password`
+      })
+      if (resetError) throw resetError
     } catch (err: any) {
       error.value = err.message || 'Failed to reset password'
       console.error('Error resetting password:', err)
@@ -118,30 +210,45 @@ export const useAdminStore = defineStore('admin', () => {
     }
   }
 
-  // Get admin stats for the current tenant
+  // Get admin stats for the current tenant (computed from local admins)
   const fetchAdminStats = async () => {
-    try {
-      const adminStats = await AdminService.getAdminStats(authStore.currentTenant ?? undefined)
-      stats.value = adminStats
-    } catch (err: any) {
-      console.error('Error fetching admin stats:', err)
-    }
+    // Stats are already updated via fetchAdmins and local updates
+    return stats.value
   }
 
-  // Search admins within the current tenant
+  // Search admins within the current tenant (by display name or email)
   const searchAdmins = async (searchTerm: string) => {
+    if (!searchTerm.trim()) return []
     try {
-      return await AdminService.searchAdmins(searchTerm, authStore.currentTenant ?? undefined)
+      const tenantId = authStore.currentTenant
+      if (!tenantId) return []
+
+      const { data, error: searchError } = await supabase
+        .from('admins')
+        .select('*')
+        .eq('tenant_id', tenantId)
+        .or(`display_name.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%`)
+        .limit(20)
+
+      if (searchError) throw searchError
+
+      return (data || []).map(rowToAdmin)
     } catch (err: any) {
       console.error('Error searching admins:', err)
       return []
     }
   }
 
-  // Update last login
+  // Update last login timestamp (called after successful login)
   const updateLastLogin = async (uid: string) => {
     try {
-      await AdminService.updateLastLogin(uid)
+      const { error: updateError } = await supabase
+        .from('admins')
+        .update({ last_login: new Date().toISOString(), updated_at: new Date().toISOString() })
+        .eq('id', uid)
+
+      if (updateError) throw updateError
+
       const index = admins.value.findIndex(admin => admin.uid === uid)
       if (index !== -1) {
         admins.value[index].lastLoginAt = new Date().toISOString()
@@ -151,17 +258,7 @@ export const useAdminStore = defineStore('admin', () => {
     }
   }
 
-  // Helper function to update local stats
-  const updateStats = () => {
-    stats.value = {
-      total: admins.value.length,
-      superAdmins: admins.value.filter(admin => admin.role === 'super-admin').length,
-      activeAdmins: admins.value.filter(admin => admin.isActive).length,
-      inactiveAdmins: admins.value.filter(admin => !admin.isActive).length
-    }
-  }
-
-  // Get admin by ID
+  // Get admin by ID (from local cache)
   const getAdminById = (uid: string) => {
     return admins.value.find(admin => admin.uid === uid) || null
   }

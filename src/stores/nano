@@ -1,4 +1,4 @@
-// src/stores/cart.ts – SUPABASE VERSION
+// stores/cart.ts – SUPABASE VERSION
 import { defineStore } from 'pinia'
 import { ref, computed, watch } from 'vue'
 import type { CartItem, Product } from '@/types'

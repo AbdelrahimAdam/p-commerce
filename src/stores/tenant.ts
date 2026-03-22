@@ -1,8 +1,7 @@
-// stores/tenant.ts
+// stores/tenant.ts – SUPABASE VERSION
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { collection, query, where, getDocs, limit, DocumentData, doc, getDoc } from 'firebase/firestore'
-import { db } from '@/firebase/config'
+import { supabase } from '@/supabase/client'
 
 interface CachedTenant {
   tenantId: string
@@ -65,22 +64,26 @@ export const useTenantStore = defineStore('tenant', () => {
         }
       }
 
-      const tenantsRef = collection(db, 'tenants')
-      const q = query(tenantsRef, where('domain', '==', hostname), limit(1))
-      let snapshot
-      try {
-        snapshot = await getDocs(q)
-      } catch (firestoreError) {
-        if (retryCount < MAX_RETRIES && firestoreError instanceof Error && 
-            (firestoreError.message.includes('network') || firestoreError.message.includes('unavailable'))) {
-          console.warn(`⚠️ Firestore error, retrying (${retryCount + 1}/${MAX_RETRIES})...`)
+      // Query Supabase tenants table
+      let { data, error: fetchError } = await supabase
+        .from('tenants')
+        .select('id, domain, name, settings')
+        .eq('domain', hostname)
+        .limit(1)
+
+      if (fetchError) {
+        // Retry on network errors
+        if (retryCount < MAX_RETRIES && fetchError.message && 
+            (fetchError.message.toLowerCase().includes('network') || 
+fetchError.message.toLowerCase().includes('unavailable'))) {
+          console.warn(`⚠️ Supabase error, retrying (${retryCount + 1}/${MAX_RETRIES})...`)
           await sleep(RETRY_DELAY_MS)
           return resolveTenantFromDomain(retryCount + 1)
         }
-        throw firestoreError
+        throw fetchError
       }
 
-      if (snapshot.empty) {
+      if (!data || data.length === 0) {
         error.value = `No tenant configured for domain "${hostname}"`
         tenantId.value = null
         tenantDomain.value = null
@@ -89,14 +92,13 @@ export const useTenantStore = defineStore('tenant', () => {
         return
       }
 
-      const doc = snapshot.docs[0]
-      const docData: DocumentData = doc.data()
-      const resolvedDomain: string = (docData.domain as string) ?? ''
-      if (!resolvedDomain) throw new Error('Tenant domain is missing in Firestore')
+      const row = data[0]
+      const resolvedDomain: string = row.domain ?? ''
+      if (!resolvedDomain) throw new Error('Tenant domain is missing in database')
 
-      tenantId.value = doc.id
+      tenantId.value = row.id
       tenantDomain.value = resolvedDomain
-      console.info('✅ Tenant resolved from Firestore:', tenantId.value)
+      console.info('✅ Tenant resolved from Supabase:', tenantId.value)
 
       const cacheData: CachedTenant = {
         tenantId: tenantId.value,
@@ -147,19 +149,26 @@ export const useTenantStore = defineStore('tenant', () => {
     if (timeoutMs) {
       return Promise.race([
         readyPromise,
-        new Promise<void>((_, reject) => setTimeout(() => reject(new Error('Tenant resolution timeout')), timeoutMs))
+        new Promise<void>((_, reject) => setTimeout(() => reject(new Error('Tenant resolution timeout')), 
+timeoutMs))
       ])
     }
     return readyPromise
   }
 
-  const fetchTenantById = async (id: string): Promise<{ id: string; data: DocumentData } | null> => {
+  const fetchTenantById = async (id: string): Promise<{ id: string; data: any } | null> => {
     try {
-      const tenantDoc = await getDoc(doc(db, 'tenants', id))
-      if (tenantDoc.exists()) {
-        return { id: tenantDoc.id, data: tenantDoc.data() }
+      const { data, error: fetchError } = await supabase
+        .from('tenants')
+        .select('*')
+        .eq('id', id)
+        .single()
+
+      if (fetchError || !data) {
+        return null
       }
-      return null
+
+      return { id: data.id, data }
     } catch (err) {
       console.error('Error fetching tenant by ID:', err)
       return null

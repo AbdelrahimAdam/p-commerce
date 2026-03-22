@@ -1,11 +1,10 @@
-// src/stores/wishlist.ts
+// src/stores/wishlist.ts – SUPABASE VERSION
 import { defineStore } from 'pinia'
 import { ref, computed, watch } from 'vue'
 import { useLocalStorage } from '@vueuse/core'
 import { showNotification } from '@/utils/notifications'
 import { showConfirmation } from '@/utils/confirmation'
-import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore'
-import { db } from '@/firebase/config'
+import { supabase } from '@/supabase/client'
 import type { Product } from '@/types'
 import { useAuthStore } from './auth'
 
@@ -36,7 +35,7 @@ export interface WishlistItem {
 export const useWishlistStore = defineStore('wishlist', () => {
   const authStore = useAuthStore()
 
-  // State - Use localStorage for guest users
+  // State – use localStorage for guest users
   const items = useLocalStorage<WishlistItem[]>('luxury_wishlist', [])
   const isLoading = ref(false)
   const selectedItems = ref<string[]>([])
@@ -48,7 +47,8 @@ export const useWishlistStore = defineStore('wishlist', () => {
   const totalItems = computed(() => items.value.length)
   const totalValue = computed(() => items.value.reduce((sum, item) => sum + item.price, 0))
   const inStockCount = computed(() => items.value.filter(item => item.stockStatus === 'in_stock').length)
-  const lowStockCount = computed(() => items.value.filter(item => item.stockStatus === 'low_stock').length)
+  const lowStockCount = computed(() => items.value.filter(item => item.stockStatus === 
+'low_stock').length)
   const hasItem = (productId: string) => items.value.some(item => item.id === productId)
 
   const determineStockStatus = (product: Product): 'in_stock' | 'low_stock' | 'out_of_stock' => {
@@ -57,19 +57,33 @@ export const useWishlistStore = defineStore('wishlist', () => {
     return 'in_stock'
   }
 
-  const saveToFirestore = async () => {
+  // Helper to save current wishlist to Supabase (upsert)
+  const saveToSupabase = async () => {
     if (!authStore.isAuthenticated) return
     try {
-      const wishlistRef = doc(db, 'wishlists', authStore.currentUser!.uid)
-      await setDoc(wishlistRef, {
-        items: items.value,
-        privacy: privacySetting.value,
-        shareableId: shareableId.value || null,
-        tenantId: authStore.currentTenant,
-        updatedAt: serverTimestamp()
-      }, { merge: true })
+      const userId = authStore.user?.uid || authStore.customer?.uid
+      if (!userId) return
+
+      const tenantId = authStore.currentTenant
+      if (!tenantId) {
+        console.warn('No tenant ID – cannot save wishlist')
+        return
+      }
+
+      const { error } = await supabase
+        .from('wishlists')
+        .upsert({
+          user_id: userId,
+          items: items.value,
+          privacy: privacySetting.value,
+          shareable_id: shareableId.value || null,
+          tenant_id: tenantId,
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'user_id' })
+
+      if (error) throw error
     } catch (error) {
-      console.error('Error saving wishlist to Firestore:', error)
+      console.error('Error saving wishlist to Supabase:', error)
       showNotification({
         title: 'Error',
         message: 'Failed to sync wishlist',
@@ -78,35 +92,50 @@ export const useWishlistStore = defineStore('wishlist', () => {
     }
   }
 
-  const loadFromFirestore = async () => {
+  // Helper to load wishlist from Supabase and merge with local
+  const loadFromSupabase = async () => {
     if (!authStore.isAuthenticated) return
     try {
-      const wishlistRef = doc(db, 'wishlists', authStore.currentUser!.uid)
-      const snap = await getDoc(wishlistRef)
-      if (snap.exists()) {
-        const data = snap.data()
-        const firestoreItems = data.items || []
+      const userId = authStore.user?.uid || authStore.customer?.uid
+      if (!userId) return
 
-        // Merge: Firestore items take precedence, but keep local items not in Firestore
+      const tenantId = authStore.currentTenant
+      if (!tenantId) {
+        console.warn('No tenant ID – cannot load wishlist')
+        return
+      }
+
+      const { data, error } = await supabase
+        .from('wishlists')
+        .select('*')
+        .eq('user_id', userId)
+        .maybeSingle()
+
+      if (error) throw error
+
+      if (data) {
+        const serverItems = data.items || []
+        // Merge: server items take precedence, but keep local items not on server
         const localMap = new Map(items.value.map(i => [i.id, i]))
         const merged: WishlistItem[] = []
 
-        firestoreItems.forEach((fsItem: WishlistItem) => {
-          merged.push(fsItem)
-          localMap.delete(fsItem.id)
+        serverItems.forEach((si: WishlistItem) => {
+          merged.push(si)
+          localMap.delete(si.id)
         })
         merged.push(...localMap.values())
 
         items.value = merged
         privacySetting.value = data.privacy || 'private'
-        shareableId.value = data.shareableId || ''
+        shareableId.value = data.shareable_id || ''
 
-        await saveToFirestore() // persist merged list
+        await saveToSupabase() // persist merged list
       } else {
-        await saveToFirestore()
+        // No wishlist for this user – create one
+        await saveToSupabase()
       }
     } catch (error) {
-      console.error('Error loading wishlist from Firestore:', error)
+      console.error('Error loading wishlist from Supabase:', error)
       showNotification({
         title: 'Error',
         message: 'Failed to load wishlist',
@@ -144,7 +173,7 @@ export const useWishlistStore = defineStore('wishlist', () => {
     }
 
     items.value.push(newItem)
-    if (authStore.isAuthenticated) await saveToFirestore()
+    if (authStore.isAuthenticated) await saveToSupabase()
 
     showNotification({
       title: 'Added to Wishlist',
@@ -163,7 +192,7 @@ export const useWishlistStore = defineStore('wishlist', () => {
       const selectedIndex = selectedItems.value.indexOf(productId)
       if (selectedIndex > -1) selectedItems.value.splice(selectedIndex, 1)
 
-      if (authStore.isAuthenticated) await saveToFirestore()
+      if (authStore.isAuthenticated) await saveToSupabase()
 
       showNotification({
         title: 'Removed from Wishlist',
@@ -195,7 +224,7 @@ export const useWishlistStore = defineStore('wishlist', () => {
     if (confirmed) {
       items.value = []
       selectedItems.value = []
-      if (authStore.isAuthenticated) await saveToFirestore()
+      if (authStore.isAuthenticated) await saveToSupabase()
       showNotification({
         title: 'Wishlist Cleared',
         message: 'Your wishlist has been cleared',
@@ -209,7 +238,7 @@ export const useWishlistStore = defineStore('wishlist', () => {
   const removeSelected = async () => {
     items.value = items.value.filter(item => !selectedItems.value.includes(item.id))
     selectedItems.value = []
-    if (authStore.isAuthenticated) await saveToFirestore()
+    if (authStore.isAuthenticated) await saveToSupabase()
     showNotification({
       title: 'Items Removed',
       message: 'Selected items removed from wishlist',
@@ -218,11 +247,11 @@ export const useWishlistStore = defineStore('wishlist', () => {
   }
 
   const generateShareableLink = () => {
-    const userId = authStore.currentUser?.uid
+    const userId = authStore.user?.uid || authStore.customer?.uid
     if (userId) {
       const id = Math.random().toString(36).substring(2, 15)
       shareableId.value = id
-      if (authStore.isAuthenticated) saveToFirestore()
+      if (authStore.isAuthenticated) saveToSupabase()
       return `${window.location.origin}/wishlist/shared/${id}?user=${userId}`
     }
 
@@ -234,7 +263,7 @@ export const useWishlistStore = defineStore('wishlist', () => {
   const updatePrivacySetting = async (setting: 'private' | 'shared' | 'public') => {
     privacySetting.value = setting
     if (setting !== 'private' && !shareableId.value) generateShareableLink()
-    if (authStore.isAuthenticated) await saveToFirestore()
+    if (authStore.isAuthenticated) await saveToSupabase()
 
     showNotification({
       title: 'Privacy Updated',
@@ -247,8 +276,9 @@ export const useWishlistStore = defineStore('wishlist', () => {
     isLoading.value = true
     try {
       if (authStore.isAuthenticated) {
+        // Save current guest wishlist before loading server data
         guestWishlist.value = [...items.value]
-        await loadFromFirestore()
+        await loadFromSupabase()
       } else {
         if (guestWishlist.value.length > 0) {
           items.value = guestWishlist.value
@@ -275,7 +305,7 @@ export const useWishlistStore = defineStore('wishlist', () => {
       }
       return item
     })
-    if (authStore.isAuthenticated) saveToFirestore()
+    if (authStore.isAuthenticated) saveToSupabase()
   }
 
   // Watch for auth changes to reload wishlist

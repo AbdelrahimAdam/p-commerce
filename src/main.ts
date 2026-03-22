@@ -2,10 +2,8 @@
 
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
-import { VueFire } from 'vuefire'
 import App from './App.vue'
 import router from './router'
-import { app as firebaseApp } from './firebase/config'
 import './assets/styles/main.css'
 
 import { createI18n } from 'vue-i18n'
@@ -36,19 +34,22 @@ const isPublicPath = (path: string): boolean => {
   )
 }
 
-// Setup vue-i18n with all translations (including landing page)
+// ========================= TRANSLATIONS =========================
+// ⚠️ IMPORTANT: Replace the placeholder objects below with your actual
+// translations from the original Firebase-based main.ts file.
 const i18n = createI18n({
   legacy: false,
   locale: 'en',
   messages: {
     en: {
-      // ... (all your English translations, same as before)
+      // Paste your English translations here
     },
     ar: {
-      // ... (all your Arabic translations, same as before)
+      // Paste your Arabic translations here
     }
   }
 })
+// =================================================================
 
 // Helper to ensure locale is one of the supported values
 function isValidLocale(lang: string): lang is 'en' | 'ar' {
@@ -62,15 +63,13 @@ const pinia = createPinia()
 // Use plugins
 vueApp.use(pinia)
 vueApp.use(router)
-vueApp.use(VueFire, { firebaseApp })
 vueApp.use(i18n)
 
 // Mount app
 vueApp.mount('#app')
 
-console.log('🚀 Luxury Perfume Store v1.0.0')
+console.log('🚀 Luxury Perfume Store v1.0.0 (Supabase)')
 console.log('🌐 Languages: English & Arabic')
-console.log('🔥 Firebase: Connected')
 
 // Start tenant resolution immediately (non‑blocking)
 const tenantStore = useTenantStore()
@@ -163,20 +162,14 @@ setTimeout(async () => {
     console.log(`  🌐 Language: ${languageStore.currentLanguage}`)
 
     // Check if we need sample data (only in development)
+    // Note: The sample data script was Firebase-based – you may remove or adapt it.
     if ((import.meta as any).env.DEV) {
       const brandsCount = brandsStore.brands?.length || 0
       const productsCount = productsStore.products?.length || 0
 
       if (brandsCount === 0 || productsCount === 0) {
         console.log('\n⚠️  Database appears empty')
-        console.log('💡 Run initializeSampleData() in console')
-
-        try {
-          const { initializeSampleData } = await import('@/firebase/init')
-          ;(window as any).initializeSampleData = initializeSampleData
-        } catch (error) {
-          console.log('⚠️  Could not load sample data function')
-        }
+        console.log('💡 You may want to insert sample data manually in Supabase.')
       }
     }
 

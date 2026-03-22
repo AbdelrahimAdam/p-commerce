@@ -1,33 +1,9 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import type { AdminUser, CustomerUser } from '@/types'
-import { 
-  createUserWithEmailAndPassword,
-  signInWithEmailAndPassword,
-  signOut,
-  onAuthStateChanged,
-  type User as FirebaseUser,
-  sendPasswordResetEmail,
-  confirmPasswordReset as firebaseConfirmPasswordReset,
-  updateProfile,
-  updatePassword,
-  reauthenticateWithCredential,
-  EmailAuthProvider
-} from 'firebase/auth'
-import { 
-  doc, 
-  getDoc, 
-  setDoc, 
-  updateDoc,
-  serverTimestamp,
-  arrayUnion,
-  arrayRemove,
-  deleteDoc,
-  runTransaction
-} from 'firebase/firestore'
-import { auth, db } from '@/firebase/config'
-import { authNotification, showInfo } from '@/utils/notifications'
+import { supabase } from '@/supabase/client'
 import { useTenantStore } from './tenant'
+import { authNotification, showInfo } from '@/utils/notifications'
 
 // List of public paths that don't need authentication
 const PUBLIC_PATHS = [
@@ -61,9 +37,8 @@ const isPublicPath = (path: string): boolean => {
 export const useAuthStore = defineStore('auth', () => {
   const tenantStore = useTenantStore()
 
-  // Super-admin state
+  // State
   const user = ref<AdminUser | null>(null)
-  // Customer state
   const customer = ref<CustomerUser | null>(null)
   const isLoading = ref(false)
   const error = ref<string | null>(null)
@@ -76,7 +51,7 @@ export const useAuthStore = defineStore('auth', () => {
   const isAdmin = computed(() => !!user.value)
   const isSuperAdmin = computed(() => user.value?.role?.toLowerCase() === 'super-admin')
   const isCustomer = computed(() => !!customer.value)
-  
+
   const userInitials = computed(() => {
     const name = user.value?.displayName || customer.value?.displayName || ''
     if (name) {
@@ -96,71 +71,73 @@ export const useAuthStore = defineStore('auth', () => {
     return Math.max(0, sessionExpiry.value.getTime() - new Date().getTime())
   })
 
-  // Current tenant ID: from logged-in user (admin or customer) or from domain resolution
   const currentTenant = computed(() => 
     user.value?.tenantId || customer.value?.tenantId || tenantStore.tenantId
   )
 
-  // Helper: fetch admin from 'admins' collection
-  const getAdminFromFirestore = async (firebaseUser: FirebaseUser): Promise<AdminUser | null> => {
+  // Helper: fetch admin from 'admins' table
+  const getAdminFromSupabase = async (userId: string): Promise<AdminUser | null> => {
     try {
-      const adminDoc = await getDoc(doc(db, 'admins', firebaseUser.uid))
-      if (!adminDoc.exists()) return null
-      const data = adminDoc.data()
+      const { data, error } = await supabase
+        .from('admins')
+        .select('*')
+        .eq('id', userId)
+        .single()
+      if (error || !data) return null
       return {
-        uid: firebaseUser.uid,
-        email: firebaseUser.email || '',
-        displayName: data.displayName || firebaseUser.displayName || '',
-        role: data.role || 'super-admin',
-        tenantId: data.tenantId,
-        photoURL: data.photoURL || firebaseUser.photoURL || undefined,
-        isActive: data.isActive !== false,
-        permissions: data.permissions || ['all'],
-        createdAt: data.createdAt?.toDate?.() || new Date(),
-        updatedAt: data.updatedAt?.toDate?.() || new Date(),
-        lastLogin: new Date()
-      }
-    } catch (err: any) {
-      if (err.code !== 'permission-denied') {
-        console.error('❌ Error getting admin from Firestore:', err)
-      }
-      return null
-    }
-  }
-
-  // Helper: fetch customer from 'customers' collection – no auto‑creation
-  const getCustomerFromFirestore = async (firebaseUser: FirebaseUser): Promise<CustomerUser | null> => {
-    try {
-      const customerDoc = await getDoc(doc(db, 'customers', firebaseUser.uid))
-      if (!customerDoc.exists()) return null
-      
-      const data = customerDoc.data()
-      return {
-        uid: firebaseUser.uid,
-        email: firebaseUser.email || '',
-        displayName: data.displayName || firebaseUser.displayName || '',
-        tenantId: data.tenantId,
-        photoURL: data.photoURL || firebaseUser.photoURL || undefined,
-        phoneNumber: data.phoneNumber,
-        addresses: data.addresses || [],
-        wishlist: data.wishlist || [],
-        newsletter: data.newsletter || false,
-        createdAt: data.createdAt?.toDate?.() || new Date(),
-        updatedAt: data.updatedAt?.toDate?.() || new Date(),
+        uid: data.id,
+        email: data.email,
+        displayName: data.display_name,
+        role: data.role,
+        tenantId: data.tenant_id,
+        photoURL: data.photo_url,
+        isActive: data.is_active,
+        permissions: data.permissions,
+        createdAt: new Date(data.created_at),
+        updatedAt: new Date(data.updated_at),
         lastLogin: new Date()
       }
     } catch (err) {
-      console.error('❌ Error getting customer from Firestore:', err)
+      console.error('❌ Error getting admin from Supabase:', err)
       return null
     }
   }
 
-  // Private helper to set admin user and session
+  // Helper: fetch customer from 'customers' table
+  const getCustomerFromSupabase = async (userId: string): Promise<CustomerUser | null> => {
+    try {
+      const { data, error } = await supabase
+        .from('customers')
+        .select('*')
+        .eq('id', userId)
+        .single()
+      if (error || !data) return null
+      return {
+        uid: data.id,
+        email: data.email,
+        displayName: data.display_name,
+        tenantId: data.tenant_id,
+        photoURL: data.photo_url,
+        phoneNumber: data.phone_number,
+        addresses: data.addresses || [],
+        wishlist: data.wishlist || [],
+        newsletter: data.newsletter || false,
+        createdAt: new Date(data.created_at),
+        updatedAt: new Date(data.updated_at),
+        lastLogin: new Date()
+      }
+    } catch (err) {
+      console.error('❌ Error getting customer from Supabase:', err)
+      return null
+    }
+  }
+
+  // Private: set admin user and store session
   const setAdminUser = (adminData: AdminUser) => {
     user.value = adminData
     customer.value = null
     lastLogin.value = new Date()
-    sessionExpiry.value = new Date(Date.now() + 24 * 60 * 60 * 1000) // 24h session
+    sessionExpiry.value = new Date(Date.now() + 24 * 60 * 60 * 1000) // 24h
     localStorage.setItem('luxury_admin_session', JSON.stringify({
       user: adminData,
       expiry: sessionExpiry.value.getTime(),
@@ -168,7 +145,7 @@ export const useAuthStore = defineStore('auth', () => {
     }))
   }
 
-  // Private helper to set customer user and session
+  // Private: set customer user and store session
   const setCustomerUser = (customerData: CustomerUser, remember?: boolean) => {
     customer.value = customerData
     user.value = null
@@ -182,25 +159,29 @@ export const useAuthStore = defineStore('auth', () => {
     }))
   }
 
-  // Unified login: authenticates and determines role
+  // Unified login
   const authenticate = async (credentials: { email: string; password: string; remember?: boolean }) => {
     isLoading.value = true
     error.value = null
 
     try {
       console.log('🔐 Authenticating user:', credentials.email)
-      const userCredential = await signInWithEmailAndPassword(auth, credentials.email, credentials.password)
-      const firebaseUser = userCredential.user
+      const { data, error: signInError } = await supabase.auth.signInWithPassword({
+        email: credentials.email,
+        password: credentials.password
+      })
+      if (signInError || !data.user) throw new Error(signInError?.message || 'Invalid credentials')
+      const userId = data.user.id
 
-      // Check admin and customer collections in parallel
+      // Check admin and customer tables in parallel
       const [adminData, customerData] = await Promise.all([
-        getAdminFromFirestore(firebaseUser),
-        getCustomerFromFirestore(firebaseUser)
+        getAdminFromSupabase(userId),
+        getCustomerFromSupabase(userId)
       ])
 
       if (adminData) {
         setAdminUser(adminData)
-        await updateDoc(doc(db, 'admins', firebaseUser.uid), { lastLogin: serverTimestamp() })
+        await supabase.from('admins').update({ last_login: new Date().toISOString() }).eq('id', userId)
         authNotification.loggedIn(adminData.displayName ?? 'Admin')
         console.log('✅ Admin authenticated:', adminData.email)
         return { ...adminData, role: 'admin' }
@@ -208,10 +189,10 @@ export const useAuthStore = defineStore('auth', () => {
 
       if (customerData) {
         setCustomerUser(customerData, credentials.remember)
-        await updateDoc(doc(db, 'customers', firebaseUser.uid), { 
-          lastLogin: serverTimestamp(),
-          updatedAt: serverTimestamp()
-        })
+        await supabase.from('customers').update({ 
+          last_login: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        }).eq('id', userId)
         authNotification.loggedIn(customerData.displayName ?? 'Customer')
         console.log('✅ Customer authenticated:', customerData.email)
         return { ...customerData, role: 'customer' }
@@ -228,7 +209,7 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  // Admin Login action – kept for backward compatibility
+  // Admin Login (backward compatibility)
   const login = async (email: string, password: string): Promise<AdminUser> => {
     try {
       const result = await authenticate({ email, password, remember: false })
@@ -241,8 +222,9 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  // Customer Login action – kept for backward compatibility
-  const customerLogin = async (credentials: { email: string; password: string; remember?: boolean }): Promise<CustomerUser> => {
+  // Customer Login
+  const customerLogin = async (credentials: { email: string; password: string; remember?: boolean }): 
+Promise<CustomerUser> => {
     try {
       const result = await authenticate(credentials)
       if (result.role !== 'customer') {
@@ -254,7 +236,7 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  // Customer Registration – creates a customer document
+  // Customer Registration
   const customerRegister = async (userData: {
     email: string
     password: string
@@ -265,13 +247,17 @@ export const useAuthStore = defineStore('auth', () => {
     error.value = null
     try {
       console.log('📝 Creating customer account:', userData.email)
-      const userCredential = await createUserWithEmailAndPassword(auth, userData.email, userData.password)
-      const firebaseUser = userCredential.user
-
-      // Update profile with display name
-      await updateProfile(firebaseUser, {
-        displayName: userData.displayName
+      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+        email: userData.email,
+        password: userData.password,
+        options: {
+          data: { displayName: userData.displayName }
+        }
       })
+      if (signUpError) throw signUpError
+      if (!signUpData.user) throw new Error('Signup failed')
+
+      const userId = signUpData.user.id
 
       // Ensure tenant exists
       const tenantId = currentTenant.value
@@ -280,10 +266,10 @@ export const useAuthStore = defineStore('auth', () => {
       }
 
       const newCustomer: CustomerUser = {
-        uid: firebaseUser.uid,
+        uid: userId,
         email: userData.email,
         displayName: userData.displayName,
-        tenantId, // now guaranteed string
+        tenantId,
         photoURL: undefined,
         phoneNumber: userData.phoneNumber,
         addresses: [],
@@ -294,25 +280,27 @@ export const useAuthStore = defineStore('auth', () => {
         lastLogin: new Date()
       }
 
-      const firestoreData: any = {
-        uid: newCustomer.uid,
+      const dbData = {
+        id: userId,
         email: newCustomer.email,
-        displayName: newCustomer.displayName,
-        tenantId: newCustomer.tenantId,
+        display_name: newCustomer.displayName,
+        tenant_id: newCustomer.tenantId,
         addresses: newCustomer.addresses,
         wishlist: newCustomer.wishlist,
         newsletter: newCustomer.newsletter,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp()
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
       }
-      if (newCustomer.photoURL) firestoreData.photoURL = newCustomer.photoURL
-      if (newCustomer.phoneNumber) firestoreData.phoneNumber = newCustomer.phoneNumber
+      if (newCustomer.phoneNumber) dbData.phone_number = newCustomer.phoneNumber
 
-      await setDoc(doc(db, 'customers', firebaseUser.uid), firestoreData)
+      const { error: insertError } = await supabase
+        .from('customers')
+        .insert(dbData)
+      if (insertError) throw insertError
 
       customer.value = newCustomer
       user.value = null
-      
+
       authNotification.loggedIn('Account created successfully!')
       console.log('✅ Customer registered:', newCustomer.email)
       return newCustomer
@@ -328,7 +316,6 @@ export const useAuthStore = defineStore('auth', () => {
 
   // ========== CUSTOMER PROFILE UPDATE ACTIONS ==========
 
-  // Update customer profile (displayName, phone, preferences)
   const updateCustomerProfile = async (profileData: {
     displayName?: string
     phoneNumber?: string
@@ -336,49 +323,42 @@ export const useAuthStore = defineStore('auth', () => {
     smsNotifications?: boolean
     dob?: string
   }): Promise<void> => {
-    if (!customer.value) {
-      throw new Error('No customer logged in')
-    }
-
+    if (!customer.value) throw new Error('No customer logged in')
     isLoading.value = true
     error.value = null
 
     try {
-      const firebaseUser = auth.currentUser
-      if (!firebaseUser) {
-        throw new Error('No authenticated user')
-      }
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) throw new Error('No authenticated user')
 
-      // Update display name in Firebase Auth if provided
-      if (profileData.displayName && firebaseUser.displayName !== profileData.displayName) {
-        await updateProfile(firebaseUser, {
-          displayName: profileData.displayName
+      if (profileData.displayName && user.user_metadata?.displayName !== profileData.displayName) {
+        const { error: updateAuthError } = await supabase.auth.updateUser({
+          data: { displayName: profileData.displayName }
         })
+        if (updateAuthError) throw updateAuthError
       }
 
-      // Update customer document in Firestore
-      const customerRef = doc(db, 'customers', customer.value.uid)
-      const updateData: any = {
-        updatedAt: serverTimestamp()
-      }
-
-      if (profileData.displayName) updateData.displayName = profileData.displayName
-      if (profileData.phoneNumber !== undefined) updateData.phoneNumber = profileData.phoneNumber
+      const updateData: any = { updated_at: new Date().toISOString() }
+      if (profileData.displayName) updateData.display_name = profileData.displayName
+      if (profileData.phoneNumber !== undefined) updateData.phone_number = profileData.phoneNumber
       if (profileData.newsletter !== undefined) updateData.newsletter = profileData.newsletter
-      if (profileData.smsNotifications !== undefined) updateData.smsNotifications = profileData.smsNotifications
+      if (profileData.smsNotifications !== undefined) updateData.sms_notifications = 
+profileData.smsNotifications
       if (profileData.dob !== undefined) updateData.dob = profileData.dob
 
-      await updateDoc(customerRef, updateData)
+      const { error: updateError } = await supabase
+        .from('customers')
+        .update(updateData)
+        .eq('id', customer.value.uid)
+      if (updateError) throw updateError
 
-      // Update local customer state
       if (profileData.displayName) customer.value.displayName = profileData.displayName
       if (profileData.phoneNumber !== undefined) customer.value.phoneNumber = profileData.phoneNumber
       if (profileData.newsletter !== undefined) customer.value.newsletter = profileData.newsletter
-      
-      // Add any additional fields to customer object
-      const extendedCustomer = customer.value as any
-      if (profileData.smsNotifications !== undefined) extendedCustomer.smsNotifications = profileData.smsNotifications
-      if (profileData.dob !== undefined) extendedCustomer.dob = profileData.dob
+      const extended = customer.value as any
+      if (profileData.smsNotifications !== undefined) extended.smsNotifications = 
+profileData.smsNotifications
+      if (profileData.dob !== undefined) extended.dob = profileData.dob
 
       authNotification.loggedIn('Profile updated successfully')
     } catch (err: any) {
@@ -391,81 +371,68 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  // Change customer password
   const changeCustomerPassword = async (currentPassword: string, newPassword: string): Promise<void> => {
-    if (!customer.value) {
-      throw new Error('No customer logged in')
-    }
-
+    if (!customer.value) throw new Error('No customer logged in')
     isLoading.value = true
     error.value = null
 
     try {
-      const firebaseUser = auth.currentUser
-      if (!firebaseUser || !firebaseUser.email) {
-        throw new Error('No authenticated user')
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: customer.value.email,
+        password: currentPassword
+      })
+      if (signInError) {
+        if (signInError.message.includes('Invalid login')) {
+          error.value = 'Current password is incorrect'
+          throw new Error(error.value)
+        }
+        throw signInError
       }
 
-      // Re-authenticate user before changing password
-      const credential = EmailAuthProvider.credential(
-        firebaseUser.email,
-        currentPassword
-      )
-      
-      await reauthenticateWithCredential(firebaseUser, credential)
-      
-      // Update password
-      await updatePassword(firebaseUser, newPassword)
+      const { error: updateError } = await supabase.auth.updateUser({
+        password: newPassword
+      })
+      if (updateError) throw updateError
 
       authNotification.loggedIn('Password updated successfully')
     } catch (err: any) {
       console.error('❌ Error changing password:', err)
-      
-      // Handle specific errors
-      if (err.code === 'auth/wrong-password') {
-        error.value = 'Current password is incorrect'
-      } else if (err.code === 'auth/weak-password') {
-        error.value = 'New password is too weak'
-      } else {
-        error.value = err.message || 'Failed to change password'
-      }
-      
-      authNotification.error(error.value || 'Password change failed')
+      if (!error.value) error.value = err.message || 'Failed to change password'
+      authNotification.error(error.value)
       throw err
     } finally {
       isLoading.value = false
     }
   }
 
-  // Add address to customer
+  // Address management (read-modify-write)
   const addCustomerAddress = async (address: any): Promise<void> => {
-    if (!customer.value) {
-      throw new Error('No customer logged in')
-    }
-
+    if (!customer.value) throw new Error('No customer logged in')
     isLoading.value = true
     error.value = null
 
     try {
-      const customerRef = doc(db, 'customers', customer.value.uid)
-      
-      // Generate a unique ID for the address
+      const { data, error: fetchError } = await supabase
+        .from('customers')
+        .select('addresses')
+        .eq('id', customer.value.uid)
+        .single()
+      if (fetchError) throw fetchError
+
+      const current = data?.addresses || []
       const addressWithId = {
         ...address,
         id: `addr_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
       }
+      const newAddresses = [...current, addressWithId]
 
-      await updateDoc(customerRef, {
-        addresses: arrayUnion(addressWithId),
-        updatedAt: serverTimestamp()
-      })
+      const { error: updateError } = await supabase
+        .from('customers')
+        .update({ addresses: newAddresses, updated_at: new Date().toISOString() })
+        .eq('id', customer.value.uid)
+      if (updateError) throw updateError
 
-      // Update local state
-      if (!customer.value.addresses) {
-        customer.value.addresses = []
-      }
-      customer.value.addresses.push(addressWithId)
-
+      customer.value.addresses = newAddresses
       authNotification.loggedIn('Address added successfully')
     } catch (err: any) {
       console.error('❌ Error adding address:', err)
@@ -477,34 +444,31 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  // Update customer address
   const updateCustomerAddress = async (addressId: string, updatedAddress: any): Promise<void> => {
-    if (!customer.value) {
-      throw new Error('No customer logged in')
-    }
-
+    if (!customer.value) throw new Error('No customer logged in')
     isLoading.value = true
     error.value = null
 
     try {
-      const customerRef = doc(db, 'customers', customer.value.uid)
-      
-      // Get current addresses
-      const currentAddresses = customer.value.addresses || []
-      
-      // Find and update the specific address
-      const updatedAddresses = currentAddresses.map(addr => 
+      const { data, error: fetchError } = await supabase
+        .from('customers')
+        .select('addresses')
+        .eq('id', customer.value.uid)
+        .single()
+      if (fetchError) throw fetchError
+
+      const current = data?.addresses || []
+      const newAddresses = current.map(addr =>
         addr.id === addressId ? { ...addr, ...updatedAddress, id: addressId } : addr
       )
 
-      await updateDoc(customerRef, {
-        addresses: updatedAddresses,
-        updatedAt: serverTimestamp()
-      })
+      const { error: updateError } = await supabase
+        .from('customers')
+        .update({ addresses: newAddresses, updated_at: new Date().toISOString() })
+        .eq('id', customer.value.uid)
+      if (updateError) throw updateError
 
-      // Update local state
-      customer.value.addresses = updatedAddresses
-
+      customer.value.addresses = newAddresses
       authNotification.loggedIn('Address updated successfully')
     } catch (err: any) {
       console.error('❌ Error updating address:', err)
@@ -516,33 +480,29 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  // Remove customer address
   const removeCustomerAddress = async (addressId: string): Promise<void> => {
-    if (!customer.value) {
-      throw new Error('No customer logged in')
-    }
-
+    if (!customer.value) throw new Error('No customer logged in')
     isLoading.value = true
     error.value = null
 
     try {
-      const customerRef = doc(db, 'customers', customer.value.uid)
-      
-      // Find the address to remove
-      const addressToRemove = (customer.value.addresses || []).find(addr => addr.id === addressId)
-      
-      if (!addressToRemove) {
-        throw new Error('Address not found')
-      }
+      const { data, error: fetchError } = await supabase
+        .from('customers')
+        .select('addresses')
+        .eq('id', customer.value.uid)
+        .single()
+      if (fetchError) throw fetchError
 
-      await updateDoc(customerRef, {
-        addresses: arrayRemove(addressToRemove),
-        updatedAt: serverTimestamp()
-      })
+      const current = data?.addresses || []
+      const newAddresses = current.filter(addr => addr.id !== addressId)
 
-      // Update local state
-      customer.value.addresses = (customer.value.addresses || []).filter(addr => addr.id !== addressId)
+      const { error: updateError } = await supabase
+        .from('customers')
+        .update({ addresses: newAddresses, updated_at: new Date().toISOString() })
+        .eq('id', customer.value.uid)
+      if (updateError) throw updateError
 
+      customer.value.addresses = newAddresses
       authNotification.loggedIn('Address removed successfully')
     } catch (err: any) {
       console.error('❌ Error removing address:', err)
@@ -554,32 +514,32 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  // Set default address
   const setDefaultAddress = async (addressId: string): Promise<void> => {
-    if (!customer.value) {
-      throw new Error('No customer logged in')
-    }
-
+    if (!customer.value) throw new Error('No customer logged in')
     isLoading.value = true
     error.value = null
 
     try {
-      const customerRef = doc(db, 'customers', customer.value.uid)
-      
-      // Update all addresses to set isDefault flag
-      const updatedAddresses = (customer.value.addresses || []).map(addr => ({
+      const { data, error: fetchError } = await supabase
+        .from('customers')
+        .select('addresses')
+        .eq('id', customer.value.uid)
+        .single()
+      if (fetchError) throw fetchError
+
+      const current = data?.addresses || []
+      const newAddresses = current.map(addr => ({
         ...addr,
         isDefault: addr.id === addressId
       }))
 
-      await updateDoc(customerRef, {
-        addresses: updatedAddresses,
-        updatedAt: serverTimestamp()
-      })
+      const { error: updateError } = await supabase
+        .from('customers')
+        .update({ addresses: newAddresses, updated_at: new Date().toISOString() })
+        .eq('id', customer.value.uid)
+      if (updateError) throw updateError
 
-      // Update local state
-      customer.value.addresses = updatedAddresses
-
+      customer.value.addresses = newAddresses
       authNotification.loggedIn('Default address updated')
     } catch (err: any) {
       console.error('❌ Error setting default address:', err)
@@ -591,18 +551,11 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  // Upload profile photo
   const uploadProfilePhoto = async (_file: File): Promise<string> => {
-    if (!customer.value) {
-      throw new Error('No customer logged in')
-    }
-
+    if (!customer.value) throw new Error('No customer logged in')
     isLoading.value = true
     error.value = null
-
     try {
-      // This would typically upload to Firebase Storage
-      // For now, we'll return a placeholder
       showInfo('Info', 'Photo upload functionality coming soon')
       return ''
     } catch (err: any) {
@@ -621,109 +574,57 @@ export const useAuthStore = defineStore('auth', () => {
     password: string
     displayName: string
     companyName: string
-    domain: string   // now required – the subdomain (e.g., "company")
+    domain: string
   }) => {
     isLoading.value = true
     error.value = null
 
     try {
-      // 1. Create Firebase Auth user
-      const userCredential = await createUserWithEmailAndPassword(
-        auth,
-        data.email,
-        data.password
-      )
-      const firebaseUser = userCredential.user
+      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+        email: data.email,
+        password: data.password,
+        options: {
+          data: { displayName: data.displayName }
+        }
+      })
+      if (signUpError) throw signUpError
+      if (!signUpData.user) throw new Error('Failed to create user')
+      const userId = signUpData.user.id
 
-      // 2. Update display name in Auth profile
-      await updateProfile(firebaseUser, { displayName: data.displayName })
-
-      // 3. Generate a unique tenant ID from company name (slugified)
       const tenantId = data.companyName
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, '-')
         .replace(/^-|-$/g, '')
 
-      // 4. Construct full domain with root domain from environment
       const rootDomain = import.meta.env.VITE_ROOT_DOMAIN
-      if (!rootDomain) {
-        throw new Error('VITE_ROOT_DOMAIN environment variable is not set')
-      }
+      if (!rootDomain) throw new Error('VITE_ROOT_DOMAIN environment variable is not set')
       const fullDomain = `${data.domain}.${rootDomain}`
 
-      // 5. Run a transaction to create tenant and admin documents
-      await runTransaction(db, async (transaction) => {
-        // Check if tenant already exists
-        const tenantRef = doc(db, 'tenants', tenantId)
-        const tenantSnap = await transaction.get(tenantRef)
-        if (tenantSnap.exists()) {
-          throw new Error('Company name already taken')
-        }
-
-        // Create tenant document with ownerId and domain
-        const tenantData: any = {
-          name: data.companyName,
-          domain: fullDomain,
-          ownerId: firebaseUser.uid,
-          createdAt: serverTimestamp(),
-          settings: {
-            defaultLanguage: 'en',
-            isActive: true
-          }
-        }
-        transaction.set(tenantRef, tenantData)
-
-        // Create admin document for the user
-        const adminRef = doc(db, 'admins', firebaseUser.uid)
-        transaction.set(adminRef, {
-          uid: firebaseUser.uid,
-          email: data.email,
-          displayName: data.displayName,
-          role: 'admin',
-          tenantId,
-          isActive: true,
-          permissions: ['all'],
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp(),
-          lastLogin: null
-        })
-
-        // Do NOT create a customer document – admins are not customers.
+      const { error: rpcError } = await supabase.rpc('register_company', {
+        _tenant_id: tenantId,
+        _tenant_name: data.companyName,
+        _domain: fullDomain,
+        _admin_id: userId,
+        _admin_email: data.email,
+        _admin_display_name: data.displayName
       })
+      if (rpcError) throw rpcError
 
-      // 6. Delete any existing customer document for this user (e.g., from a previous registration)
-      const customerRef = doc(db, 'customers', firebaseUser.uid)
-      const customerSnap = await getDoc(customerRef)
-      if (customerSnap.exists()) {
-        console.log('🗑️ Deleting existing customer document for admin user')
-        await deleteDoc(customerRef)
+      // Delete any existing customer record (if any)
+      const { error: deleteError } = await supabase
+        .from('customers')
+        .delete()
+        .eq('id', userId)
+      if (deleteError && deleteError.code !== 'PGRST116') {
+        console.warn('Could not delete customer record:', deleteError)
       }
 
-      // 7. Directly fetch the newly created admin document and set the user
-      const adminDoc = await getDoc(doc(db, 'admins', firebaseUser.uid))
-      if (!adminDoc.exists()) {
-        throw new Error('Admin document not found after transaction')
-      }
-      const adminData = adminDoc.data()
-      const newUser: AdminUser = {
-        uid: firebaseUser.uid,
-        email: adminData.email,
-        displayName: adminData.displayName,
-        role: adminData.role,
-        tenantId: adminData.tenantId,
-        photoURL: adminData.photoURL || undefined,
-        isActive: adminData.isActive,
-        permissions: adminData.permissions,
-        createdAt: adminData.createdAt?.toDate?.() || new Date(),
-        updatedAt: adminData.updatedAt?.toDate?.() || new Date(),
-        lastLogin: new Date()
-      }
-
-      // Set the user in the store and session
-      setAdminUser(newUser)
+      const admin = await getAdminFromSupabase(userId)
+      if (!admin) throw new Error('Admin document not found after registration')
+      setAdminUser(admin)
 
       console.log('✅ Company registered:', tenantId)
-      return { tenantId, uid: firebaseUser.uid }
+      return { tenantId, uid: userId }
     } catch (err: any) {
       error.value = err.message || 'Registration failed'
       console.error('Company registration error:', err)
@@ -733,12 +634,13 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  // Logout action (clears both admin and customer)
+  // Logout
   const logout = async () => {
     isLoading.value = true
     error.value = null
     try {
-      await signOut(auth)
+      const { error: signOutError } = await supabase.auth.signOut()
+      if (signOutError) throw signOutError
       user.value = null
       customer.value = null
       sessionExpiry.value = null
@@ -753,32 +655,28 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  // Password Reset
   const resetPassword = async (email: string) => {
     try {
-      await sendPasswordResetEmail(auth, email, {
-        url: `${window.location.origin}/login`,
-        handleCodeInApp: true
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password`
       })
+      if (error) throw error
     } catch (error) {
       throw error
     }
   }
 
-  // Confirm Password Reset
   const confirmPasswordReset = async (code: string, newPassword: string) => {
     try {
-      await firebaseConfirmPasswordReset(auth, code, newPassword)
+      const { error } = await supabase.auth.updateUser({ password: newPassword })
+      if (error) throw error
     } catch (error) {
       throw error
     }
   }
 
-  // Check session/auth state
   const checkAuth = async (force: boolean = false, ignoreSession: boolean = false) => {
-    // Skip auth check on public pages unless forced
     if (!force && isPublicPath(window.location.pathname)) {
-      console.log('🌍 Public page - skipping auth check')
       user.value = null
       customer.value = null
       sessionExpiry.value = null
@@ -787,11 +685,9 @@ export const useAuthStore = defineStore('auth', () => {
 
     isLoading.value = true
     try {
-      // Check for existing sessions only if not ignoring them
       if (!ignoreSession) {
         const adminSaved = localStorage.getItem('luxury_admin_session')
         const customerSaved = localStorage.getItem('luxury_customer_session')
-
         if (adminSaved) {
           try {
             const { user: savedUser, expiry } = JSON.parse(adminSaved)
@@ -799,14 +695,9 @@ export const useAuthStore = defineStore('auth', () => {
               user.value = savedUser
               sessionExpiry.value = new Date(expiry)
               return
-            } else {
-              localStorage.removeItem('luxury_admin_session')
-            }
-          } catch (e) {
-            localStorage.removeItem('luxury_admin_session')
-          }
+            } else localStorage.removeItem('luxury_admin_session')
+          } catch { localStorage.removeItem('luxury_admin_session') }
         }
-
         if (customerSaved) {
           try {
             const { user: savedUser, expiry } = JSON.parse(customerSaved)
@@ -814,59 +705,45 @@ export const useAuthStore = defineStore('auth', () => {
               customer.value = savedUser
               sessionExpiry.value = new Date(expiry)
               return
-            } else {
-              localStorage.removeItem('luxury_customer_session')
-            }
-          } catch (e) {
-            localStorage.removeItem('luxury_customer_session')
-          }
+            } else localStorage.removeItem('luxury_customer_session')
+          } catch { localStorage.removeItem('luxury_customer_session') }
         }
-      } else {
-        console.log('⏭️ Ignoring session storage, forcing fresh fetch');
       }
 
-      return new Promise<void>((resolve) => {
-        const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-          if (firebaseUser) {
-            // First check if admin
-            const adminData = await getAdminFromFirestore(firebaseUser)
-            if (adminData) {
-              user.value = adminData
-              customer.value = null
-              sessionExpiry.value = new Date(Date.now() + 24 * 60 * 60 * 1000)
-              localStorage.setItem('luxury_admin_session', JSON.stringify({
-                user: user.value,
-                expiry: sessionExpiry.value.getTime(),
-                timestamp: Date.now()
-              }))
-            } else {
-              // Then check if customer
-              const customerData = await getCustomerFromFirestore(firebaseUser)
-              if (customerData) {
-                customer.value = customerData
-                user.value = null
-                sessionExpiry.value = new Date(Date.now() + 24 * 60 * 60 * 1000)
-                localStorage.setItem('luxury_customer_session', JSON.stringify({
-                  user: customer.value,
-                  expiry: sessionExpiry.value.getTime(),
-                  timestamp: Date.now()
-                }))
-              } else {
-                user.value = null
-                customer.value = null
-              }
-            }
-          } else {
-            user.value = null
-            customer.value = null
-            localStorage.removeItem('luxury_admin_session')
-            localStorage.removeItem('luxury_customer_session')
-          }
-          unsubscribe()
-          resolve()
-        })
-      })
+      const { data: { user: authUser } } = await supabase.auth.getUser()
+      if (!authUser) {
+        user.value = null
+        customer.value = null
+        return
+      }
 
+      const [adminData, customerData] = await Promise.all([
+        getAdminFromSupabase(authUser.id),
+        getCustomerFromSupabase(authUser.id)
+      ])
+
+      if (adminData) {
+        user.value = adminData
+        customer.value = null
+        sessionExpiry.value = new Date(Date.now() + 24 * 60 * 60 * 1000)
+        localStorage.setItem('luxury_admin_session', JSON.stringify({
+          user: user.value,
+          expiry: sessionExpiry.value.getTime(),
+          timestamp: Date.now()
+        }))
+      } else if (customerData) {
+        customer.value = customerData
+        user.value = null
+        sessionExpiry.value = new Date(Date.now() + 24 * 60 * 60 * 1000)
+        localStorage.setItem('luxury_customer_session', JSON.stringify({
+          user: customer.value,
+          expiry: sessionExpiry.value.getTime(),
+          timestamp: Date.now()
+        }))
+      } else {
+        user.value = null
+        customer.value = null
+      }
     } catch (err) {
       console.error('❌ Auth check failed:', err)
       user.value = null
@@ -878,25 +755,27 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  // Create initial super-admin (kept for compatibility)
   const createSuperAdmin = async (email: string, password: string, displayName: string) => {
     isLoading.value = true
     try {
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password)
-      const firebaseUser = userCredential.user
+      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+        email,
+        password,
+        options: { data: { displayName } }
+      })
+      if (signUpError) throw signUpError
+      if (!signUpData.user) throw new Error('Signup failed')
+      const userId = signUpData.user.id
 
-      // Ensure tenant exists
       const tenantId = currentTenant.value
-      if (!tenantId) {
-        throw new Error('Tenant not resolved. Cannot create super-admin.')
-      }
+      if (!tenantId) throw new Error('Tenant not resolved. Cannot create super-admin.')
 
       const adminData: AdminUser = {
-        uid: firebaseUser.uid,
+        uid: userId,
         email,
         displayName,
         role: 'super-admin',
-        tenantId, // now guaranteed string
+        tenantId,
         photoURL: undefined,
         isActive: true,
         permissions: ['all'],
@@ -905,20 +784,19 @@ export const useAuthStore = defineStore('auth', () => {
         lastLogin: new Date()
       }
 
-      const firestoreData: any = {
-        uid: adminData.uid,
+      const dbData = {
+        id: userId,
         email: adminData.email,
-        displayName: adminData.displayName,
+        display_name: adminData.displayName,
         role: adminData.role,
-        tenantId: adminData.tenantId,
-        isActive: adminData.isActive,
+        tenant_id: adminData.tenantId,
+        is_active: adminData.isActive,
         permissions: adminData.permissions,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp()
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
       }
-      if (adminData.photoURL) firestoreData.photoURL = adminData.photoURL
-
-      await setDoc(doc(db, 'admins', firebaseUser.uid), firestoreData)
+      const { error: insertError } = await supabase.from('admins').insert(dbData)
+      if (insertError) throw insertError
 
       console.log('✅ Super-admin created:', adminData.email)
       return adminData
@@ -930,13 +808,10 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  // Refresh session
   const refreshSession = () => {
     const current = user.value || customer.value
     if (!current) return
-    
     sessionExpiry.value = new Date(Date.now() + 24 * 60 * 60 * 1000)
-    
     if (user.value) {
       localStorage.setItem('luxury_admin_session', JSON.stringify({
         user: user.value,
@@ -952,45 +827,33 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  // Clear error
   const clearError = () => { error.value = null }
 
-  // Initialize listener
   const init = () => {
-    // Only initialize auth listener on non-public pages
     if (isPublicPath(window.location.pathname)) {
       console.log('🌍 Public page - skipping auth listener initialization')
       return
     }
-
     if (authListenerInitialized.value) return
-    
-    console.log('🔐 Initializing auth listener for protected page')
     authListenerInitialized.value = true
-    
-    onAuthStateChanged(auth, async (firebaseUser) => {
-      // Skip updates on public pages
-      if (isPublicPath(window.location.pathname)) {
-        console.log('🌍 Public page - ignoring auth state change')
-        return
-      }
 
-      if (firebaseUser) {
-        // Check if admin first
-        const adminData = await getAdminFromFirestore(firebaseUser)
+    supabase.auth.onAuthStateChange(async (event, session) => {
+      if (isPublicPath(window.location.pathname)) return
+      if (session?.user) {
+        const userId = session.user.id
+        const [adminData, customerData] = await Promise.all([
+          getAdminFromSupabase(userId),
+          getCustomerFromSupabase(userId)
+        ])
         if (adminData) {
           user.value = adminData
           customer.value = null
+        } else if (customerData) {
+          customer.value = customerData
+          user.value = null
         } else {
-          // Then check if customer
-          const customerData = await getCustomerFromFirestore(firebaseUser)
-          if (customerData) {
-            customer.value = customerData
-            user.value = null
-          } else {
-            user.value = null
-            customer.value = null
-          }
+          user.value = null
+          customer.value = null
         }
       } else {
         user.value = null
@@ -999,7 +862,6 @@ export const useAuthStore = defineStore('auth', () => {
     })
   }
 
-  // Reset auth state
   const resetAuthState = () => {
     if (isPublicPath(window.location.pathname)) {
       user.value = null
@@ -1009,15 +871,12 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   return {
-    // State
     user,
     customer,
     isLoading,
     error,
     lastLogin,
     sessionExpiry,
-    
-    // Getters
     isAuthenticated,
     isAdmin,
     isSuperAdmin,
@@ -1025,14 +884,10 @@ export const useAuthStore = defineStore('auth', () => {
     userInitials,
     currentUser,
     sessionTimeLeft,
-    currentTenant,  
-    
-    // Admin Actions
+    currentTenant,
     login,
     createSuperAdmin,
     registerCompany,
-    
-    // Customer Actions
     customerLogin,
     authenticate,
     customerRegister,
@@ -1045,8 +900,6 @@ export const useAuthStore = defineStore('auth', () => {
     uploadProfilePhoto,
     resetPassword,
     confirmPasswordReset,
-    
-    // Shared Actions
     logout,
     checkAuth,
     refreshSession,

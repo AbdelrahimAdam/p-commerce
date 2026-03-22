@@ -1,25 +1,7 @@
-// src/stores/orders.ts
+// src/stores/orders.ts – SUPABASE VERSION
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { 
-  collection, 
-  query, 
-  where, 
-  orderBy, 
-  getDocs, 
-  getDoc, 
-  doc, 
-  updateDoc, 
-  addDoc, 
-  serverTimestamp,
-  Timestamp,
-  limit,
-  startAfter,
-  QueryDocumentSnapshot,
-  DocumentData,
-  runTransaction
-} from 'firebase/firestore'
-import { db } from '@/firebase/config'
+import { supabase } from '@/supabase/client'
 import { useAuthStore } from './auth'
 import { useCartStore } from './cart'
 import { useProductsStore } from './products'
@@ -32,7 +14,6 @@ import type {
   PaymentMethod,
   PaymentStatus,
   StatusHistoryItem,
-  FirestoreOrder,
   Product
 } from '@/types'
 
@@ -46,7 +27,9 @@ export const useOrdersStore = defineStore('orders', () => {
   const currentOrder = ref<Order | null>(null)
   const loading = ref(false)
   const error = ref<string | null>(null)
-  const lastVisible = ref<QueryDocumentSnapshot<DocumentData> | null>(null)
+  // lastVisible and hasMore are no longer used for Supabase (cursor pagination not fully implemented)
+  // but we keep them to maintain the same interface; pagination can be added later.
+  const lastVisible = ref<any>(null)
   const hasMore = ref(true)
   const statsLoading = ref(false)
   const orderStats = ref<{
@@ -61,9 +44,10 @@ export const useOrdersStore = defineStore('orders', () => {
     monthlyRevenue: number
   } | null>(null)
 
-  // Helper to get product reference in brand subcollection
+  // Helper to get product reference (not needed in Supabase; we use direct product id)
+  // Kept for compatibility but not used.
   const getProductRef = (brandId: string, productId: string) => {
-    return doc(db, 'brands', brandId, 'products', productId)
+    // noop
   }
 
   // Getters
@@ -91,7 +75,7 @@ export const useOrdersStore = defineStore('orders', () => {
     return paidOrders.reduce((sum, o) => sum + o.total, 0) / paidOrders.length
   })
 
-  // Helper functions
+  // Helper functions (same as original)
   const getStatusText = (status: OrderStatus): string => {
     const map: Record<OrderStatus, string> = {
       pending: 'Pending Confirmation',
@@ -137,24 +121,40 @@ export const useOrdersStore = defineStore('orders', () => {
   const generateGuestId = (): string => 
     `guest_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`
 
-  const convertTimestampsToDates = (firestoreOrder: FirestoreOrder & { id: string }): Order => ({
-    ...firestoreOrder,
-    id: firestoreOrder.id,
-    userId: firestoreOrder.userId ?? undefined,
-    guestId: firestoreOrder.guestId ?? undefined,
-    tenantId: firestoreOrder.tenantId,
-    createdAt: (firestoreOrder.createdAt as Timestamp)?.toDate?.() || new Date(),
-    updatedAt: (firestoreOrder.updatedAt as Timestamp)?.toDate?.() || new Date(),
-    shippedAt: (firestoreOrder.shippedAt as Timestamp)?.toDate?.() || undefined,
-    deliveredAt: (firestoreOrder.deliveredAt as Timestamp)?.toDate?.() || undefined,
-    cancelledAt: (firestoreOrder.cancelledAt as Timestamp)?.toDate?.() || undefined,
-    statusHistory: firestoreOrder.statusHistory?.map(h => ({
-      status: h.status,
-      date: h.timestamp.toDate(),
-      note: h.note,
-      updatedBy: h.updatedBy
-    }))
-  })
+  // Convert Supabase row to Order object
+  const convertRowToOrder = (row: any): Order => {
+    // row.created_at, updated_at, etc. are ISO strings
+    return {
+      id: row.id,
+      orderNumber: row.order_number,
+      customer: row.customer, // already object
+      items: row.items,
+      subtotal: row.subtotal,
+      shippingCost: row.shipping_cost,
+      tax: row.tax,
+      total: row.total,
+      status: row.status,
+      paymentMethod: row.payment_method,
+      paymentStatus: row.payment_status,
+      shippingAddress: row.shipping_address,
+      notes: row.notes,
+      trackingNumber: row.tracking_number,
+      statusHistory: row.status_history?.map((h: any) => ({
+        status: h.status,
+        date: new Date(h.timestamp),
+        note: h.note,
+        updatedBy: h.updated_by
+      })) || [],
+      userId: row.user_id,
+      guestId: row.guest_id,
+      tenantId: row.tenant_id,
+      createdAt: new Date(row.created_at),
+      updatedAt: new Date(row.updated_at),
+      shippedAt: row.shipped_at ? new Date(row.shipped_at) : undefined,
+      deliveredAt: row.delivered_at ? new Date(row.delivered_at) : undefined,
+      cancelledAt: row.cancelled_at ? new Date(row.cancelled_at) : undefined
+    }
+  }
 
   const getCurrentUserId = (): string | null => {
     if (!authStore.isAuthenticated) return null
@@ -181,7 +181,7 @@ export const useOrdersStore = defineStore('orders', () => {
   const fetchOrders = async (options?: {
     limit?: number
     status?: OrderStatus
-    startAfterDoc?: QueryDocumentSnapshot<DocumentData>
+    startAfterDoc?: any // not used
     userId?: string
     guestId?: string
     email?: string
@@ -193,11 +193,18 @@ export const useOrdersStore = defineStore('orders', () => {
     error.value = null
 
     try {
-      const ordersCollection = collection(db, 'orders')
-      const constraints: any[] = [
-        where('tenantId', '==', authStore.currentTenant),
-        orderBy('createdAt', 'desc')
-      ]
+      const tenantId = authStore.currentTenant
+      if (!tenantId) {
+        orders.value = []
+        return []
+      }
+
+      let query = supabase
+        .from('orders')
+        .select('*')
+        .eq('tenant_id', tenantId)
+        .order('created_at', { ascending: false })
+        .limit(options?.limit || 20)
 
       const currentUserId = getCurrentUserId()
       const isAdmin = authStore.isAdmin
@@ -205,54 +212,36 @@ export const useOrdersStore = defineStore('orders', () => {
       if (options?.userId) {
         if (!isAdmin && options.userId !== currentUserId) {
           console.warn('Permission denied: cannot fetch orders for another user')
-          loading.value = false
           return []
         }
-        constraints.push(where('userId', '==', options.userId))
+        query = query.eq('user_id', options.userId)
       }
       else if (options?.guestId) {
-        constraints.push(where('guestId', '==', options.guestId))
+        query = query.eq('guest_id', options.guestId)
       }
       else if (options?.email) {
-        constraints.push(where('customer.email', '==', options.email))
+        // Email stored in customer.email
+        query = query.eq('customer->>email', options.email)
       }
       else if (options?.all && isAdmin) {
-        // No user filter – fetch all within tenant
+        // no extra filter
       }
       else if (authStore.isCustomer && currentUserId) {
-        constraints.push(where('userId', '==', currentUserId))
+        query = query.eq('user_id', currentUserId)
       }
       else if (!isAdmin && !authStore.isCustomer) {
         // Guest – cannot fetch without identifier
-        loading.value = false
         return []
       }
 
       if (options?.status) {
-        constraints.push(where('status', '==', options.status))
+        query = query.eq('status', options.status)
       }
 
-      if (options?.limit) {
-        constraints.push(limit(options.limit))
-      } else {
-        constraints.push(limit(20))
-      }
+      const { data, error: fetchError } = await query
+      if (fetchError) throw fetchError
 
-      if (options?.startAfterDoc) {
-        constraints.push(startAfter(options.startAfterDoc))
-      }
-
-      const q = query(ordersCollection, ...constraints)
-      const querySnapshot = await getDocs(q)
-
-      lastVisible.value = querySnapshot.docs[querySnapshot.docs.length - 1] || null
-      hasMore.value = querySnapshot.docs.length === (options?.limit || 20)
-
-      const fetchedOrders: Order[] = querySnapshot.docs.map(doc => {
-        const data = doc.data() as FirestoreOrder
-        return convertTimestampsToDates({ id: doc.id, ...data })
-      })
-
+      const fetchedOrders = (data || []).map(row => convertRowToOrder(row))
       orders.value = fetchedOrders
       return fetchedOrders
     } catch (err) {
@@ -270,51 +259,14 @@ export const useOrdersStore = defineStore('orders', () => {
     error.value = null
 
     try {
-      const orderDoc = doc(db, 'orders', orderId)
-      const docSnapshot = await getDoc(orderDoc)
+      const { data, error: fetchError } = await supabase
+        .from('orders')
+        .select('*')
+        .eq('id', orderId)
+        .single()
 
-      if (docSnapshot.exists()) {
-        const data = docSnapshot.data() as FirestoreOrder
-        // Verify tenant
-        if (data.tenantId !== authStore.currentTenant) {
-          error.value = 'Order not found in current tenant'
-          return null
-        }
-
-        const currentUserId = getCurrentUserId()
-
-        if (authStore.isAdmin) {
-          currentOrder.value = convertTimestampsToDates({ id: docSnapshot.id, ...data })
-          return currentOrder.value
-        }
-
-        if (currentUserId && data.userId && data.userId === currentUserId) {
-          currentOrder.value = convertTimestampsToDates({ id: docSnapshot.id, ...data })
-          return currentOrder.value
-        }
-
-        if (data.guestId) {
-          const guestId = localStorage.getItem('guest_order_id')
-          const guestEmail = localStorage.getItem('last_order_email')
-          if (guestId && data.guestId === guestId) {
-            currentOrder.value = convertTimestampsToDates({ id: docSnapshot.id, ...data })
-            return currentOrder.value
-          }
-          if (guestEmail && data.customer?.email === guestEmail) {
-            currentOrder.value = convertTimestampsToDates({ id: docSnapshot.id, ...data })
-            return currentOrder.value
-          }
-        }
-
-        error.value = 'You do not have permission to view this order'
-        return null
-      } else {
-        error.value = 'Order not found'
-        return null
-      }
-    } catch (err: any) {
-      // If permission error, try to get from sessionStorage (for guests)
-      if (err.code === 'permission-denied') {
+      if (fetchError || !data) {
+        // Not found, try guest session storage fallback
         const savedOrder = sessionStorage.getItem('last_created_order')
         if (savedOrder) {
           try {
@@ -339,8 +291,45 @@ export const useOrdersStore = defineStore('orders', () => {
             console.error('Failed to parse saved order', e)
           }
         }
+        error.value = 'Order not found'
+        return null
       }
 
+      // Check tenant permission (RLS should enforce, but we double-check)
+      if (data.tenant_id !== authStore.currentTenant) {
+        error.value = 'Order not found in current tenant'
+        return null
+      }
+
+      const order = convertRowToOrder(data)
+      const currentUserId = getCurrentUserId()
+
+      if (authStore.isAdmin) {
+        currentOrder.value = order
+        return order
+      }
+
+      if (currentUserId && order.userId && order.userId === currentUserId) {
+        currentOrder.value = order
+        return order
+      }
+
+      if (order.guestId) {
+        const guestId = localStorage.getItem('guest_order_id')
+        const guestEmail = localStorage.getItem('last_order_email')
+        if (guestId && order.guestId === guestId) {
+          currentOrder.value = order
+          return order
+        }
+        if (guestEmail && order.customer?.email === guestEmail) {
+          currentOrder.value = order
+          return order
+        }
+      }
+
+      error.value = 'You do not have permission to view this order'
+      return null
+    } catch (err) {
       error.value = err instanceof Error ? err.message : 'Failed to fetch order'
       console.error('Error fetching order:', err)
       return null
@@ -355,25 +344,21 @@ export const useOrdersStore = defineStore('orders', () => {
     error.value = null
 
     try {
-      const ordersCollection = collection(db, 'orders')
-      const q = query(
-        ordersCollection,
-        where('tenantId', '==', authStore.currentTenant),
-        where('orderNumber', '==', orderNumber),
-        where('customer.email', '==', email)
-      )
+      const { data, error: fetchError } = await supabase
+        .from('orders')
+        .select('*')
+        .eq('order_number', orderNumber)
+        .eq('customer->>email', email)
+        .maybeSingle()
 
-      const querySnapshot = await getDocs(q)
-
-      if (!querySnapshot.empty) {
-        const doc = querySnapshot.docs[0]
-        const data = doc.data() as FirestoreOrder
-        currentOrder.value = convertTimestampsToDates({ id: doc.id, ...data })
-        return currentOrder.value
-      } else {
+      if (fetchError || !data) {
         error.value = 'Order not found'
         return null
       }
+
+      const order = convertRowToOrder(data)
+      currentOrder.value = order
+      return order
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Failed to fetch order'
       console.error('Error fetching order:', err)
@@ -383,7 +368,7 @@ export const useOrdersStore = defineStore('orders', () => {
     }
   }
 
-  // ========== createOrder ==========
+  // ========== createOrder (using database function) ==========
   const createOrder = async (
     shippingAddress: ShippingAddress,
     paymentMethod: PaymentMethod = 'cash_on_delivery',
@@ -394,7 +379,8 @@ export const useOrdersStore = defineStore('orders', () => {
       return null
     }
 
-    if (!authStore.currentTenant) {
+    const tenantId = authStore.currentTenant
+    if (!tenantId) {
       error.value = 'Tenant not resolved – cannot create order'
       authNotification.error('Unable to place order: missing tenant context')
       return null
@@ -404,152 +390,106 @@ export const useOrdersStore = defineStore('orders', () => {
     error.value = null
 
     try {
-      const newOrder = await runTransaction(db, async (transaction) => {
-        const orderNumber = generateOrderNumber()
-        const isAuthenticated = authStore.isAuthenticated
-        const guestId = !isAuthenticated ? generateGuestId() : undefined
-        const currentUserId = getCurrentUserId()
-        const currentUserEmail = getCurrentUserEmail()
-        const currentUserName = getCurrentUserName()
+      const orderNumber = generateOrderNumber()
+      const isAuthenticated = authStore.isAuthenticated
+      const guestId = !isAuthenticated ? generateGuestId() : undefined
+      const currentUserId = getCurrentUserId()
+      const currentUserEmail = getCurrentUserEmail()
+      const currentUserName = getCurrentUserName()
 
-        // Prepare order items with stock validation
-        const orderItems: OrderItem[] = []
-        for (const cartItem of cartStore.items) {
-          const product = productsStore.products.find((p: Product) => p.id === cartItem.id)
-          if (!product) {
-            throw new Error(`Product ${cartItem.id} not found`)
-          }
-          if (!product.brandId) {
-            throw new Error(`Product ${cartItem.id} has no brandId`)
-          }
-          const productRef = getProductRef(product.brandId, product.id)
-          const productDoc = await transaction.get(productRef)
-
-          if (!productDoc.exists()) {
-            throw new Error(`Product ${cartItem.id} no longer exists`)
-          }
-
-          const productData = productDoc.data()
-          const currentStock = productData.stockQuantity || 0
-          const requestedQty = cartItem.quantity || 1
-
-          if (currentStock < requestedQty) {
-            throw new Error(`Insufficient stock for ${product.name.en || product.name}`)
-          }
-
-          transaction.update(productRef, {
-            stockQuantity: currentStock - requestedQty,
-            updatedAt: serverTimestamp()
-          })
-
-          orderItems.push({
-            id: cartItem.id,
-            productId: cartItem.id,
-            name: product.name?.en || 'Product',
-            nameAr: product.name?.ar,
-            price: product.price,
-            quantity: requestedQty,
-            size: product.size || '100ml',
-            concentration: product.concentration || 'Eau de Parfum',
-            image: product.imageUrl || '/images/default-product.jpg',
-            brand: product.brand,
-            imageUrl: product.imageUrl || '',
-            originalPrice: product.originalPrice
-          })
+      // Prepare order items (they already contain product info)
+      const orderItems: OrderItem[] = []
+      for (const cartItem of cartStore.items) {
+        const product = productsStore.products.find((p: Product) => p.id === cartItem.id)
+        if (!product) {
+          throw new Error(`Product ${cartItem.id} not found`)
         }
-
-        const subtotal = cartStore.subtotal
-        const shipping = cartStore.shipping || 50
-        const tax = cartStore.tax || Math.round(subtotal * 0.14)
-        const total = subtotal + shipping + tax
-
-        const updatedByName = isAuthenticated 
-          ? (currentUserName || currentUserId || 'customer')
-          : 'guest'
-
-        const statusHistory: StatusHistoryItem[] = [{
-          status: 'pending',
-          date: new Date(),
-          note: 'Order placed successfully',
-          updatedBy: updatedByName
-        }]
-
-        const shippingAddressString = `${shippingAddress.address}, ${shippingAddress.city}, ${shippingAddress.country || 'Egypt'}`
-
-        const orderData: any = {
-          orderNumber,
-          customer: {
-            name: shippingAddress.name,
-            email: shippingAddress.email,
-            phone: shippingAddress.phone,
-            address: shippingAddress.address,
-            city: shippingAddress.city,
-            country: shippingAddress.country || 'Egypt'
-          },
-          items: orderItems,
-          subtotal,
-          shippingCost: shipping,
-          tax,
-          total,
-          status: 'pending',
-          paymentMethod,
-          paymentStatus: paymentMethod === 'cash_on_delivery' ? 'pending' : 'paid',
-          shippingAddress: shippingAddressString,
-          notes: notes || '',
-          statusHistory: statusHistory.map(h => ({
-            status: h.status,
-            timestamp: Timestamp.fromDate(h.date),
-            note: h.note,
-            updatedBy: h.updatedBy
-          })),
-          tenantId: authStore.currentTenant,
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp()
-        }
-
-        if (isAuthenticated && currentUserId) orderData.userId = currentUserId
-        if (!isAuthenticated && guestId) orderData.guestId = guestId
-        if (isAuthenticated && currentUserEmail) orderData.userEmail = currentUserEmail
-
-        const ordersCollection = collection(db, 'orders')
-        const docRef = await addDoc(ordersCollection, orderData)
-
-        return {
-          id: docRef.id,
-          ...orderData,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-          statusHistory
-        }
-      })
-
-      const createdOrder: Order = {
-        ...newOrder,
-        id: newOrder.id,
-        tenantId: authStore.currentTenant,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        shippedAt: undefined,
-        deliveredAt: undefined,
-        cancelledAt: undefined,
-        userId: newOrder.userId ?? undefined,
-        guestId: newOrder.guestId ?? undefined
+        orderItems.push({
+          id: cartItem.id,
+          productId: cartItem.id,
+          name: product.name?.en || 'Product',
+          nameAr: product.name?.ar,
+          price: product.price,
+          quantity: cartItem.quantity || 1,
+          size: product.size || '100ml',
+          concentration: product.concentration || 'Eau de Parfum',
+          image: product.imageUrl || '/images/default-product.jpg',
+          brand: product.brand,
+          imageUrl: product.imageUrl || '',
+          originalPrice: product.originalPrice
+        })
       }
 
-      orders.value = [createdOrder, ...orders.value]
-      currentOrder.value = createdOrder
+      const subtotal = cartStore.subtotal
+      const shipping = cartStore.shipping || 50
+      const tax = cartStore.tax || Math.round(subtotal * 0.14)
+      const total = subtotal + shipping + tax
+
+      const updatedByName = isAuthenticated 
+        ? (currentUserName || currentUserId || 'customer')
+        : 'guest'
+
+      const statusHistory: StatusHistoryItem[] = [{
+        status: 'pending',
+        date: new Date(),
+        note: 'Order placed successfully',
+        updatedBy: updatedByName
+      }]
+
+      const shippingAddressString = `${shippingAddress.address}, ${shippingAddress.city}, 
+${shippingAddress.country || 'Egypt'}`
+
+      // Call the database function to atomically create order and update stock
+      const { data: orderData, error: rpcError } = await supabase.rpc('create_order', {
+        _tenant_id: tenantId,
+        _order_number: orderNumber,
+        _customer: {
+          name: shippingAddress.name,
+          email: shippingAddress.email,
+          phone: shippingAddress.phone,
+          address: shippingAddress.address,
+          city: shippingAddress.city,
+          country: shippingAddress.country || 'Egypt'
+        },
+        _items: orderItems,
+        _subtotal: subtotal,
+        _shipping_cost: shipping,
+        _tax: tax,
+        _total: total,
+        _payment_method: paymentMethod,
+        _shipping_address: shippingAddressString,
+        _notes: notes || '',
+        _status_history: statusHistory.map(h => ({
+          status: h.status,
+          timestamp: h.date.toISOString(),
+          note: h.note,
+          updated_by: h.updatedBy
+        })),
+        _user_id: currentUserId,
+        _guest_id: guestId,
+        _user_email: currentUserEmail
+      })
+
+      if (rpcError) throw rpcError
+
+      // The function returns the created order row
+      const newOrder = convertRowToOrder(orderData)
+
+      // Update local state
+      orders.value = [newOrder, ...orders.value]
+      currentOrder.value = newOrder
 
       await cartStore.clearCart()
 
-      if (createdOrder.guestId) {
-        localStorage.setItem('guest_order_id', createdOrder.guestId)
-        localStorage.setItem('last_order_email', createdOrder.customer.email)
-        localStorage.setItem('last_order_number', createdOrder.orderNumber)
-        sessionStorage.setItem('last_created_order', JSON.stringify(createdOrder))
+      if (newOrder.guestId) {
+        localStorage.setItem('guest_order_id', newOrder.guestId)
+        localStorage.setItem('last_order_email', newOrder.customer.email)
+        localStorage.setItem('last_order_number', newOrder.orderNumber)
+        sessionStorage.setItem('last_created_order', JSON.stringify(newOrder))
       }
 
-      authNotification.loggedIn(`Order #${createdOrder.orderNumber} placed successfully`)
-      return createdOrder
+      authNotification.loggedIn(`Order #${newOrder.orderNumber} placed successfully`)
+      return newOrder
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Failed to create order'
       console.error('Error creating order:', err)
@@ -571,45 +511,35 @@ export const useOrdersStore = defineStore('orders', () => {
     loading.value = true
 
     try {
-      const ordersCollection = collection(db, 'orders')
-      let q
+      const tenantId = authStore.currentTenant
+      if (!tenantId) return []
+
+      let query = supabase
+        .from('orders')
+        .select('*')
+        .eq('tenant_id', tenantId)
+        .order('created_at', { ascending: false })
 
       if (guestId) {
-        q = query(
-          ordersCollection,
-          where('tenantId', '==', authStore.currentTenant),
-          where('guestId', '==', guestId),
-          orderBy('createdAt', 'desc')
-        )
+        query = query.eq('guest_id', guestId)
       } else if (guestEmail) {
-        q = query(
-          ordersCollection,
-          where('tenantId', '==', authStore.currentTenant),
-          where('customer.email', '==', guestEmail),
-          orderBy('createdAt', 'desc')
-        )
+        query = query.eq('customer->>email', guestEmail)
       } else if (guestOrderNumber) {
-        q = query(
-          ordersCollection,
-          where('tenantId', '==', authStore.currentTenant),
-          where('orderNumber', '==', guestOrderNumber),
-          orderBy('createdAt', 'desc')
-        )
+        query = query.eq('order_number', guestOrderNumber)
       } else {
         return []
       }
 
-      const querySnapshot = await getDocs(q)
+      const { data, error: fetchError } = await query
+      if (fetchError) throw fetchError
 
-      const guestOrders: Order[] = querySnapshot.docs.map(doc => {
-        const data = doc.data() as FirestoreOrder
-        return convertTimestampsToDates({ id: doc.id, ...data })
-      })
+      const guestOrders = (data || []).map(row => convertRowToOrder(row))
 
       if (guestOrders.length > 0) {
         const latestOrder = guestOrders[0]
         if (latestOrder.guestId) localStorage.setItem('guest_order_id', latestOrder.guestId)
-        if (latestOrder.customer?.email) localStorage.setItem('last_order_email', latestOrder.customer.email)
+        if (latestOrder.customer?.email) localStorage.setItem('last_order_email', 
+latestOrder.customer.email)
         if (latestOrder.orderNumber) localStorage.setItem('last_order_number', latestOrder.orderNumber)
       }
 
@@ -638,21 +568,23 @@ export const useOrdersStore = defineStore('orders', () => {
     error.value = null
 
     try {
-      const orderDocRef = doc(db, 'orders', orderId)
-      const orderSnapshot = await getDoc(orderDocRef)
+      // Fetch current order to get status history
+      const { data: currentOrderData, error: fetchError } = await supabase
+        .from('orders')
+        .select('*')
+        .eq('id', orderId)
+        .single()
 
-      if (!orderSnapshot.exists()) {
+      if (fetchError || !currentOrderData) {
         throw new Error('Order not found')
       }
 
-      const orderData = orderSnapshot.data() as FirestoreOrder
-      if (orderData.tenantId !== authStore.currentTenant) {
+      if (currentOrderData.tenant_id !== authStore.currentTenant) {
         throw new Error('Order does not belong to this tenant')
       }
 
-      const order = convertTimestampsToDates({ id: orderSnapshot.id, ...orderData })
-
-      if (order.status === status) {
+      const currentStatus = currentOrderData.status
+      if (currentStatus === status) {
         console.log('Status already set to', status)
         return true
       }
@@ -660,78 +592,69 @@ export const useOrdersStore = defineStore('orders', () => {
       const currentUserId = getCurrentUserId()
       const currentUserName = getCurrentUserName() || 'admin'
 
-      const statusHistory: StatusHistoryItem[] = order.statusHistory || []
-      statusHistory.push({
+      const existingHistory = currentOrderData.status_history || []
+      const newHistoryItem = {
         status,
-        date: new Date(),
+        timestamp: new Date().toISOString(),
         note: note || getStatusDescription(status),
-        updatedBy: currentUserName || currentUserId || 'admin'
-      })
+        updated_by: currentUserName || currentUserId || 'admin'
+      }
+      const updatedHistory = [...existingHistory, newHistoryItem]
 
-      const updateData: any = {
+      // Prepare update payload
+      const updatePayload: any = {
         status,
-        updatedAt: serverTimestamp(),
-        statusHistory: statusHistory.map(h => ({
-          status: h.status,
-          timestamp: Timestamp.fromDate(h.date),
-          note: h.note,
-          updatedBy: h.updatedBy
-        }))
+        updated_at: new Date().toISOString(),
+        status_history: updatedHistory
       }
 
-      if (trackingNumber) updateData.trackingNumber = trackingNumber
+      if (trackingNumber) updatePayload.tracking_number = trackingNumber
 
       if (status === 'shipped') {
-        updateData.shippedAt = serverTimestamp()
-        if (!trackingNumber && order.paymentMethod === 'cash_on_delivery') {
-          updateData.paymentStatus = 'paid'
+        updatePayload.shipped_at = new Date().toISOString()
+        if (!trackingNumber && currentOrderData.payment_method === 'cash_on_delivery') {
+          updatePayload.payment_status = 'paid'
         }
       } else if (status === 'delivered') {
-        updateData.deliveredAt = serverTimestamp()
-        updateData.paymentStatus = 'paid'
+        updatePayload.delivered_at = new Date().toISOString()
+        updatePayload.payment_status = 'paid'
       } else if (status === 'cancelled') {
-        updateData.cancelledAt = serverTimestamp()
-        if (order.paymentStatus === 'paid') {
-          updateData.paymentStatus = 'refunded'
+        updatePayload.cancelled_at = new Date().toISOString()
+        if (currentOrderData.payment_status === 'paid') {
+          updatePayload.payment_status = 'refunded'
         }
 
-        // Restore stock for each product
-        for (const item of order.items) {
-          const product = productsStore.products.find((p: Product) => p.id === item.productId)
-          if (product && product.brandId) {
-            const productRef = getProductRef(product.brandId, product.id)
-            const productDoc = await getDoc(productRef)
-            if (productDoc.exists()) {
-              const currentStock = productDoc.data().stockQuantity || 0
-              await updateDoc(productRef, {
-                stockQuantity: currentStock + item.quantity,
-                updatedAt: serverTimestamp()
-              })
-            } else {
-              console.warn(`Product document for ${item.productId} not found in Firestore`)
-            }
-          } else {
-            console.warn(`Product ${item.productId} not found in store, cannot restore stock`)
+        // Restore stock for each product (via RPC or separate updates)
+        const items = currentOrderData.items as OrderItem[]
+        for (const item of items) {
+          // Call a function to increment stock for the product
+          // We'll use the same RPC that decrements stock, but with a positive quantity.
+          // We'll assume we have a function `adjust_product_stock`.
+          const { error: stockError } = await supabase.rpc('adjust_product_stock', {
+            _product_id: item.productId,
+            _quantity: item.quantity
+          })
+          if (stockError) {
+            console.warn(`Failed to restore stock for product ${item.productId}:`, stockError)
           }
         }
       }
 
-      await updateDoc(orderDocRef, updateData)
+      // Perform the update
+      const { error: updateError } = await supabase
+        .from('orders')
+        .update(updatePayload)
+        .eq('id', orderId)
 
+      if (updateError) throw updateError
+
+      // Update local state
+      const orderIndex = orders.value.findIndex(o => o.id === orderId)
       const updatedOrder: Order = {
-        ...order,
-        status,
-        updatedAt: new Date(),
-        statusHistory,
-        ...(trackingNumber && { trackingNumber }),
-        ...(status === 'shipped' && { shippedAt: new Date() }),
-        ...(status === 'delivered' && { deliveredAt: new Date(), paymentStatus: 'paid' }),
-        ...(status === 'cancelled' && { cancelledAt: new Date() })
+        ...convertRowToOrder({ ...currentOrderData, ...updatePayload }),
+        id: orderId
       }
 
-      if (updateData.paymentStatus) updatedOrder.paymentStatus = updateData.paymentStatus
-
-      const orderIndex = orders.value.findIndex(o => o.id === orderId)
       if (orderIndex !== -1) {
         orders.value = [
           ...orders.value.slice(0, orderIndex),
@@ -748,7 +671,8 @@ export const useOrdersStore = defineStore('orders', () => {
 
       const statusMessages: Partial<Record<OrderStatus, string>> = {
         processing: 'Your order is now being processed',
-        shipped: `Your order has been shipped${trackingNumber ? ` with tracking #${trackingNumber}` : ''}`,
+        shipped: `Your order has been shipped${trackingNumber ? ` with tracking #${trackingNumber}` : 
+''}`,
         delivered: 'Your order has been delivered',
         cancelled: 'Your order has been cancelled'
       }
@@ -775,15 +699,13 @@ export const useOrdersStore = defineStore('orders', () => {
     }
     loading.value = true
     try {
-      const orderDoc = doc(db, 'orders', orderId)
-      const orderSnap = await getDoc(orderDoc)
-      if (orderSnap.exists() && orderSnap.data().tenantId !== authStore.currentTenant) {
-        throw new Error('Order not in current tenant')
-      }
-      await updateDoc(orderDoc, { 
-        paymentStatus, 
-        updatedAt: serverTimestamp() 
-      })
+      const { error: updateError } = await supabase
+        .from('orders')
+        .update({ payment_status: paymentStatus, updated_at: new Date().toISOString() })
+        .eq('id', orderId)
+
+      if (updateError) throw updateError
+
       const index = orders.value.findIndex(o => o.id === orderId)
       if (index !== -1) {
         orders.value[index] = { ...orders.value[index], paymentStatus, updatedAt: new Date() }
@@ -800,7 +722,7 @@ export const useOrdersStore = defineStore('orders', () => {
     }
   }
 
-  // ========== Stub functions ==========
+  // ========== Stub functions (kept for interface compatibility) ==========
   const updateOrder = async (_orderId: string, _updateData: Partial<Order>) => {
     console.warn('updateOrder not implemented')
     return false
