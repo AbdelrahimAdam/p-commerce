@@ -6,7 +6,7 @@ import {
   getDocs,
   getDoc,
   doc,
-  deleteDoc,                         // ✅ added for product deletion
+  deleteDoc,
   query,
   where,
   orderBy,
@@ -15,7 +15,7 @@ import {
   QueryConstraint,
   QueryDocumentSnapshot
 } from 'firebase/firestore'
-import { ref as storageRef, getDownloadURL, listAll, deleteObject } from 'firebase/storage'  // ✅ added deleteObject
+import { ref as storageRef, getDownloadURL, listAll, deleteObject } from 'firebase/storage'
 import { db, storage } from '@/firebase/config'
 import type { Product, FilterOptions, Brand } from '@/types'
 import { useLocalStorage } from '@vueuse/core'
@@ -50,6 +50,9 @@ export const useProductsStore = defineStore('products', () => {
   const isFetchingMore = ref(false)
   const error = ref<string | null>(null)
   const lastUpdated = ref<Date | null>(null)
+
+  // Dedicated flag for initial load (full‑screen loader)
+  const isInitialLoading = ref(false)
 
   // Pagination state
   const lastDoc = ref<QueryDocumentSnapshot | null>(null)
@@ -245,6 +248,7 @@ export const useProductsStore = defineStore('products', () => {
       luxuryCollections.value = []
       bestSellerProducts.value = []
       hasMore.value = false
+      isInitialLoading.value = false
       return
     }
 
@@ -253,6 +257,11 @@ export const useProductsStore = defineStore('products', () => {
     isLoading.value = true
     isFetchingMore.value = !resetPagination
     error.value = null
+
+    // Set initial loading flag if this is a full reset and the product list is empty
+    if (resetPagination && products.value.length === 0) {
+      isInitialLoading.value = true
+    }
 
     try {
       if (resetPagination) {
@@ -339,6 +348,7 @@ export const useProductsStore = defineStore('products', () => {
     } finally {
       isLoading.value = false
       isFetchingMore.value = false
+      isInitialLoading.value = false
     }
   }
 
@@ -933,6 +943,7 @@ export const useProductsStore = defineStore('products', () => {
     error,
     lastUpdated,
     hasMore,
+    isInitialLoading, // new flag
 
     // Filter state
     filters,
@@ -957,7 +968,7 @@ export const useProductsStore = defineStore('products', () => {
     fetchProductBySlug,
     getProductsByBrand,
     getProductById,
-    deleteProduct,                      // ✅ added
+    deleteProduct,
 
     // Filtering & Search
     filterProducts,
