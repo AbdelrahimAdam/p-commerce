@@ -5,7 +5,7 @@ import { supabase } from '@/supabase/client'
 import { useTenantStore } from './tenant'
 import { authNotification, showInfo } from '@/utils/notifications'
 
-// List of public paths that don't need authentication
+// List of public paths
 const PUBLIC_PATHS = [
   '/',
   '/shop',
@@ -37,7 +37,6 @@ const isPublicPath = (path: string): boolean => {
 export const useAuthStore = defineStore('auth', () => {
   const tenantStore = useTenantStore()
 
-  // State
   const user = ref<AdminUser | null>(null)
   const customer = ref<CustomerUser | null>(null)
   const isLoading = ref(false)
@@ -46,7 +45,6 @@ export const useAuthStore = defineStore('auth', () => {
   const sessionExpiry = ref<Date | null>(null)
   const authListenerInitialized = ref(false)
 
-  // Getters
   const isAuthenticated = computed(() => !!user.value || !!customer.value)
   const isAdmin = computed(() => !!user.value)
   const isSuperAdmin = computed(() => user.value?.role?.toLowerCase() === 'super-admin')
@@ -75,7 +73,7 @@ export const useAuthStore = defineStore('auth', () => {
     user.value?.tenantId || customer.value?.tenantId || tenantStore.tenantId
   )
 
-  // Helper: fetch admin from 'admins' table
+  // Helper: fetch admin
   const getAdminFromSupabase = async (userId: string): Promise<AdminUser | null> => {
     try {
       const { data, error } = await supabase
@@ -103,7 +101,7 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  // Helper: fetch customer from 'customers' table
+  // Helper: fetch customer
   const getCustomerFromSupabase = async (userId: string): Promise<CustomerUser | null> => {
     try {
       const { data, error } = await supabase
@@ -132,12 +130,11 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  // Private: set admin user and store session
   const setAdminUser = (adminData: AdminUser) => {
     user.value = adminData
     customer.value = null
     lastLogin.value = new Date()
-    sessionExpiry.value = new Date(Date.now() + 24 * 60 * 60 * 1000) // 24h
+    sessionExpiry.value = new Date(Date.now() + 24 * 60 * 60 * 1000)
     localStorage.setItem('luxury_admin_session', JSON.stringify({
       user: adminData,
       expiry: sessionExpiry.value.getTime(),
@@ -145,7 +142,6 @@ export const useAuthStore = defineStore('auth', () => {
     }))
   }
 
-  // Private: set customer user and store session
   const setCustomerUser = (customerData: CustomerUser, remember?: boolean) => {
     customer.value = customerData
     user.value = null
@@ -159,7 +155,6 @@ export const useAuthStore = defineStore('auth', () => {
     }))
   }
 
-  // Unified login
   const authenticate = async (credentials: { email: string; password: string; remember?: boolean }) => {
     isLoading.value = true
     error.value = null
@@ -173,7 +168,6 @@ export const useAuthStore = defineStore('auth', () => {
       if (signInError || !data.user) throw new Error(signInError?.message || 'Invalid credentials')
       const userId = data.user.id
 
-      // Check admin and customer tables in parallel
       const [adminData, customerData] = await Promise.all([
         getAdminFromSupabase(userId),
         getCustomerFromSupabase(userId)
@@ -209,7 +203,6 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  // Admin Login (backward compatibility)
   const login = async (email: string, password: string): Promise<AdminUser> => {
     try {
       const result = await authenticate({ email, password, remember: false })
@@ -222,7 +215,6 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  // Customer Login
   const customerLogin = async (credentials: { email: string; password: string; remember?: boolean }): 
 Promise<CustomerUser> => {
     try {
@@ -236,7 +228,6 @@ Promise<CustomerUser> => {
     }
   }
 
-  // Customer Registration
   const customerRegister = async (userData: {
     email: string
     password: string
@@ -259,7 +250,6 @@ Promise<CustomerUser> => {
 
       const userId = signUpData.user.id
 
-      // Ensure tenant exists
       const tenantId = currentTenant.value
       if (!tenantId) {
         throw new Error('Tenant not resolved. Cannot register customer.')
@@ -314,8 +304,6 @@ Promise<CustomerUser> => {
     }
   }
 
-  // ========== CUSTOMER PROFILE UPDATE ACTIONS ==========
-
   const updateCustomerProfile = async (profileData: {
     displayName?: string
     phoneNumber?: string
@@ -342,8 +330,7 @@ Promise<CustomerUser> => {
       if (profileData.displayName) updateData.display_name = profileData.displayName
       if (profileData.phoneNumber !== undefined) updateData.phone_number = profileData.phoneNumber
       if (profileData.newsletter !== undefined) updateData.newsletter = profileData.newsletter
-      if (profileData.smsNotifications !== undefined) updateData.sms_notifications = 
-profileData.smsNotifications
+      if (profileData.smsNotifications !== undefined) updateData.sms_notifications = profileData.smsNotifications
       if (profileData.dob !== undefined) updateData.dob = profileData.dob
 
       const { error: updateError } = await supabase
@@ -356,8 +343,7 @@ profileData.smsNotifications
       if (profileData.phoneNumber !== undefined) customer.value.phoneNumber = profileData.phoneNumber
       if (profileData.newsletter !== undefined) customer.value.newsletter = profileData.newsletter
       const extended = customer.value as any
-      if (profileData.smsNotifications !== undefined) extended.smsNotifications = 
-profileData.smsNotifications
+      if (profileData.smsNotifications !== undefined) extended.smsNotifications = profileData.smsNotifications
       if (profileData.dob !== undefined) extended.dob = profileData.dob
 
       authNotification.loggedIn('Profile updated successfully')
@@ -405,7 +391,7 @@ profileData.smsNotifications
     }
   }
 
-  // Address management (read-modify-write)
+  // Address management (any type for simplicity)
   const addCustomerAddress = async (address: any): Promise<void> => {
     if (!customer.value) throw new Error('No customer logged in')
     isLoading.value = true
@@ -458,7 +444,7 @@ profileData.smsNotifications
       if (fetchError) throw fetchError
 
       const current = data?.addresses || []
-      const newAddresses = current.map(addr =>
+      const newAddresses = current.map((addr: any) =>
         addr.id === addressId ? { ...addr, ...updatedAddress, id: addressId } : addr
       )
 
@@ -494,7 +480,7 @@ profileData.smsNotifications
       if (fetchError) throw fetchError
 
       const current = data?.addresses || []
-      const newAddresses = current.filter(addr => addr.id !== addressId)
+      const newAddresses = current.filter((addr: any) => addr.id !== addressId)
 
       const { error: updateError } = await supabase
         .from('customers')
@@ -528,7 +514,7 @@ profileData.smsNotifications
       if (fetchError) throw fetchError
 
       const current = data?.addresses || []
-      const newAddresses = current.map(addr => ({
+      const newAddresses = current.map((addr: any) => ({
         ...addr,
         isDefault: addr.id === addressId
       }))
@@ -568,7 +554,6 @@ profileData.smsNotifications
     }
   }
 
-  // ========== Register a company (tenant) and become its first admin ==========
   const registerCompany = async (data: {
     email: string
     password: string
@@ -634,7 +619,6 @@ profileData.smsNotifications
     }
   }
 
-  // Logout
   const logout = async () => {
     isLoading.value = true
     error.value = null
@@ -666,7 +650,7 @@ profileData.smsNotifications
     }
   }
 
-  const confirmPasswordReset = async (code: string, newPassword: string) => {
+  const confirmPasswordReset = async (_code: string, newPassword: string) => {
     try {
       const { error } = await supabase.auth.updateUser({ password: newPassword })
       if (error) throw error
@@ -837,7 +821,7 @@ profileData.smsNotifications
     if (authListenerInitialized.value) return
     authListenerInitialized.value = true
 
-    supabase.auth.onAuthStateChange(async (event, session) => {
+    supabase.auth.onAuthStateChange(async (_event, session) => {
       if (isPublicPath(window.location.pathname)) return
       if (session?.user) {
         const userId = session.user.id

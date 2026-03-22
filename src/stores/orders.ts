@@ -1,4 +1,3 @@
-// src/stores/orders.ts – SUPABASE VERSION
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { supabase } from '@/supabase/client'
@@ -22,13 +21,10 @@ export const useOrdersStore = defineStore('orders', () => {
   const cartStore = useCartStore()
   const productsStore = useProductsStore()
 
-  // State
   const orders = ref<Order[]>([])
   const currentOrder = ref<Order | null>(null)
   const loading = ref(false)
   const error = ref<string | null>(null)
-  // lastVisible and hasMore are no longer used for Supabase (cursor pagination not fully implemented)
-  // but we keep them to maintain the same interface; pagination can be added later.
   const lastVisible = ref<any>(null)
   const hasMore = ref(true)
   const statsLoading = ref(false)
@@ -44,13 +40,6 @@ export const useOrdersStore = defineStore('orders', () => {
     monthlyRevenue: number
   } | null>(null)
 
-  // Helper to get product reference (not needed in Supabase; we use direct product id)
-  // Kept for compatibility but not used.
-  const getProductRef = (brandId: string, productId: string) => {
-    // noop
-  }
-
-  // Getters
   const pendingOrdersCount = computed(() => 
     orders.value.filter(order => order.status === 'pending').length
   )
@@ -75,7 +64,6 @@ export const useOrdersStore = defineStore('orders', () => {
     return paidOrders.reduce((sum, o) => sum + o.total, 0) / paidOrders.length
   })
 
-  // Helper functions (same as original)
   const getStatusText = (status: OrderStatus): string => {
     const map: Record<OrderStatus, string> = {
       pending: 'Pending Confirmation',
@@ -121,67 +109,59 @@ export const useOrdersStore = defineStore('orders', () => {
   const generateGuestId = (): string => 
     `guest_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`
 
-  // Convert Supabase row to Order object
-  const convertRowToOrder = (row: any): Order => {
-    // row.created_at, updated_at, etc. are ISO strings
-    return {
-      id: row.id,
-      orderNumber: row.order_number,
-      customer: row.customer, // already object
-      items: row.items,
-      subtotal: row.subtotal,
-      shippingCost: row.shipping_cost,
-      tax: row.tax,
-      total: row.total,
-      status: row.status,
-      paymentMethod: row.payment_method,
-      paymentStatus: row.payment_status,
-      shippingAddress: row.shipping_address,
-      notes: row.notes,
-      trackingNumber: row.tracking_number,
-      statusHistory: row.status_history?.map((h: any) => ({
-        status: h.status,
-        date: new Date(h.timestamp),
-        note: h.note,
-        updatedBy: h.updated_by
-      })) || [],
-      userId: row.user_id,
-      guestId: row.guest_id,
-      tenantId: row.tenant_id,
-      createdAt: new Date(row.created_at),
-      updatedAt: new Date(row.updated_at),
-      shippedAt: row.shipped_at ? new Date(row.shipped_at) : undefined,
-      deliveredAt: row.delivered_at ? new Date(row.delivered_at) : undefined,
-      cancelledAt: row.cancelled_at ? new Date(row.cancelled_at) : undefined
-    }
-  }
+  const convertRowToOrder = (row: any): Order => ({
+    id: row.id,
+    orderNumber: row.order_number,
+    customer: row.customer,
+    items: row.items,
+    subtotal: row.subtotal,
+    shippingCost: row.shipping_cost,
+    tax: row.tax,
+    total: row.total,
+    status: row.status,
+    paymentMethod: row.payment_method,
+    paymentStatus: row.payment_status,
+    shippingAddress: row.shipping_address,
+    notes: row.notes,
+    trackingNumber: row.tracking_number,
+    statusHistory: row.status_history?.map((h: any) => ({
+      status: h.status,
+      date: new Date(h.timestamp),
+      note: h.note,
+      updatedBy: h.updated_by
+    })) || [],
+    userId: row.user_id,
+    guestId: row.guest_id,
+    tenantId: row.tenant_id,
+    createdAt: new Date(row.created_at),
+    updatedAt: new Date(row.updated_at),
+    shippedAt: row.shipped_at ? new Date(row.shipped_at) : undefined,
+    deliveredAt: row.delivered_at ? new Date(row.delivered_at) : undefined,
+    cancelledAt: row.cancelled_at ? new Date(row.cancelled_at) : undefined
+  })
 
   const getCurrentUserId = (): string | null => {
-    if (!authStore.isAuthenticated) return null
     if (authStore.user?.uid) return authStore.user.uid
     if (authStore.customer?.uid) return authStore.customer.uid
     return null
   }
 
   const getCurrentUserEmail = (): string | null => {
-    if (!authStore.isAuthenticated) return null
     if (authStore.user?.email) return authStore.user.email
     if (authStore.customer?.email) return authStore.customer.email
     return null
   }
 
   const getCurrentUserName = (): string | null => {
-    if (!authStore.isAuthenticated) return null
     if (authStore.user?.displayName) return authStore.user.displayName
     if (authStore.customer?.displayName) return authStore.customer.displayName
     return null
   }
 
-  // ========== fetchOrders ==========
   const fetchOrders = async (options?: {
     limit?: number
     status?: OrderStatus
-    startAfterDoc?: any // not used
+    startAfterDoc?: any
     userId?: string
     guestId?: string
     email?: string
@@ -220,7 +200,6 @@ export const useOrdersStore = defineStore('orders', () => {
         query = query.eq('guest_id', options.guestId)
       }
       else if (options?.email) {
-        // Email stored in customer.email
         query = query.eq('customer->>email', options.email)
       }
       else if (options?.all && isAdmin) {
@@ -230,7 +209,6 @@ export const useOrdersStore = defineStore('orders', () => {
         query = query.eq('user_id', currentUserId)
       }
       else if (!isAdmin && !authStore.isCustomer) {
-        // Guest – cannot fetch without identifier
         return []
       }
 
@@ -253,7 +231,6 @@ export const useOrdersStore = defineStore('orders', () => {
     }
   }
 
-  // ========== fetchOrderById ==========
   const fetchOrderById = async (orderId: string) => {
     loading.value = true
     error.value = null
@@ -266,7 +243,6 @@ export const useOrdersStore = defineStore('orders', () => {
         .single()
 
       if (fetchError || !data) {
-        // Not found, try guest session storage fallback
         const savedOrder = sessionStorage.getItem('last_created_order')
         if (savedOrder) {
           try {
@@ -295,7 +271,6 @@ export const useOrdersStore = defineStore('orders', () => {
         return null
       }
 
-      // Check tenant permission (RLS should enforce, but we double-check)
       if (data.tenant_id !== authStore.currentTenant) {
         error.value = 'Order not found in current tenant'
         return null
@@ -338,7 +313,6 @@ export const useOrdersStore = defineStore('orders', () => {
     }
   }
 
-  // ========== fetchOrderByNumber ==========
   const fetchOrderByNumber = async (orderNumber: string, email: string) => {
     loading.value = true
     error.value = null
@@ -368,7 +342,6 @@ export const useOrdersStore = defineStore('orders', () => {
     }
   }
 
-  // ========== createOrder (using database function) ==========
   const createOrder = async (
     shippingAddress: ShippingAddress,
     paymentMethod: PaymentMethod = 'cash_on_delivery',
@@ -397,13 +370,10 @@ export const useOrdersStore = defineStore('orders', () => {
       const currentUserEmail = getCurrentUserEmail()
       const currentUserName = getCurrentUserName()
 
-      // Prepare order items (they already contain product info)
       const orderItems: OrderItem[] = []
       for (const cartItem of cartStore.items) {
         const product = productsStore.products.find((p: Product) => p.id === cartItem.id)
-        if (!product) {
-          throw new Error(`Product ${cartItem.id} not found`)
-        }
+        if (!product) throw new Error(`Product ${cartItem.id} not found`)
         orderItems.push({
           id: cartItem.id,
           productId: cartItem.id,
@@ -436,10 +406,9 @@ export const useOrdersStore = defineStore('orders', () => {
         updatedBy: updatedByName
       }]
 
-      const shippingAddressString = `${shippingAddress.address}, ${shippingAddress.city}, 
-${shippingAddress.country || 'Egypt'}`
+      const shippingAddressString = `${shippingAddress.address}, ${shippingAddress.city}, ${shippingAddress.country 
+|| 'Egypt'}`
 
-      // Call the database function to atomically create order and update stock
       const { data: orderData, error: rpcError } = await supabase.rpc('create_order', {
         _tenant_id: tenantId,
         _order_number: orderNumber,
@@ -472,10 +441,8 @@ ${shippingAddress.country || 'Egypt'}`
 
       if (rpcError) throw rpcError
 
-      // The function returns the created order row
       const newOrder = convertRowToOrder(orderData)
 
-      // Update local state
       orders.value = [newOrder, ...orders.value]
       currentOrder.value = newOrder
 
@@ -500,7 +467,6 @@ ${shippingAddress.country || 'Egypt'}`
     }
   }
 
-  // ========== getGuestOrders ==========
   const getGuestOrders = async () => {
     const guestId = localStorage.getItem('guest_order_id')
     const guestEmail = localStorage.getItem('last_order_email')
@@ -538,8 +504,7 @@ ${shippingAddress.country || 'Egypt'}`
       if (guestOrders.length > 0) {
         const latestOrder = guestOrders[0]
         if (latestOrder.guestId) localStorage.setItem('guest_order_id', latestOrder.guestId)
-        if (latestOrder.customer?.email) localStorage.setItem('last_order_email', 
-latestOrder.customer.email)
+        if (latestOrder.customer?.email) localStorage.setItem('last_order_email', latestOrder.customer.email)
         if (latestOrder.orderNumber) localStorage.setItem('last_order_number', latestOrder.orderNumber)
       }
 
@@ -552,7 +517,6 @@ latestOrder.customer.email)
     }
   }
 
-  // ========== updateOrderStatus ==========
   const updateOrderStatus = async (
     orderId: string,
     status: OrderStatus,
@@ -568,26 +532,18 @@ latestOrder.customer.email)
     error.value = null
 
     try {
-      // Fetch current order to get status history
       const { data: currentOrderData, error: fetchError } = await supabase
         .from('orders')
         .select('*')
         .eq('id', orderId)
         .single()
 
-      if (fetchError || !currentOrderData) {
-        throw new Error('Order not found')
-      }
-
-      if (currentOrderData.tenant_id !== authStore.currentTenant) {
-        throw new Error('Order does not belong to this tenant')
-      }
+      if (fetchError || !currentOrderData) throw new Error('Order not found')
+      if (currentOrderData.tenant_id !== authStore.currentTenant) throw new Error('Order does not belong to this 
+tenant')
 
       const currentStatus = currentOrderData.status
-      if (currentStatus === status) {
-        console.log('Status already set to', status)
-        return true
-      }
+      if (currentStatus === status) return true
 
       const currentUserId = getCurrentUserId()
       const currentUserName = getCurrentUserName() || 'admin'
@@ -601,7 +557,6 @@ latestOrder.customer.email)
       }
       const updatedHistory = [...existingHistory, newHistoryItem]
 
-      // Prepare update payload
       const updatePayload: any = {
         status,
         updated_at: new Date().toISOString(),
@@ -624,23 +579,16 @@ latestOrder.customer.email)
           updatePayload.payment_status = 'refunded'
         }
 
-        // Restore stock for each product (via RPC or separate updates)
         const items = currentOrderData.items as OrderItem[]
         for (const item of items) {
-          // Call a function to increment stock for the product
-          // We'll use the same RPC that decrements stock, but with a positive quantity.
-          // We'll assume we have a function `adjust_product_stock`.
           const { error: stockError } = await supabase.rpc('adjust_product_stock', {
             _product_id: item.productId,
             _quantity: item.quantity
           })
-          if (stockError) {
-            console.warn(`Failed to restore stock for product ${item.productId}:`, stockError)
-          }
+          if (stockError) console.warn(`Failed to restore stock for product ${item.productId}:`, stockError)
         }
       }
 
-      // Perform the update
       const { error: updateError } = await supabase
         .from('orders')
         .update(updatePayload)
@@ -648,37 +596,20 @@ latestOrder.customer.email)
 
       if (updateError) throw updateError
 
-      // Update local state
-      const orderIndex = orders.value.findIndex(o => o.id === orderId)
-      const updatedOrder: Order = {
-        ...convertRowToOrder({ ...currentOrderData, ...updatePayload }),
-        id: orderId
-      }
-
-      if (orderIndex !== -1) {
-        orders.value = [
-          ...orders.value.slice(0, orderIndex),
-          updatedOrder,
-          ...orders.value.slice(orderIndex + 1)
-        ]
-      } else {
-        orders.value = [updatedOrder, ...orders.value]
-      }
-
-      if (currentOrder.value?.id === orderId) {
-        currentOrder.value = updatedOrder
-      }
+      const updatedOrder: Order = { ...convertRowToOrder({ ...currentOrderData, ...updatePayload }), id: orderId }
+      const index = orders.value.findIndex(o => o.id === orderId)
+      if (index !== -1) orders.value = [...orders.value.slice(0, index), updatedOrder, ...orders.value.slice(index + 
+1)]
+      else orders.value = [updatedOrder, ...orders.value]
+      if (currentOrder.value?.id === orderId) currentOrder.value = updatedOrder
 
       const statusMessages: Partial<Record<OrderStatus, string>> = {
         processing: 'Your order is now being processed',
-        shipped: `Your order has been shipped${trackingNumber ? ` with tracking #${trackingNumber}` : 
-''}`,
+        shipped: `Your order has been shipped${trackingNumber ? ` with tracking #${trackingNumber}` : ''}`,
         delivered: 'Your order has been delivered',
         cancelled: 'Your order has been cancelled'
       }
-      if (statusMessages[status]) {
-        authNotification.loggedIn(statusMessages[status] as string)
-      }
+      if (statusMessages[status]) authNotification.loggedIn(statusMessages[status] as string)
 
       return true
     } catch (err) {
@@ -691,7 +622,6 @@ latestOrder.customer.email)
     }
   }
 
-  // ========== updatePaymentStatus ==========
   const updatePaymentStatus = async (orderId: string, paymentStatus: PaymentStatus) => {
     if (!authStore.isAdmin) {
       authNotification.error('You do not have permission to update payment status')
@@ -707,12 +637,9 @@ latestOrder.customer.email)
       if (updateError) throw updateError
 
       const index = orders.value.findIndex(o => o.id === orderId)
-      if (index !== -1) {
-        orders.value[index] = { ...orders.value[index], paymentStatus, updatedAt: new Date() }
-      }
-      if (currentOrder.value?.id === orderId) {
-        currentOrder.value = { ...currentOrder.value, paymentStatus, updatedAt: new Date() }
-      }
+      if (index !== -1) orders.value[index] = { ...orders.value[index], paymentStatus, updatedAt: new Date() }
+      if (currentOrder.value?.id === orderId) currentOrder.value = { ...currentOrder.value, paymentStatus, updatedAt: 
+new Date() }
       return true
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Failed to update payment status'
@@ -722,48 +649,18 @@ latestOrder.customer.email)
     }
   }
 
-  // ========== Stub functions (kept for interface compatibility) ==========
-  const updateOrder = async (_orderId: string, _updateData: Partial<Order>) => {
-    console.warn('updateOrder not implemented')
-    return false
-  }
-  const cancelOrder = async (_orderId: string, _reason?: string) => {
-    console.warn('cancelOrder not implemented')
-    return false
-  }
-  const deleteOrder = async (_orderId: string) => {
-    console.warn('deleteOrder not implemented')
-    return false
-  }
-  const searchOrders = async (_searchTerm: string, _status?: OrderStatus) => {
-    console.warn('searchOrders not implemented')
-    return []
-  }
-  const getOrdersByEmail = async (_email: string) => {
-    console.warn('getOrdersByEmail not implemented')
-    return []
-  }
-  const reorder = async (_orderId: string) => {
-    console.warn('reorder not implemented')
-    return false
-  }
-  const downloadInvoice = async (_orderId: string) => {
-    console.warn('downloadInvoice not implemented')
-    return null
-  }
-  const getMonthlyRevenue = async (_year: number, _month: number) => {
-    console.warn('getMonthlyRevenue not implemented')
-    return 0
-  }
-  const getOrderStats = async () => {
-    console.warn('getOrderStats not implemented')
-    return null
-  }
-  const loadMore = async () => {
-    console.warn('loadMore not implemented')
-  }
+  // Stubs
+  const updateOrder = async (_orderId: string, _updateData: Partial<Order>) => false
+  const cancelOrder = async (_orderId: string, _reason?: string) => false
+  const deleteOrder = async (_orderId: string) => false
+  const searchOrders = async (_searchTerm: string, _status?: OrderStatus) => []
+  const getOrdersByEmail = async (_email: string) => []
+  const reorder = async (_orderId: string) => false
+  const downloadInvoice = async (_orderId: string) => null
+  const getMonthlyRevenue = async (_year: number, _month: number) => 0
+  const getOrderStats = async () => null
+  const loadMore = async () => {}
 
-  // ========== Clear helpers ==========
   const clearCurrentOrder = () => { currentOrder.value = null }
   const clearOrders = () => {
     orders.value = []
@@ -771,13 +668,10 @@ latestOrder.customer.email)
     hasMore.value = true
     error.value = null
   }
-
-  // Admin helpers
   const setOrders = (newOrders: Order[]) => { orders.value = newOrders }
   const addOrder = (order: Order) => { orders.value.unshift(order) }
 
   return {
-    // State
     orders,
     currentOrder,
     loading,
@@ -786,8 +680,6 @@ latestOrder.customer.email)
     hasMore,
     statsLoading,
     orderStats,
-
-    // Getters
     pendingOrdersCount,
     completedOrdersCount,
     totalRevenue,
@@ -796,8 +688,6 @@ latestOrder.customer.email)
     getStatusText,
     getStatusDescription,
     getPaymentStatusText,
-
-    // Actions
     fetchOrders,
     fetchOrderById,
     fetchOrderByNumber,
@@ -817,8 +707,6 @@ latestOrder.customer.email)
     loadMore,
     clearCurrentOrder,
     clearOrders,
-
-    // Admin helpers
     setOrders,
     addOrder
   }

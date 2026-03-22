@@ -1,4 +1,3 @@
-// stores/brands.ts – SUPABASE VERSION
 import { defineStore } from 'pinia'
 import { ref, computed, watchEffect } from 'vue'
 import { supabase } from '@/supabase/client'
@@ -10,20 +9,17 @@ export const useBrandsStore = defineStore('brands', () => {
   const productsStore = useProductsStore()
   const authStore = useAuthStore()
 
-  // State
   const brands = ref<Brand[]>([])
   const currentBrand = ref<BrandWithProducts | null>(null)
   const isLoading = ref(false)
   const error = ref<string>('')
   const isInitialized = ref(false)
 
-  // Getters
   const activeBrands = computed(() =>
     brands.value.filter(b => b.isActive === true)
   )
   const brandCount = computed(() => brands.value.length)
 
-  // Helper: transform Supabase brand row to Brand type
   const transformBrandData = (row: any): Brand => ({
     id: row.id,
     name: row.name,
@@ -39,23 +35,18 @@ export const useBrandsStore = defineStore('brands', () => {
     updatedAt: new Date(row.updated_at)
   })
 
-  // Upload brand image to Supabase Storage
   const uploadBrandImage = async (file: File, brandId: string): Promise<string> => {
     const path = `brands/${brandId}/logo.jpg`
-    const { data, error: uploadError } = await supabase.storage
+    const { error: uploadError } = await supabase.storage
       .from('images')
       .upload(path, file, { upsert: true })
     if (uploadError) throw uploadError
-
-    // Get public URL
     const { data: urlData } = supabase.storage.from('images').getPublicUrl(path)
     return urlData.publicUrl
   }
 
-  // Delete brand image from Storage
   const deleteBrandImageFromStorage = async (imageUrl: string) => {
     if (!imageUrl) return
-    // Extract path from public URL
     try {
       const url = new URL(imageUrl)
       const pathMatch = url.pathname.match(/\/storage\/v1\/object\/public\/images\/(.+)$/)
@@ -68,14 +59,8 @@ export const useBrandsStore = defineStore('brands', () => {
     }
   }
 
-  // Type guard to check if a value is a File
-  const isFile = (value: unknown): value is File => {
-    return value instanceof File
-  }
+  const isFile = (value: unknown): value is File => value instanceof File
 
-  /* =========================
-   * LOAD BRANDS
-   * ========================= */
   const loadBrands = async (): Promise<void> => {
     isLoading.value = true
     error.value = ''
@@ -105,9 +90,6 @@ export const useBrandsStore = defineStore('brands', () => {
     }
   }
 
-  /* =========================
-   * GET BRAND BY SLUG
-   * ========================= */
   const getBrandBySlug = async (slug: string): Promise<BrandWithProducts | null> => {
     isLoading.value = true
     error.value = ''
@@ -117,7 +99,6 @@ export const useBrandsStore = defineStore('brands', () => {
       const tenantId = authStore.currentTenant
       if (!tenantId) return null
 
-      // Fetch brand
       const { data: brandRow, error: brandError } = await supabase
         .from('brands')
         .select('*')
@@ -129,7 +110,6 @@ export const useBrandsStore = defineStore('brands', () => {
 
       const brand = transformBrandData(brandRow)
 
-      // Fetch products for this brand (from products table)
       const { data: productsData, error: productsError } = await supabase
         .from('products')
         .select('*')
@@ -138,10 +118,7 @@ export const useBrandsStore = defineStore('brands', () => {
 
       if (productsError) throw productsError
 
-      // Transform each product to match the Product type used in the frontend.
-      // We reuse the transformation from products store, but we'll do a minimal version here.
       const products: Product[] = await Promise.all((productsData || []).map(async (row: any) => {
-        // Build image URLs from the images array
         let imageUrl = ''
         let images: string[] = []
         if (row.images && Array.isArray(row.images)) {
@@ -152,7 +129,6 @@ export const useBrandsStore = defineStore('brands', () => {
           imageUrl = images[0] || ''
         }
 
-        // Get category name (if needed)
         let categoryName = row.category
         if (!categoryName && row.category_id) {
           const { data: catRow } = await supabase
@@ -188,19 +164,15 @@ export const useBrandsStore = defineStore('brands', () => {
           inStock: row.in_stock !== false,
           stockQuantity: row.stock_quantity || 0,
           tenantId: row.tenant_id,
-          createdAt: row.created_at ? { seconds: Math.floor(new Date(row.created_at).getTime() / 1000), 
-nanoseconds: 0 } : null,
-          updatedAt: row.updated_at ? { seconds: Math.floor(new Date(row.updated_at).getTime() / 1000), 
-nanoseconds: 0 } : null,
+          createdAt: row.created_at ? { seconds: Math.floor(new Date(row.created_at).getTime() / 1000), nanoseconds: 
+0 } : null,
+          updatedAt: row.updated_at ? { seconds: Math.floor(new Date(row.updated_at).getTime() / 1000), nanoseconds: 
+0 } : null,
           meta: row.meta || { weight: '250g', dimensions: '8x4x12 cm', origin: brand.name }
         } as Product
       }))
 
-      currentBrand.value = {
-        ...brand,
-        products
-      }
-
+      currentBrand.value = { ...brand, products }
       return currentBrand.value
     } catch (err: any) {
       error.value = err?.message || 'Failed to load brand'
@@ -210,9 +182,6 @@ nanoseconds: 0 } : null,
     }
   }
 
-  /* =========================
-   * ADD BRAND + PRODUCTS (using a database function for atomicity)
-   * ========================= */
   const addBrandWithProducts = async (
     brandData: Partial<Brand> & { image?: string | File },
     productsData: Partial<Product>[]
@@ -224,27 +193,11 @@ nanoseconds: 0 } : null,
       const tenantId = authStore.currentTenant
       if (!tenantId) throw new Error('No tenant ID')
 
-      // Prepare brand data
       let imageUrl = ''
-      if (brandData.image) {
-        if (isFile(brandData.image)) {
-          // We'll upload after we have the brand ID, so we need to generate a temporary ID
-          // or use a transaction with a placeholder. We'll call the RPC with a placeholder,
-          // then upload and update. Simpler: create brand first, then upload, then update.
-          // To keep atomicity, we can do all in a transaction using the RPC and then upload
-          // afterwards (non‑critical). But the original used batch, which was atomic.
-          // We'll follow a similar approach: first create brand (without image) via RPC,
-          // then upload image and update brand with image URL. If upload fails, we could rollback,
-          // but we'll keep it simple and accept the risk.
-        }
-      }
-
-      // If image is a string (existing URL), use it directly
       if (typeof brandData.image === 'string') {
         imageUrl = brandData.image
       }
 
-      // Call the RPC function that creates brand and products in a single transaction
       const { data: brandId, error: rpcError } = await supabase.rpc('create_brand_with_products', {
         _tenant_id: tenantId,
         _name: brandData.name,
@@ -253,7 +206,7 @@ nanoseconds: 0 } : null,
         _description: brandData.description || '',
         _signature: brandData.signature || '',
         _is_active: brandData.isActive !== false,
-        _image: imageUrl, // might be empty if we need to upload later
+        _image: imageUrl,
         _products: productsData.map(p => ({
           name: p.name,
           slug: p.slug,
@@ -280,7 +233,6 @@ nanoseconds: 0 } : null,
       if (rpcError) throw rpcError
       if (!brandId) throw new Error('Failed to create brand')
 
-      // If we had a File to upload, upload it now and update the brand image
       if (isFile(brandData.image)) {
         const uploadedUrl = await uploadBrandImage(brandData.image, brandId)
         const { error: updateError } = await supabase
@@ -289,11 +241,9 @@ nanoseconds: 0 } : null,
           .eq('id', brandId)
         if (updateError) {
           console.warn('Brand created but image update failed:', updateError)
-          // Not critical, the brand exists without image.
         }
       }
 
-      // Refresh brands list and products store
       await loadBrands()
       await productsStore.fetchProducts()
 
@@ -306,9 +256,6 @@ nanoseconds: 0 } : null,
     }
   }
 
-  /* =========================
-   * UPDATE BRAND
-   * ========================= */
   const updateBrand = async (
     brandId: string,
     updates: Partial<Brand> & { image?: string | File }
@@ -319,10 +266,8 @@ nanoseconds: 0 } : null,
     try {
       const updatePayload: any = { updated_at: new Date().toISOString() }
 
-      // Handle image
       if (updates.image) {
         if (isFile(updates.image)) {
-          // Fetch current brand to get old image URL for deletion
           const { data: oldBrand, error: fetchError } = await supabase
             .from('brands')
             .select('image')
@@ -331,8 +276,6 @@ nanoseconds: 0 } : null,
           if (!fetchError && oldBrand?.image) {
             await deleteBrandImageFromStorage(oldBrand.image)
           }
-
-          // Upload new image
           const newImageUrl = await uploadBrandImage(updates.image, brandId)
           updatePayload.image = newImageUrl
         } else if (typeof updates.image === 'string') {
@@ -340,7 +283,6 @@ nanoseconds: 0 } : null,
         }
       }
 
-      // Map other fields (convert camelCase to snake_case)
       if (updates.name !== undefined) updatePayload.name = updates.name
       if (updates.slug !== undefined) updatePayload.slug = updates.slug
       if (updates.category !== undefined) updatePayload.category = updates.category
@@ -365,15 +307,11 @@ nanoseconds: 0 } : null,
     }
   }
 
-  /* =========================
-   * DELETE BRAND
-   * ========================= */
   const deleteBrand = async (brandId: string): Promise<boolean> => {
     isLoading.value = true
     error.value = ''
 
     try {
-      // Get brand image to delete later
       const { data: brandRow, error: fetchError } = await supabase
         .from('brands')
         .select('image')
@@ -381,7 +319,6 @@ nanoseconds: 0 } : null,
         .single()
       if (fetchError && fetchError.code !== 'PGRST116') throw fetchError
 
-      // Delete brand – products will be cascaded (foreign key ON DELETE CASCADE)
       const { error: deleteError } = await supabase
         .from('brands')
         .delete()
@@ -389,7 +326,6 @@ nanoseconds: 0 } : null,
 
       if (deleteError) throw deleteError
 
-      // Delete image from storage if it exists
       if (brandRow?.image) {
         await deleteBrandImageFromStorage(brandRow.image)
       }
@@ -404,18 +340,12 @@ nanoseconds: 0 } : null,
     }
   }
 
-  /* =========================
-   * INIT (manual, kept for compatibility)
-   * ========================= */
   const initialize = async () => {
     if (!brands.value.length && authStore.currentTenant) {
       await loadBrands()
     }
   }
 
-  /* =========================
-   * REACTIVE TENANT HANDLER
-   * ========================= */
   watchEffect(async () => {
     const tenantId = authStore.currentTenant
     if (tenantId) {

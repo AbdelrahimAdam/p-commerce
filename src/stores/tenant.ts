@@ -1,4 +1,3 @@
-// stores/tenant.ts – SUPABASE VERSION
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { supabase } from '@/supabase/client'
@@ -10,14 +9,12 @@ interface CachedTenant {
 }
 
 export const useTenantStore = defineStore('tenant', () => {
-  // State
   const tenantId = ref<string | null>(null)
   const tenantDomain = ref<string | null>(null)
   const isLoading = ref(false)
   const error = ref<string | null>(null)
   const isInitialized = ref(false)
 
-  // Computed
   const isReady = computed(() => tenantId.value !== null && isInitialized.value)
 
   const CACHE_EXPIRY = 1000 * 60 * 60 // 1 hour
@@ -64,7 +61,6 @@ export const useTenantStore = defineStore('tenant', () => {
         }
       }
 
-      // Query Supabase tenants table
       let { data, error: fetchError } = await supabase
         .from('tenants')
         .select('id, domain, name, settings')
@@ -72,7 +68,6 @@ export const useTenantStore = defineStore('tenant', () => {
         .limit(1)
 
       if (fetchError) {
-        // Retry on network errors
         if (retryCount < MAX_RETRIES && fetchError.message && 
             (fetchError.message.toLowerCase().includes('network') || 
 fetchError.message.toLowerCase().includes('unavailable'))) {
@@ -84,6 +79,30 @@ fetchError.message.toLowerCase().includes('unavailable'))) {
       }
 
       if (!data || data.length === 0) {
+        // Fallback: get first tenant (for local development)
+        console.warn(`No tenant for domain "${hostname}", trying fallback...`)
+        const { data: fallbackData, error: fallbackError } = await supabase
+          .from('tenants')
+          .select('id, domain, name, settings')
+          .limit(1)
+
+        if (fallbackError) throw fallbackError
+        if (fallbackData && fallbackData.length > 0) {
+          const row = fallbackData[0]
+          tenantId.value = row.id
+          tenantDomain.value = row.domain
+          console.info('🟢 Tenant resolved from fallback:', tenantId.value)
+          const cacheData: CachedTenant = {
+            tenantId: tenantId.value!,
+            tenantDomain: tenantDomain.value!,
+            expiry: Date.now() + CACHE_EXPIRY
+          }
+          localStorage.setItem(cacheKey, JSON.stringify(cacheData))
+          isInitialized.value = true
+          resolveReady()
+          return
+        }
+
         error.value = `No tenant configured for domain "${hostname}"`
         tenantId.value = null
         tenantDomain.value = null
@@ -101,8 +120,8 @@ fetchError.message.toLowerCase().includes('unavailable'))) {
       console.info('✅ Tenant resolved from Supabase:', tenantId.value)
 
       const cacheData: CachedTenant = {
-        tenantId: tenantId.value,
-        tenantDomain: tenantDomain.value,
+        tenantId: tenantId.value!,
+        tenantDomain: tenantDomain.value!,
         expiry: Date.now() + CACHE_EXPIRY
       }
       localStorage.setItem(cacheKey, JSON.stringify(cacheData))
@@ -128,8 +147,8 @@ fetchError.message.toLowerCase().includes('unavailable'))) {
 
     const cacheKey = `tenant_${domain}`
     const cacheData: CachedTenant = {
-      tenantId: id,
-      tenantDomain: domain,
+      tenantId: tenantId.value!,
+      tenantDomain: tenantDomain.value!,
       expiry: Date.now() + CACHE_EXPIRY
     }
     localStorage.setItem(cacheKey, JSON.stringify(cacheData))
@@ -149,8 +168,7 @@ fetchError.message.toLowerCase().includes('unavailable'))) {
     if (timeoutMs) {
       return Promise.race([
         readyPromise,
-        new Promise<void>((_, reject) => setTimeout(() => reject(new Error('Tenant resolution timeout')), 
-timeoutMs))
+        new Promise<void>((_, reject) => setTimeout(() => reject(new Error('Tenant resolution timeout')), timeoutMs))
       ])
     }
     return readyPromise
@@ -163,11 +181,7 @@ timeoutMs))
         .select('*')
         .eq('id', id)
         .single()
-
-      if (fetchError || !data) {
-        return null
-      }
-
+      if (fetchError || !data) return null
       return { id: data.id, data }
     } catch (err) {
       console.error('Error fetching tenant by ID:', err)
