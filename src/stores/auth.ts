@@ -598,9 +598,24 @@ export const useAuthStore = defineStore('auth', () => {
         console.warn('Could not delete customer record:', deleteError)
       }
 
-      const admin = await getAdminFromSupabase(userId)
-      if (!admin) throw new Error('Admin document not found after registration')
-      setAdminUser(admin)
+      // Wait a moment for the transaction to commit
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      // Retry fetching the admin with exponential backoff
+      let retries = 0;
+      let admin = null;
+      while (retries < 5 && !admin) {
+        if (retries > 0) {
+          const delay = Math.min(200 * Math.pow(2, retries - 1), 2000);
+          console.log(`Retrying admin fetch (${retries}/5) after ${delay}ms...`);
+          await new Promise(r => setTimeout(r, delay));
+        }
+        admin = await getAdminFromSupabase(userId);
+        retries++;
+      }
+
+      if (!admin) throw new Error('Admin document not found after registration');
+      setAdminUser(admin);
 
       console.log('✅ Company registered:', tenantId)
       return { tenantId, uid: userId }
