@@ -155,6 +155,7 @@ export const useAuthStore = defineStore('auth', () => {
     }))
   }
 
+  // ========== FIXED AUTHENTICATE WITH RETRY AND FALLBACK ==========
   const authenticate = async (credentials: { email: string; password: string; remember?: boolean }) => {
     isLoading.value = true
     error.value = null
@@ -168,10 +169,44 @@ export const useAuthStore = defineStore('auth', () => {
       if (signInError || !data.user) throw new Error(signInError?.message || 'Invalid credentials')
       const userId = data.user.id
 
-      const [adminData, customerData] = await Promise.all([
-        getAdminFromSupabase(userId),
-        getCustomerFromSupabase(userId)
-      ])
+      // Wait a moment for session to propagate
+      await new Promise(resolve => setTimeout(resolve, 500))
+
+      // Try to fetch admin/customer with retries (up to 3 attempts)
+      let adminData: AdminUser | null = null
+      let customerData: CustomerUser | null = null
+      for (let attempt = 1; attempt <= 3; attempt++) {
+        [adminData, customerData] = await Promise.all([
+          getAdminFromSupabase(userId),
+          getCustomerFromSupabase(userId)
+        ])
+        if (adminData || customerData) break
+        if (attempt < 3) await new Promise(r => setTimeout(r, 200))
+      }
+
+      // 🔥 FALLBACK: on main domain, if no profile exists, create a default admin
+      if (!adminData && !customerData && window.location.hostname === 'p-commerce-peach.vercel.app') {
+        console.log('No profile found on main domain – creating default admin')
+        const { error: insertError } = await supabase
+          .from('admins')
+          .insert({
+            id: userId,
+            tenant_id: 'main',
+            role: 'admin',
+            email: data.user.email,
+            display_name: data.user.user_metadata?.displayName || data.user.email,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+            is_active: true,
+            permissions: ['all']
+          })
+        if (!insertError) {
+          // Re‑fetch after insertion
+          adminData = await getAdminFromSupabase(userId)
+        } else {
+          console.error('Failed to create admin record:', insertError)
+        }
+      }
 
       if (adminData) {
         setAdminUser(adminData)
@@ -183,7 +218,7 @@ export const useAuthStore = defineStore('auth', () => {
 
       if (customerData) {
         setCustomerUser(customerData, credentials.remember)
-        await supabase.from('customers').update({ 
+        await supabase.from('customers').update({
           last_login: new Date().toISOString(),
           updated_at: new Date().toISOString()
         }).eq('id', userId)
@@ -202,6 +237,7 @@ export const useAuthStore = defineStore('auth', () => {
       isLoading.value = false
     }
   }
+  // ========== END OF FIXED AUTHENTICATE ==========
 
   const login = async (email: string, password: string): Promise<AdminUser> => {
     try {
@@ -628,7 +664,7 @@ export const useAuthStore = defineStore('auth', () => {
           uid: userId,
           email: data.email,
           displayName: data.displayName,
-          role: 'admin' as const,   // fixed type
+          role: 'admin' as const,
           tenantId: tenantId,
           isActive: true,
           permissions: ['all'],
