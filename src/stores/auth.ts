@@ -384,7 +384,7 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  // Address management (unchanged)
+  // Address management
   const addCustomerAddress = async (address: any): Promise<void> => {
     if (!customer.value) throw new Error('No customer logged in')
     isLoading.value = true
@@ -570,7 +570,7 @@ export const useAuthStore = defineStore('auth', () => {
       if (!signUpData.user) throw new Error('Failed to create user')
       const userId = signUpData.user.id
 
-      // Ensure session is active (sometimes sign-up doesn't set it immediately)
+      // Ensure session is established
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
         console.log('Waiting for session to be established...');
@@ -610,7 +610,7 @@ export const useAuthStore = defineStore('auth', () => {
 
       // Retry fetching the admin with exponential backoff
       let retries = 0;
-      let admin = null;
+      let admin: AdminUser | null = null;
       while (retries < 5 && !admin) {
         if (retries > 0) {
           const delay = Math.min(200 * Math.pow(2, retries - 1), 2000);
@@ -628,7 +628,7 @@ export const useAuthStore = defineStore('auth', () => {
           uid: userId,
           email: data.email,
           displayName: data.displayName,
-          role: 'admin',
+          role: 'admin' as const,   // fixed type
           tenantId: tenantId,
           isActive: true,
           permissions: ['all'],
