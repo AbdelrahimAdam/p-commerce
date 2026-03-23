@@ -2,7 +2,8 @@
 <template>
   <div class="min-h-screen bg-gray-50">
     <!-- New Orders Notification Banner -->
-    <div v-if="showNewOrdersNotification" class="fixed top-20 right-4 z-50 max-w-md bg-green-50 border border-green-200 rounded-lg shadow-lg p-4 animate-slide-in">
+    <div v-if="showNewOrdersNotification" class="fixed top-20 right-4 z-50 max-w-md bg-green-50 border border-green-200 rounded-lg shadow-lg p-4 
+animate-slide-in">
       <div class="flex items-start gap-3">
         <div class="flex-shrink-0">
           <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -56,12 +57,13 @@
                 class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
               />
             </div>
-            
+
             <!-- Export Button -->
             <button
               @click="exportOrders"
               :disabled="ordersStore.loading || ordersStore.orders.length === 0"
-              class="px-4 py-2 border border-primary-500 text-primary-500 rounded-lg hover:bg-primary-50 transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              class="px-4 py-2 border border-primary-500 text-primary-500 rounded-lg hover:bg-primary-50 transition-colors flex items-center gap-2 
+disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
@@ -155,7 +157,8 @@
             <div class="w-12 h-12 rounded-full bg-purple-100 flex items-center justify-center">
               <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
-                      d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                      d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 
+0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
               </svg>
             </div>
           </div>
@@ -328,7 +331,8 @@
                     >
                       <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
-                              d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/>
+                              d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 
+002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/>
                       </svg>
                     </button>
                   </div>
@@ -413,7 +417,7 @@
             </button>
           </div>
         </div>
-        
+
         <div class="p-6">
           <!-- Order Summary -->
           <div class="grid md:grid-cols-2 gap-8 mb-8">
@@ -466,7 +470,8 @@
                 </div>
                 <div>
                   <p class="text-sm text-gray-600">{{ t('Payment Status') }}</p>
-                  <span :class="getPaymentStatusClasses(selectedOrder.paymentStatus || 'pending')" class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full">
+                  <span :class="getPaymentStatusClasses(selectedOrder.paymentStatus || 'pending')" class="px-3 py-1 inline-flex text-xs leading-5 
+font-semibold rounded-full">
                     {{ getPaymentStatusText(selectedOrder.paymentStatus || 'pending') }}
                   </span>
                 </div>
@@ -649,7 +654,8 @@
             <span v-if="ordersStore.loading" class="flex items-center gap-2">
               <svg class="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 
+3 7.938l3-2.647z"></path>
               </svg>
               {{ t('Updating...') }}
             </span>
@@ -660,6 +666,7 @@
     </div>
   </div>
 </template>
+
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useLanguageStore } from '@/stores/language'
@@ -668,8 +675,7 @@ import { useAuthStore } from '@/stores/auth'
 import { useRouter } from 'vue-router'
 import type { Order, OrderStatus } from '@/types'
 import debounce from 'lodash/debounce'
-import { collection, query, orderBy, onSnapshot, limit } from 'firebase/firestore'
-import { db } from '@/firebase/config'
+import { supabase } from '@/supabase/client'
 import { authNotification } from '@/utils/notifications'
 
 const router = useRouter()
@@ -677,15 +683,15 @@ const languageStore = useLanguageStore()
 const ordersStore = useOrdersStore()
 const authStore = useAuthStore()
 
-// ✅ Admin guard
+// Admin guard
 if (!authStore.isAdmin) {
   router.push('/admin')
 }
 
 const { t } = languageStore
 
-// Real-time listener
-let unsubscribeOrders: (() => void) | null = null
+// Real-time subscription
+let channel: ReturnType<typeof supabase.channel> | null = null
 const newOrdersCount = ref(0)
 const showNewOrdersNotification = ref(false)
 const lastOrderCount = ref(0)
@@ -714,7 +720,7 @@ const getShippingAddress = (order: any) => {
   return order.shippingAddress || order.customer?.address || t('N/A')
 }
 
-// Computed properties (unchanged)
+// Computed properties
 const filteredOrders = computed(() => {
   let filtered = [...ordersStore.orders]
 
@@ -766,7 +772,7 @@ const paginatedOrders = computed(() => {
   return filteredOrders.value.slice(startIndex.value, endIndex.value)
 })
 
-// Methods (unchanged except for setupOrdersListener)
+// Methods
 const formatCurrency = (amount: number) => {
   return new Intl.NumberFormat('en-EG', {
     style: 'currency',
@@ -971,41 +977,78 @@ const dismissNotification = () => {
   lastOrderCount.value = ordersStore.orders.length
 }
 
-// Setup real-time listener for orders – now using store actions
+// Setup real-time subscription for orders using Supabase
 const setupOrdersListener = () => {
-  const ordersRef = collection(db, 'orders')
-  const q = query(ordersRef, orderBy('createdAt', 'desc'), limit(50))
-  
-  unsubscribeOrders = onSnapshot(q, (snapshot) => {
-    if (ordersStore.orders.length === 0) {
-      // First load – set orders via store action
-      const newOrders = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Order))
-      ordersStore.setOrders(newOrders)
-      lastOrderCount.value = newOrders.length
-    } else {
-      snapshot.docChanges().forEach((change) => {
-        if (change.type === 'added') {
-          const newOrder = {
-            id: change.doc.id,
-            ...change.doc.data()
-          } as Order
-          ordersStore.addOrder(newOrder)
-          newOrdersCount.value++
-          showNewOrdersNotification.value = true
-          playNotificationSound()
-          if (Notification.permission === 'granted') {
-            new Notification('🛍️ New Order Received!', {
-              body: `Order #${newOrder.orderNumber} - EGP ${newOrder.total?.toFixed(2)}`,
-              icon: '/favicon.ico'
-            })
-          }
-          authNotification.loggedIn(`New order #${newOrder.orderNumber} received`)
+  const tenantId = authStore.currentTenant
+  if (!tenantId) {
+    console.warn('No tenant ID – cannot setup orders listener')
+    return
+  }
+
+  // Create a channel for this tenant's orders table
+  channel = supabase
+    .channel(`orders:${tenantId}`)
+    .on(
+      'postgres_changes',
+      {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'orders',
+        filter: `tenant_id=eq.${tenantId}`
+      },
+      async (payload) => {
+        const newOrder = payload.new as any
+        // Convert to Order format
+        const order: Order = {
+          id: newOrder.id,
+          orderNumber: newOrder.order_number,
+          customer: newOrder.customer,
+          items: newOrder.items,
+          subtotal: newOrder.subtotal,
+          shippingCost: newOrder.shipping_cost,
+          tax: newOrder.tax,
+          total: newOrder.total,
+          status: newOrder.status,
+          paymentMethod: newOrder.payment_method,
+          paymentStatus: newOrder.payment_status,
+          shippingAddress: newOrder.shipping_address,
+          notes: newOrder.notes,
+          trackingNumber: newOrder.tracking_number,
+          statusHistory: newOrder.status_history?.map((h: any) => ({
+            status: h.status,
+            date: new Date(h.timestamp),
+            note: h.note,
+            updatedBy: h.updated_by
+          })) || [],
+          userId: newOrder.user_id,
+          guestId: newOrder.guest_id,
+          tenantId: newOrder.tenant_id,
+          createdAt: new Date(newOrder.created_at),
+          updatedAt: new Date(newOrder.updated_at),
+          shippedAt: newOrder.shipped_at ? new Date(newOrder.shipped_at) : undefined,
+          deliveredAt: newOrder.delivered_at ? new Date(newOrder.delivered_at) : undefined,
+          cancelledAt: newOrder.cancelled_at ? new Date(newOrder.cancelled_at) : undefined
         }
-      })
-    }
-  }, (error) => {
-    console.error('Error in orders listener:', error)
-  })
+        ordersStore.addOrder(order)
+        newOrdersCount.value++
+        showNewOrdersNotification.value = true
+        playNotificationSound()
+        if (Notification.permission === 'granted') {
+          new Notification('🛍️ New Order Received!', {
+            body: `Order #${order.orderNumber} - EGP ${order.total?.toFixed(2)}`,
+            icon: '/favicon.ico'
+          })
+        }
+        authNotification.loggedIn(`New order #${order.orderNumber} received`)
+      }
+    )
+    .subscribe((status) => {
+      if (status === 'SUBSCRIBED') {
+        console.log('📡 Orders listener active for tenant', tenantId)
+      } else if (status === 'CHANNEL_ERROR') {
+        console.error('Orders channel error')
+      }
+    })
 }
 
 const playNotificationSound = () => {
@@ -1027,8 +1070,8 @@ onMounted(async () => {
 })
 
 onUnmounted(() => {
-  if (unsubscribeOrders) {
-    unsubscribeOrders()
+  if (channel) {
+    supabase.removeChannel(channel)
   }
 })
 
@@ -1046,7 +1089,6 @@ watch([statusFilter, dateFilter], () => {
   transition: all 0.2s ease-in-out;
 }
 
-/* Scrollbar styling */
 ::-webkit-scrollbar {
   width: 6px;
 }
@@ -1065,7 +1107,6 @@ watch([statusFilter, dateFilter], () => {
   background: #555;
 }
 
-/* Animation */
 @keyframes spin {
   from {
     transform: rotate(0deg);

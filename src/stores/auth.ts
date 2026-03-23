@@ -73,27 +73,26 @@ export const useAuthStore = defineStore('auth', () => {
     user.value?.tenantId || customer.value?.tenantId || tenantStore.tenantId
   )
 
-  // Helper: fetch admin
+  // Helper: fetch admin from 'admins' table (only columns that exist)
   const getAdminFromSupabase = async (userId: string): Promise<AdminUser | null> => {
     try {
       const { data, error } = await supabase
         .from('admins')
-        .select('*')
+        .select('id, tenant_id, role, email, created_at, updated_at, last_login')
         .eq('id', userId)
         .single()
       if (error || !data) return null
       return {
         uid: data.id,
         email: data.email,
-        displayName: data.display_name,
+        displayName: data.email, // fallback; use email as display name
         role: data.role,
         tenantId: data.tenant_id,
-        photoURL: data.photo_url,
-        isActive: data.is_active,
-        permissions: data.permissions,
+        isActive: true, // default
+        permissions: [], // default
         createdAt: new Date(data.created_at),
         updatedAt: new Date(data.updated_at),
-        lastLogin: new Date()
+        lastLogin: data.last_login ? new Date(data.last_login) : undefined
       }
     } catch (err) {
       console.error('❌ Error getting admin from Supabase:', err)
@@ -101,25 +100,24 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  // Helper: fetch customer
+  // Helper: fetch customer from 'customers' table (columns that exist)
   const getCustomerFromSupabase = async (userId: string): Promise<CustomerUser | null> => {
     try {
       const { data, error } = await supabase
         .from('customers')
-        .select('*')
+        .select('id, tenant_id, email, name, addresses, created_at, updated_at, phone_number')
         .eq('id', userId)
         .single()
       if (error || !data) return null
       return {
         uid: data.id,
         email: data.email,
-        displayName: data.display_name,
+        displayName: data.name || data.email,
         tenantId: data.tenant_id,
-        photoURL: data.photo_url,
         phoneNumber: data.phone_number,
         addresses: data.addresses || [],
-        wishlist: data.wishlist || [],
-        newsletter: data.newsletter || false,
+        wishlist: [], // wishlist is separate table
+        newsletter: false, // not in schema
         createdAt: new Date(data.created_at),
         updatedAt: new Date(data.updated_at),
         lastLogin: new Date()
@@ -175,7 +173,8 @@ export const useAuthStore = defineStore('auth', () => {
 
       if (adminData) {
         setAdminUser(adminData)
-        await supabase.from('admins').update({ last_login: new Date().toISOString() }).eq('id', userId)
+        // Optionally update last_login in admins table (if column exists)
+        // await supabase.from('admins').update({ last_login: new Date().toISOString() }).eq('id', userId)
         authNotification.loggedIn(adminData.displayName ?? 'Admin')
         console.log('✅ Admin authenticated:', adminData.email)
         return { ...adminData, role: 'admin' }
@@ -184,7 +183,6 @@ export const useAuthStore = defineStore('auth', () => {
       if (customerData) {
         setCustomerUser(customerData, credentials.remember)
         await supabase.from('customers').update({ 
-          last_login: new Date().toISOString(),
           updated_at: new Date().toISOString()
         }).eq('id', userId)
         authNotification.loggedIn(customerData.displayName ?? 'Customer')
@@ -196,7 +194,7 @@ export const useAuthStore = defineStore('auth', () => {
     } catch (err: any) {
       console.error('❌ Authentication error:', err)
       error.value = err.message || 'Invalid credentials'
-      authNotification.error(error.value ?? '')
+      authNotification.error(error.value ?? 'Authentication failed')
       throw err
     } finally {
       isLoading.value = false
@@ -215,8 +213,7 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  const customerLogin = async (credentials: { email: string; password: string; remember?: boolean }): 
-Promise<CustomerUser> => {
+  const customerLogin = async (credentials: { email: string; password: string; remember?: boolean }): Promise<CustomerUser> => {
     try {
       const result = await authenticate(credentials)
       if (result.role !== 'customer') {
@@ -260,7 +257,6 @@ Promise<CustomerUser> => {
         email: userData.email,
         displayName: userData.displayName,
         tenantId,
-        photoURL: undefined,
         phoneNumber: userData.phoneNumber,
         addresses: [],
         wishlist: [],
@@ -270,14 +266,12 @@ Promise<CustomerUser> => {
         lastLogin: new Date()
       }
 
-      const dbData = {
+      const dbData: Record<string, any> = {
         id: userId,
         email: newCustomer.email,
-        display_name: newCustomer.displayName,
+        name: newCustomer.displayName,
         tenant_id: newCustomer.tenantId,
         addresses: newCustomer.addresses,
-        wishlist: newCustomer.wishlist,
-        newsletter: newCustomer.newsletter,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       }
@@ -304,12 +298,12 @@ Promise<CustomerUser> => {
     }
   }
 
+  // ========== CUSTOMER PROFILE UPDATE ACTIONS ==========
+
   const updateCustomerProfile = async (profileData: {
     displayName?: string
     phoneNumber?: string
     newsletter?: boolean
-    smsNotifications?: boolean
-    dob?: string
   }): Promise<void> => {
     if (!customer.value) throw new Error('No customer logged in')
     isLoading.value = true
@@ -327,11 +321,9 @@ Promise<CustomerUser> => {
       }
 
       const updateData: any = { updated_at: new Date().toISOString() }
-      if (profileData.displayName) updateData.display_name = profileData.displayName
+      if (profileData.displayName) updateData.name = profileData.displayName
       if (profileData.phoneNumber !== undefined) updateData.phone_number = profileData.phoneNumber
       if (profileData.newsletter !== undefined) updateData.newsletter = profileData.newsletter
-      if (profileData.smsNotifications !== undefined) updateData.sms_notifications = profileData.smsNotifications
-      if (profileData.dob !== undefined) updateData.dob = profileData.dob
 
       const { error: updateError } = await supabase
         .from('customers')
@@ -342,9 +334,6 @@ Promise<CustomerUser> => {
       if (profileData.displayName) customer.value.displayName = profileData.displayName
       if (profileData.phoneNumber !== undefined) customer.value.phoneNumber = profileData.phoneNumber
       if (profileData.newsletter !== undefined) customer.value.newsletter = profileData.newsletter
-      const extended = customer.value as any
-      if (profileData.smsNotifications !== undefined) extended.smsNotifications = profileData.smsNotifications
-      if (profileData.dob !== undefined) extended.dob = profileData.dob
 
       authNotification.loggedIn('Profile updated successfully')
     } catch (err: any) {
@@ -391,7 +380,7 @@ Promise<CustomerUser> => {
     }
   }
 
-  // Address management (any type for simplicity)
+  // Address management (read‑modify‑write)
   const addCustomerAddress = async (address: any): Promise<void> => {
     if (!customer.value) throw new Error('No customer logged in')
     isLoading.value = true
@@ -554,6 +543,7 @@ Promise<CustomerUser> => {
     }
   }
 
+  // ========== Register a company ==========
   const registerCompany = async (data: {
     email: string
     password: string
@@ -760,22 +750,18 @@ Promise<CustomerUser> => {
         displayName,
         role: 'super-admin',
         tenantId,
-        photoURL: undefined,
         isActive: true,
-        permissions: ['all'],
+        permissions: [],
         createdAt: new Date(),
         updatedAt: new Date(),
-        lastLogin: new Date()
+        lastLogin: undefined
       }
 
       const dbData = {
         id: userId,
+        tenant_id: tenantId,
         email: adminData.email,
-        display_name: adminData.displayName,
         role: adminData.role,
-        tenant_id: adminData.tenantId,
-        is_active: adminData.isActive,
-        permissions: adminData.permissions,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       }

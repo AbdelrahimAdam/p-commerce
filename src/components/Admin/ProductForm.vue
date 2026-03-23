@@ -41,7 +41,8 @@
                     @click="goToStep(2)"
                     :class="currentStep === 2 ? 'text-primary-600 border-primary-600' : 'text-gray-500 border-gray-300'"
                     :disabled="!canProceedToProductDetails"
-                    class="flex-1 py-2 text-sm font-medium border-b-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap px-1"
+                    class="flex-1 py-2 text-sm font-medium border-b-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap 
+px-1"
                   >
                     {{ t('Product Details') }}
                   </button>
@@ -105,7 +106,8 @@
                   <input
                     v-model="brandSearchQuery"
                     type="text"
-                    class="w-full px-3 py-2 pl-10 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-sm"
+                    class="w-full px-3 py-2 pl-10 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 
+focus:border-primary-500 text-sm"
                     :placeholder="t('Search brands...')"
                     @input="onBrandSearch"
                   />
@@ -121,7 +123,8 @@
                 </div>
 
                 <!-- Brand List -->
-                <div v-else-if="filteredBrands.length > 0" class="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-48 overflow-y-auto p-2 border border-gray-200 rounded-lg">
+                <div v-else-if="filteredBrands.length > 0" class="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-48 overflow-y-auto p-2 border 
+border-gray-200 rounded-lg">
                   <div
                     v-for="brand in filteredBrands"
                     :key="brand.id"
@@ -161,7 +164,8 @@
                 <!-- No brands found -->
                 <div v-else-if="!brandsLoading" class="mt-3 p-4 text-center border border-gray-200 rounded-lg">
                   <svg class="w-12 h-12 mx-auto text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 
+11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                   </svg>
                   <p class="mt-2 text-sm text-gray-600">
                     {{ t('No brands found. Try searching or create a new brand.') }}
@@ -207,7 +211,8 @@
                   v-model="newBrand.name"
                   type="text"
                   :placeholder="t('e.g., Tom Ford')"
-                  class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-sm"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 
+focus:border-primary-500 text-sm"
                   :class="{ 'border-red-300': brandErrors.name }"
                   @input="generateBrandSlug"
                 />
@@ -228,12 +233,14 @@
                       v-model="newBrand.imageUrl"
                       type="text"
                       placeholder="https://example.com/image.jpg"
-                      class="flex-1 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-sm"
+                      class="flex-1 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 
+focus:border-primary-500 text-sm"
                     />
                     <button
                       type="button"
                       @click="previewBrandImage(newBrand.imageUrl)"
-                      class="inline-flex items-center justify-center px-3 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary-500 whitespace-nowrap"
+                      class="inline-flex items-center justify-center px-3 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 
+bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary-500 whitespace-nowrap"
                     >
                       {{ t('Preview') }}
                     </button>
@@ -249,19 +256,21 @@
                       type="file"
                       accept="image/*"
                       @change="handleBrandImageUpload"
-                      class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-primary-50 file:text-primary-700 hover:file:bg-primary-100 cursor-pointer"
+                      class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium 
+file:bg-primary-50 file:text-primary-700 hover:file:bg-primary-100 cursor-pointer"
                     />
                     <button
                       v-if="brandImageFile || newBrand.imageUrl"
                       @click="removeBrandImage"
                       type="button"
-                      class="inline-flex items-center justify-center px-3 py-2 border border-red-300 text-red-700 rounded-md hover:bg-red-50 text-sm whitespace-nowrap"
+                      class="inline-flex items-center justify-center px-3 py-2 border border-red-300 text-red-700 rounded-md hover:bg-red-50 text-sm 
+whitespace-nowrap"
                     >
                       {{ t('Remove') }}
                     </button>
                   </div>
                   <p class="mt-1 text-xs text-gray-500">
-                    {{ t('Images will be stored in Firebase Storage (no size limit). JPG, PNG, GIF recommended.') }}
+                    {{ t('Images will be stored in Supabase Storage (no size limit). JPG, PNG, GIF recommended.') }}
                   </p>
                 </div>
 
@@ -300,14 +309,16 @@
                       v-model="newBrand.slug"
                       type="text"
                       :placeholder="t('tom-ford')"
-                      class="w-full pl-16 sm:pl-20 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-sm"
+                      class="w-full pl-16 sm:pl-20 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 
+focus:border-primary-500 text-sm"
                       :class="{ 'border-red-300': brandErrors.slug }"
                     />
                   </div>
                   <button
                     type="button"
                     @click="generateBrandSlug"
-                    class="inline-flex items-center justify-center px-3 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary-500 whitespace-nowrap"
+                    class="inline-flex items-center justify-center px-3 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 
+bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary-500 whitespace-nowrap"
                   >
                     {{ t('Generate') }}
                   </button>
@@ -325,7 +336,8 @@
                 </label>
                 <select
                   v-model="newBrand.category"
-                  class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-sm"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 
+focus:border-primary-500 text-sm"
                   :class="{ 'border-red-300': brandErrors.category }"
                 >
                   <option value="">{{ t('Select category') }}</option>
@@ -347,7 +359,8 @@
                   v-model="newBrand.description"
                   rows="2"
                   :placeholder="t('Brief description about the brand...')"
-                  class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-sm"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 
+focus:border-primary-500 text-sm"
                 ></textarea>
               </div>
 
@@ -413,13 +426,15 @@
                     v-model="productData.imageUrl"
                     type="text"
                     placeholder="https://example.com/product.jpg"
-                    class="flex-1 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-sm"
+                    class="flex-1 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 
+focus:border-primary-500 text-sm"
                     :class="{ 'border-red-300': errors.image }"
                   />
                   <button
                     type="button"
                     @click="previewProductImage(productData.imageUrl)"
-                    class="inline-flex items-center justify-center px-3 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary-500 whitespace-nowrap"
+                    class="inline-flex items-center justify-center px-3 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 
+bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary-500 whitespace-nowrap"
                   >
                     {{ t('Preview') }}
                   </button>
@@ -435,19 +450,21 @@
                     type="file"
                     accept="image/*"
                     @change="handleProductImageUpload"
-                    class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-primary-50 file:text-primary-700 hover:file:bg-primary-100 cursor-pointer"
+                    class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium 
+file:bg-primary-50 file:text-primary-700 hover:file:bg-primary-100 cursor-pointer"
                   />
                   <button
                     v-if="productImageFile || productData.imageUrl"
                     @click="removeProductImage"
                     type="button"
-                    class="inline-flex items-center justify-center px-3 py-2 border border-red-300 text-red-700 rounded-md hover:bg-red-50 text-sm whitespace-nowrap"
+                    class="inline-flex items-center justify-center px-3 py-2 border border-red-300 text-red-700 rounded-md hover:bg-red-50 text-sm 
+whitespace-nowrap"
                   >
                     {{ t('Remove') }}
                   </button>
                 </div>
                 <p class="mt-1 text-xs text-gray-500">
-                  {{ t('Images will be stored in Firebase Storage (no size limit). JPG, PNG, GIF recommended.') }}
+                  {{ t('Images will be stored in Supabase Storage (no size limit). JPG, PNG, GIF recommended.') }}
                 </p>
               </div>
 
@@ -483,7 +500,8 @@
                 v-model="productData.name.en"
                 type="text"
                 :placeholder="t('e.g., Noir Extreme')"
-                class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-sm"
+                class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 
+focus:border-primary-500 text-sm"
                 :class="{ 'border-red-300': errors.nameEn }"
                 @input="generateProductSlug"
               />
@@ -499,7 +517,8 @@
                 v-model="productData.name.ar"
                 type="text"
                 :placeholder="t('نوار إكستريم')"
-                class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-sm text-right"
+                class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 
+focus:border-primary-500 text-sm text-right"
                 :class="{ 'border-red-300': errors.nameAr }"
                 dir="rtl"
               />
@@ -520,14 +539,16 @@
                     v-model="productData.slug"
                     type="text"
                     :placeholder="t('noir-extreme')"
-                    class="w-full pl-16 sm:pl-20 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-sm"
+                    class="w-full pl-16 sm:pl-20 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 
+focus:border-primary-500 text-sm"
                     :class="{ 'border-red-300': errors.slug }"
                   />
                 </div>
                 <button
                   type="button"
                   @click="generateProductSlug"
-                  class="inline-flex items-center justify-center px-3 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary-500 whitespace-nowrap"
+                  class="inline-flex items-center justify-center px-3 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 
+bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary-500 whitespace-nowrap"
                 >
                   {{ t('Generate') }}
                 </button>
@@ -588,7 +609,8 @@
                 </label>
                 <select
                   v-model="productData.category"
-                  class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-sm"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 
+focus:border-primary-500 text-sm"
                   :class="{ 'border-red-300': errors.category }"
                 >
                   <option value="">{{ t('Select category') }}</option>
@@ -612,7 +634,8 @@
                     min="0"
                     step="0.01"
                     placeholder="450"
-                    class="w-full pl-12 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-sm"
+                    class="w-full pl-12 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 
+focus:border-primary-500 text-sm"
                     :class="{ 'border-red-300': errors.price }"
                   />
                 </div>
@@ -628,7 +651,8 @@
                 </label>
                 <select
                   v-model="productData.size"
-                  class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-sm"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 
+focus:border-primary-500 text-sm"
                   :class="{ 'border-red-300': errors.size }"
                 >
                   <option value="">{{ t('Select size') }}</option>
@@ -645,7 +669,8 @@
                 </label>
                 <select
                   v-model="productData.concentration"
-                  class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-sm"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 
+focus:border-primary-500 text-sm"
                   :class="{ 'border-red-300': errors.concentration }"
                 >
                   <option value="">{{ t('Select concentration') }}</option>
@@ -667,7 +692,8 @@
                 v-model="productData.description.en"
                 rows="3"
                 :placeholder="t('A luxurious oriental fragrance with notes of vanilla, amber, and spices.')"
-                class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-sm"
+                class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 
+focus:border-primary-500 text-sm"
                 :class="{ 'border-red-300': errors.descEn }"
               ></textarea>
               <p v-if="errors.descEn" class="mt-1 text-sm text-red-600">{{ errors.descEn }}</p>
@@ -682,7 +708,8 @@
                 v-model="productData.description.ar"
                 rows="3"
                 :placeholder="t('عطر شرقي فاخر بنغمات الفانيليا والعنبر والتوابل.')"
-                class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-sm text-right"
+                class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 
+focus:border-primary-500 text-sm text-right"
                 :class="{ 'border-red-300': errors.descAr }"
                 dir="rtl"
               ></textarea>
@@ -819,7 +846,8 @@
                   type="number"
                   min="0"
                   placeholder="0"
-                  class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-sm"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 
+focus:border-primary-500 text-sm"
                 />
               </div>
               <div>
@@ -838,7 +866,8 @@
                   <div v-if="skuLoading" class="absolute right-2 top-1/2 -translate-y-1/2">
                     <svg class="animate-spin h-4 w-4 text-primary-500" fill="none" viewBox="0 0 24 24">
                       <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 
+5.824 3 7.938l3-2.647z"></path>
                     </svg>
                   </div>
                 </div>
@@ -904,7 +933,8 @@
               type="button"
               @click="close"
               :disabled="loading"
-              class="w-full sm:w-auto px-4 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:opacity-50"
+              class="w-full sm:w-auto px-4 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 
+focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:opacity-50"
             >
               {{ t('Cancel') }}
             </button>
@@ -917,7 +947,8 @@
                 type="button"
                 @click="goToStep(1)"
                 :disabled="loading"
-                class="w-full sm:w-auto px-4 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                class="w-full sm:w-auto px-4 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 
+focus:outline-none focus:ring-2 focus:ring-primary-500"
               >
                 <svg class="w-4 h-4 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
@@ -931,7 +962,8 @@
                 type="button"
                 @click="goToStep(2)"
                 :disabled="!canProceedToProductDetails || loading"
-                class="w-full sm:w-auto px-4 py-2.5 text-sm font-semibold text-white bg-primary-600 rounded-md hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                class="w-full sm:w-auto px-4 py-2.5 text-sm font-semibold text-white bg-primary-600 rounded-md hover:bg-primary-700 focus:outline-none 
+focus:ring-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {{ t('Next: Product Details') }}
                 <svg class="w-4 h-4 ml-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -944,12 +976,14 @@
                 type="button"
                 @click="saveProduct"
                 :disabled="loading || !canSave || skuLoading || !productData.sku"
-                class="w-full sm:w-auto px-4 py-2.5 text-sm font-semibold text-white bg-primary-600 rounded-md hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                class="w-full sm:w-auto px-4 py-2.5 text-sm font-semibold text-white bg-primary-600 rounded-md hover:bg-primary-700 focus:outline-none 
+focus:ring-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <template v-if="loading">
                   <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline" fill="none" viewBox="0 0 24 24">
                     <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 
+5.824 3 7.938l3-2.647z"></path>
                   </svg>
                   {{ t('Saving...') }}
                 </template>
@@ -973,9 +1007,7 @@ import { useBrandsStore } from '@/stores/brands'
 import { useAuthStore } from '@/stores/auth'
 import type { Product, Category, Brand } from '@/types'
 import { authNotification } from '@/utils/notifications'
-import { collection, doc, writeBatch, serverTimestamp, query, where, getDocs, orderBy, limit, updateDoc } from 'firebase/firestore'
-import { db, storage } from '@/firebase/config'
-import { ref as storageRef, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage'
+import { supabase } from '@/supabase/client'
 
 const languageStore = useLanguageStore()
 const productsStore = useProductsStore()
@@ -1001,52 +1033,57 @@ const emit = defineEmits<{
   saved: []
 }>()
 
-// ========== HELPER: Clean object for Firestore ==========
-const cleanForFirestore = (obj: any): any => {
+// ========== HELPER: Clean object for Supabase ==========
+const cleanForSupabase = (obj: any): any => {
   if (obj === null || typeof obj !== 'object') return obj
-  if (Array.isArray(obj)) return obj.map(item => cleanForFirestore(item))
+  if (Array.isArray(obj)) return obj.map(item => cleanForSupabase(item))
   
   const cleaned: any = {}
   for (const [key, value] of Object.entries(obj)) {
     if (value instanceof File) continue
     if (value === undefined) continue
     if (typeof value === 'function') continue
-    cleaned[key] = cleanForFirestore(value)
+    cleaned[key] = cleanForSupabase(value)
   }
   return cleaned
 }
 
 // ========== STORAGE HELPERS ==========
 // Upload product image
-const uploadProductImage = async (file: File, brandId: string, productId: string): Promise<string> => {
-  const path = `brands/${brandId}/products/${productId}/main.jpg`
-  const imageRef = storageRef(storage, path)
-  await uploadBytes(imageRef, file)
-  return await getDownloadURL(imageRef)
+const uploadProductImage = async (file: File, productId: string): Promise<string> => {
+  const path = `products/${productId}/main.jpg`
+  const { error: uploadError } = await supabase.storage
+    .from('images')
+    .upload(path, file, { upsert: true })
+  if (uploadError) throw uploadError
+  const { data: urlData } = supabase.storage.from('images').getPublicUrl(path)
+  return urlData.publicUrl
 }
 
 // Delete product image from Storage
 const deleteProductImageFromStorage = async (imageUrl: string) => {
-  if (!imageUrl || !imageUrl.includes('firebasestorage.googleapis.com')) return
+  if (!imageUrl) return
   try {
-    const decodedUrl = decodeURIComponent(imageUrl)
-    const match = decodedUrl.match(/\/o\/(.+?)\?/)
-    if (match && match[1]) {
-      const path = decodeURIComponent(match[1])
-      const imageRef = storageRef(storage, path)
-      await deleteObject(imageRef)
+    const url = new URL(imageUrl)
+    const pathMatch = url.pathname.match(/\/storage\/v1\/object\/public\/images\/(.+)$/)
+    if (pathMatch && pathMatch[1]) {
+      const path = decodeURIComponent(pathMatch[1])
+      await supabase.storage.from('images').remove([path])
     }
   } catch (err) {
     console.warn('Failed to delete old product image from Storage:', err)
   }
 }
 
-// Upload brand image (for new brand creation)
+// Upload brand image
 const uploadBrandImage = async (file: File, brandId: string): Promise<string> => {
   const path = `brands/${brandId}/logo.jpg`
-  const imageRef = storageRef(storage, path)
-  await uploadBytes(imageRef, file)
-  return await getDownloadURL(imageRef)
+  const { error: uploadError } = await supabase.storage
+    .from('images')
+    .upload(path, file, { upsert: true })
+  if (uploadError) throw uploadError
+  const { data: urlData } = supabase.storage.from('images').getPublicUrl(path)
+  return urlData.publicUrl
 }
 
 // ========== BRAND ABBREVIATION MAPPING ==========
@@ -1218,9 +1255,8 @@ const handleBrandImageUpload = (event: Event) => {
   const input = event.target as HTMLInputElement
   if (!input.files || !input.files[0]) return
   const file = input.files[0]
-  // Store the file for later upload
   brandImageFile.value = file
-  brandImagePreview.value = '' // will be set after local preview
+  brandImagePreview.value = ''
   const reader = new FileReader()
   reader.onload = (e) => {
     brandImagePreview.value = e.target?.result as string
@@ -1510,19 +1546,19 @@ const generateStrictSKU = async () => {
     let packageNumber = '001'
 
     if (brandSelectionMode.value === 'existing' && selectedBrandId.value) {
-      const productsRef = collection(db, 'brands', selectedBrandId.value, 'products')
+      // Query existing products for this brand to find the highest sequence number
       const prefix = `P.N${brandAbbr}${gender}`
-      const q = query(
-        productsRef,
-        where('sku', '>=', prefix),
-        where('sku', '<=', prefix + '\uf8ff'),
-        orderBy('sku', 'desc'),
-        limit(1)
-      )
+      const { data, error } = await supabase
+        .from('products')
+        .select('sku')
+        .eq('brand_id', selectedBrandId.value)
+        .ilike('sku', `${prefix}%`)
+        .order('sku', { ascending: false })
+        .limit(1)
 
-      const snapshot = await getDocs(q)
-      if (!snapshot.empty) {
-        const lastSku = snapshot.docs[0].data().sku
+      if (error) throw error
+      if (data && data.length > 0) {
+        const lastSku = data[0].sku
         const match = lastSku.match(/\d{3}$/)
         if (match) {
           const lastNumber = parseInt(match[0], 10)
@@ -1671,7 +1707,7 @@ const getChangedFields = (): Record<string, any> => {
     changed.notes = { ...productData.notes }
   }
 
-  return cleanForFirestore(changed)
+  return cleanForSupabase(changed)
 }
 
 // ========== SAVE METHODS ==========
@@ -1733,7 +1769,7 @@ const saveProduct = async () => {
     }
 
     // Clean the payload (remove any undefined or File fields)
-    const cleanPayload = cleanForFirestore(productPayload)
+    const cleanPayload = cleanForSupabase(productPayload)
 
     if (editing.value) {
       if (!props.product?.brandId) {
@@ -1748,13 +1784,40 @@ const saveProduct = async () => {
 
       let finalImageUrl = productData.imageUrl
       if (productImageFile.value) {
-        finalImageUrl = await uploadProductImage(productImageFile.value, props.product.brandId, props.product.id)
+        // Upload new image and delete old if exists
+        finalImageUrl = await uploadProductImage(productImageFile.value, props.product.id)
         await deleteProductImageFromStorage(productData.imageUrl)
         changedFields.imageUrl = finalImageUrl
       } else if (changedFields.imageUrl) {
-        // Already handled in changedFields
+        // Already handled
       }
 
+      // Build update payload (only fields that are allowed to change)
+      const updatePayload: any = { updated_at: new Date().toISOString() }
+      if (changedFields.name) updatePayload.name = changedFields.name
+      if (changedFields.description) updatePayload.description = changedFields.description
+      if (changedFields.notes) updatePayload.notes = changedFields.notes
+      if (changedFields.price !== undefined) updatePayload.price = changedFields.price
+      if (changedFields.size) updatePayload.size = changedFields.size
+      if (changedFields.concentration) updatePayload.concentration = changedFields.concentration
+      if (changedFields.classification) updatePayload.classification = changedFields.classification
+      if (changedFields.slug) updatePayload.slug = changedFields.slug
+      if (changedFields.category) updatePayload.category = changedFields.category
+      if (changedFields.isBestSeller !== undefined) updatePayload.is_best_seller = changedFields.isBestSeller
+      if (changedFields.isFeatured !== undefined) updatePayload.is_featured = changedFields.isFeatured
+      if (changedFields.stock !== undefined) updatePayload.stock_quantity = changedFields.stock
+      if (changedFields.sku) updatePayload.sku = changedFields.sku
+      if (changedFields.isActive !== undefined) updatePayload.is_active = changedFields.isActive
+      if (changedFields.imageUrl) updatePayload.image_url = changedFields.imageUrl
+
+      const { error: updateError } = await supabase
+        .from('products')
+        .update(updatePayload)
+        .eq('id', props.product.id)
+
+      if (updateError) throw updateError
+
+      authNotification.loggedIn(t('Product updated successfully'))
       emit('save', { 
         productData: changedFields,
         brandId: props.product.brandId,
@@ -1766,38 +1829,55 @@ const saveProduct = async () => {
       const brand = brandsStore.brands.find(b => b.id === selectedBrandId.value)
       if (!brand) throw new Error('Brand not found')
 
-      // First, create the product document without the final image URL
-      const batch = writeBatch(db)
-      const productsRef = collection(db, 'brands', brand.id, 'products')
-      const productDocRef = doc(productsRef)
-
-      // Temporary placeholder image (will be updated after upload)
-      const tempImageUrl = productImageFile.value ? '' : (cleanPayload.imageUrl || '')
-
-      const firestoreData = {
-        ...cleanPayload,
-        imageUrl: tempImageUrl,
-        brand: brand.name,
-        brandSlug: brand.slug,
-        brandId: brand.id,
-        tenantId: brand.tenantId,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp()
+      // First, create the product document without the final image URL (if needed)
+      const now = new Date().toISOString()
+      const productInsertData = {
+        brand_id: brand.id,
+        tenant_id: authStore.currentTenant,
+        name: cleanPayload.name,
+        description: cleanPayload.description,
+        notes: cleanPayload.notes,
+        price: cleanPayload.price,
+        size: cleanPayload.size,
+        concentration: cleanPayload.concentration,
+        classification: cleanPayload.classification,
+        slug: cleanPayload.slug,
+        category: cleanPayload.category,
+        is_best_seller: cleanPayload.isBestSeller,
+        is_featured: cleanPayload.isFeatured,
+        stock_quantity: cleanPayload.stock,
+        sku: cleanPayload.sku,
+        is_active: cleanPayload.isActive,
+        created_at: now,
+        updated_at: now,
+        image_url: '' // temporary
       }
 
-      batch.set(productDocRef, firestoreData)
-      await batch.commit()
+      const { data: newProduct, error: insertError } = await supabase
+        .from('products')
+        .insert(productInsertData)
+        .select()
+        .single()
 
-      const newProductId = productDocRef.id
+      if (insertError) throw insertError
 
-      // If a file was uploaded, upload it to Storage and update the document
+      const newProductId = newProduct.id
+
+      // If a file was uploaded, upload it to Storage and update the product
       let finalImageUrl = ''
       if (productImageFile.value) {
-        finalImageUrl = await uploadProductImage(productImageFile.value, brand.id, newProductId)
-        await updateDoc(productDocRef, { imageUrl: finalImageUrl, updatedAt: serverTimestamp() })
+        finalImageUrl = await uploadProductImage(productImageFile.value, newProductId)
+        await supabase
+          .from('products')
+          .update({ image_url: finalImageUrl, updated_at: now })
+          .eq('id', newProductId)
         cleanPayload.imageUrl = finalImageUrl
       } else if (cleanPayload.imageUrl) {
         finalImageUrl = cleanPayload.imageUrl
+        await supabase
+          .from('products')
+          .update({ image_url: finalImageUrl, updated_at: now })
+          .eq('id', newProductId)
       }
 
       authNotification.loggedIn(t('Product added successfully'))
@@ -1805,68 +1885,102 @@ const saveProduct = async () => {
     } 
     else if (brandSelectionMode.value === 'new') {
       // --- CREATE NEW BRAND WITH PRODUCT ---
-      // First, create the brand document without the image URL
-      const brandId = doc(collection(db, 'brands')).id
-      const brandData = {
-        name: newBrand.name,
-        slug: newBrand.slug,
-        category: newBrand.category,
-        description: newBrand.description || '',
-        signature: newBrand.signature || '',
-        isActive: newBrand.isActive !== false,
-        imageUrl: '', // temporary
-        tenantId: authStore.currentTenant,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp()
+      // Prepare brand data
+      const brandSlug = newBrand.slug
+      const brandCategory = newBrand.category
+      const brandDescription = newBrand.description || ''
+      const brandSignature = newBrand.signature || ''
+      const isBrandActive = newBrand.isActive !== false
+
+      // Prepare product data (without brand_id yet)
+      const now = new Date().toISOString()
+      const productPayloadForRPC = {
+        name: cleanPayload.name,
+        description: cleanPayload.description,
+        notes: cleanPayload.notes,
+        price: cleanPayload.price,
+        size: cleanPayload.size,
+        concentration: cleanPayload.concentration,
+        classification: cleanPayload.classification,
+        slug: cleanPayload.slug,
+        category: cleanPayload.category,
+        is_best_seller: cleanPayload.isBestSeller,
+        is_featured: cleanPayload.isFeatured,
+        stock_quantity: cleanPayload.stock,
+        sku: cleanPayload.sku,
+        is_active: cleanPayload.isActive
       }
 
-      const batch = writeBatch(db)
-      const brandRef = doc(db, 'brands', brandId)
-      batch.set(brandRef, brandData)
+      // Call RPC function to create brand and product atomically
+      const { data: brandId, error: rpcError } = await supabase.rpc('create_brand_with_products', {
+        _tenant_id: authStore.currentTenant,
+        _name: newBrand.name,
+        _slug: brandSlug,
+        _category: brandCategory,
+        _description: brandDescription,
+        _signature: brandSignature,
+        _is_active: isBrandActive,
+        _image: '', // will update after upload
+        _products: [productPayloadForRPC] // array of one product
+      })
 
-      // Create product under the brand
-      const productsRef = collection(db, 'brands', brandId, 'products')
-      const productDocRef = doc(productsRef)
-
-      const productDataForBrand = {
-        ...cleanPayload,
-        imageUrl: '', // placeholder
-        brand: newBrand.name,
-        brandSlug: newBrand.slug,
-        brandId,
-        tenantId: authStore.currentTenant,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp()
-      }
-      batch.set(productDocRef, productDataForBrand)
-
-      await batch.commit()
-
-      const newProductId = productDocRef.id
+      if (rpcError) throw rpcError
+      if (!brandId) throw new Error('Failed to create brand')
 
       // Now upload brand image if provided
       let brandImageUrl = ''
       if (brandImageFile.value) {
         brandImageUrl = await uploadBrandImage(brandImageFile.value, brandId)
-        await updateDoc(brandRef, { imageUrl: brandImageUrl, updatedAt: serverTimestamp() })
+        await supabase
+          .from('brands')
+          .update({ image: brandImageUrl, updated_at: now })
+          .eq('id', brandId)
       } else if (newBrand.imageUrl) {
         brandImageUrl = newBrand.imageUrl
-        await updateDoc(brandRef, { imageUrl: brandImageUrl, updatedAt: serverTimestamp() })
+        await supabase
+          .from('brands')
+          .update({ image: brandImageUrl, updated_at: now })
+          .eq('id', brandId)
       }
 
       // Upload product image if provided
       let productImageUrl = ''
+      // Need to get the product ID after creation. Since the RPC returns only brand ID,
+      // we must fetch the product by slug + brand_id.
+      const { data: newProduct, error: fetchError } = await supabase
+        .from('products')
+        .select('id')
+        .eq('brand_id', brandId)
+        .eq('slug', cleanPayload.slug)
+        .single()
+
+      if (fetchError) throw new Error('Product not found after brand creation')
+
       if (productImageFile.value) {
-        productImageUrl = await uploadProductImage(productImageFile.value, brandId, newProductId)
-        await updateDoc(productDocRef, { imageUrl: productImageUrl, updatedAt: serverTimestamp() })
+        productImageUrl = await uploadProductImage(productImageFile.value, newProduct.id)
+        await supabase
+          .from('products')
+          .update({ image_url: productImageUrl, updated_at: now })
+          .eq('id', newProduct.id)
       } else if (cleanPayload.imageUrl) {
         productImageUrl = cleanPayload.imageUrl
+        await supabase
+          .from('products')
+          .update({ image_url: productImageUrl, updated_at: now })
+          .eq('id', newProduct.id)
       }
 
       cleanPayload.imageUrl = productImageUrl
       const cleanBrandData = {
-        ...brandData,
-        imageUrl: brandImageUrl
+        id: brandId,
+        name: newBrand.name,
+        slug: brandSlug,
+        category: brandCategory,
+        description: brandDescription,
+        signature: brandSignature,
+        isActive: isBrandActive,
+        image: brandImageUrl,
+        tenantId: authStore.currentTenant
       }
 
       authNotification.loggedIn(t('Brand and product added successfully'))
@@ -1879,7 +1993,6 @@ const saveProduct = async () => {
 
   } catch (error: any) {
     console.error('❌ Error saving product:', error)
-    // Show a generic error message and also log to console for debugging
     const errorMsg = error.message || t('Unknown error')
     alert(t('Failed to save: ') + errorMsg)
   } finally {
@@ -1945,7 +2058,7 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-/* Custom scrollbar */
+/* Custom scrollbar (unchanged) */
 .overflow-y-auto::-webkit-scrollbar,
 .max-h-48::-webkit-scrollbar {
   width: 6px;
@@ -1968,7 +2081,6 @@ onMounted(async () => {
   background: #555;
 }
 
-/* Responsive modal height */
 @media (max-height: 700px) {
   .max-h-\[calc\(100vh-300px\)\] {
     max-height: calc(100vh - 250px);
@@ -1979,7 +2091,6 @@ onMounted(async () => {
   }
 }
 
-/* Mobile optimizations */
 @media (max-width: 640px) {
   button, 
   input:not([type="checkbox"]):not([type="radio"]), 
@@ -1999,23 +2110,19 @@ onMounted(async () => {
   }
 }
 
-/* Break long URLs */
 .break-all {
   word-break: break-all;
 }
 
-/* Smooth transitions */
 button, input, select, textarea {
   transition: all 0.2s ease;
 }
 
-/* Focus styles */
 :focus-visible {
   outline: 2px solid #3b82f6;
   outline-offset: 2px;
 }
 
-/* Step indicator */
 .bg-primary-100 {
   animation: pulse 2s infinite;
 }
@@ -2025,7 +2132,6 @@ button, input, select, textarea {
   50% { opacity: 0.7; }
 }
 
-/* Loading spinner */
 @keyframes spin {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }

@@ -1,4 +1,3 @@
-// stores/admin.ts – SUPABASE VERSION (FINAL)
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { supabase } from '@/supabase/client'
@@ -18,22 +17,19 @@ export const useAdminStore = defineStore('admin', () => {
     inactiveAdmins: 0
   })
 
-  // Helper to convert Supabase row to AdminUser
+  // Convert Supabase row to AdminUser (matches type exactly)
   const rowToAdmin = (row: any): AdminUser => ({
     uid: row.id,
     email: row.email,
-    displayName: row.display_name,
+    displayName: row.display_name || row.email,
     role: row.role,
     tenantId: row.tenant_id,
-    photoURL: row.photo_url,
-    isActive: row.is_active,
-    permissions: row.permissions,
-    createdAt: row.created_at,
-    updatedAt: row.updated_at,
-    lastLoginAt: row.last_login
+    isActive: row.is_active !== false,          // if column exists, else default true
+    permissions: row.permissions || [],          // if column exists, else empty
+    createdAt: row.created_at,                   // string from database
+    lastLoginAt: row.last_login || new Date().toISOString() // fallback to now
   })
 
-  // Update local stats from admins array
   const updateStats = () => {
     stats.value = {
       total: admins.value.length,
@@ -43,7 +39,6 @@ export const useAdminStore = defineStore('admin', () => {
     }
   }
 
-  // Fetch all admins for the current tenant
   const fetchAdmins = async () => {
     loading.value = true
     error.value = null
@@ -74,17 +69,14 @@ export const useAdminStore = defineStore('admin', () => {
     }
   }
 
-  // Create new admin – two‑step: Auth sign‑up then insert admin record
-  const createAdmin = async (adminData: CreateAdminDto) => {
+  const createAdmin = async (adminData: CreateAdminDto): Promise<AdminUser> => {
     loading.value = true
     error.value = null
     try {
       const tenantId = adminData.tenantId || authStore.currentTenant
-      if (!tenantId) {
-        throw new Error('Tenant ID is required to create an admin')
-      }
+      if (!tenantId) throw new Error('Tenant ID is required')
 
-      // 1. Create the user in Supabase Auth
+      // Create auth user
       const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
         email: adminData.email,
         password: adminData.password,
@@ -93,19 +85,27 @@ export const useAdminStore = defineStore('admin', () => {
         }
       })
       if (signUpError) throw signUpError
-      if (!signUpData.user) throw new Error('User creation failed')
+      if (!signUpData.user) throw new Error('Failed to create user')
 
       const userId = signUpData.user.id
 
-      // 2. Insert the admin record into the admins table using a database function
-      const { error: insertError } = await supabase.rpc('insert_admin_record', {
-        _user_id: userId,
-        _tenant_id: tenantId,
-        _email: adminData.email,
-        _display_name: adminData.displayName,
-        _role: adminData.role || 'admin',
-        _is_active: adminData.isActive !== false
-      })
+      // Insert into admins table (only columns that exist in your schema)
+      const dbInsert = {
+        id: userId,
+        tenant_id: tenantId,
+        email: adminData.email,
+        role: adminData.role || 'admin',
+        // These columns may not exist; remove if not in schema:
+        // display_name: adminData.displayName,
+        // is_active: true,
+        // permissions: [],
+        // last_login: null
+      }
+
+      const { error: insertError } = await supabase
+        .from('admins')
+        .insert(dbInsert)
+
       if (insertError) throw insertError
 
       const newAdmin: AdminUser = {
@@ -114,12 +114,10 @@ export const useAdminStore = defineStore('admin', () => {
         displayName: adminData.displayName,
         role: adminData.role || 'admin',
         tenantId,
-        photoURL: adminData.photoURL,
-        isActive: adminData.isActive !== false,
-        permissions: adminData.permissions || [],
+        isActive: true,
+        permissions: [],
         createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        lastLoginAt: null
+        lastLoginAt: new Date().toISOString()
       }
 
       admins.value.unshift(newAdmin)
@@ -134,18 +132,18 @@ export const useAdminStore = defineStore('admin', () => {
     }
   }
 
-  // Update admin
   const updateAdmin = async (uid: string, updateData: UpdateAdminDto) => {
     loading.value = true
     error.value = null
     try {
-      const updatePayload: any = {
-        updated_at: new Date().toISOString()
-      }
+      const updatePayload: any = {}
       if (updateData.displayName !== undefined) updatePayload.display_name = updateData.displayName
       if (updateData.role !== undefined) updatePayload.role = updateData.role
-      if (updateData.isActive !== undefined) updatePayload.is_active = updateData.isActive
-      if (updateData.permissions !== undefined) updatePayload.permissions = updateData.permissions
+      // If the table has these columns, uncomment:
+      // if (updateData.isActive !== undefined) updatePayload.is_active = updateData.isActive
+      // if (updateData.permissions !== undefined) updatePayload.permissions = updateData.permissions
+
+      if (Object.keys(updatePayload).length === 0) return
 
       const { error: updateError } = await supabase
         .from('admins')
@@ -156,8 +154,13 @@ export const useAdminStore = defineStore('admin', () => {
 
       const index = admins.value.findIndex(admin => admin.uid === uid)
       if (index !== -1) {
-        admins.value[index] = { ...admins.value[index], ...updateData, updatedAt: new 
-Date().toISOString() }
+        // Merge only the fields that exist in AdminUser type
+        const updatedAdmin = {
+          ...admins.value[index],
+          ...updateData,
+          // No 'updatedAt' field in type, so we don't add it
+        }
+        admins.value[index] = updatedAdmin
       }
       updateStats()
     } catch (err: any) {
@@ -169,7 +172,6 @@ Date().toISOString() }
     }
   }
 
-  // Delete admin
   const deleteAdmin = async (uid: string) => {
     loading.value = true
     error.value = null
@@ -192,7 +194,6 @@ Date().toISOString() }
     }
   }
 
-  // Reset admin password – uses Supabase's built‑in password reset
   const resetAdminPassword = async (email: string) => {
     loading.value = true
     error.value = null
@@ -210,14 +211,11 @@ Date().toISOString() }
     }
   }
 
-  // Get admin stats for the current tenant (computed from local admins)
   const fetchAdminStats = async () => {
-    // Stats are already updated via fetchAdmins and local updates
     return stats.value
   }
 
-  // Search admins within the current tenant (by display name or email)
-  const searchAdmins = async (searchTerm: string) => {
+  const searchAdmins = async (searchTerm: string): Promise<AdminUser[]> => {
     if (!searchTerm.trim()) return []
     try {
       const tenantId = authStore.currentTenant
@@ -227,11 +225,10 @@ Date().toISOString() }
         .from('admins')
         .select('*')
         .eq('tenant_id', tenantId)
-        .or(`display_name.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%`)
+        .or(`email.ilike.%${searchTerm}%`)
         .limit(20)
 
       if (searchError) throw searchError
-
       return (data || []).map(rowToAdmin)
     } catch (err: any) {
       console.error('Error searching admins:', err)
@@ -239,15 +236,14 @@ Date().toISOString() }
     }
   }
 
-  // Update last login timestamp (called after successful login)
   const updateLastLogin = async (uid: string) => {
     try {
-      const { error: updateError } = await supabase
-        .from('admins')
-        .update({ last_login: new Date().toISOString(), updated_at: new Date().toISOString() })
-        .eq('id', uid)
-
-      if (updateError) throw updateError
+      // If the table has a `last_login` column, uncomment:
+      // const { error: updateError } = await supabase
+      //   .from('admins')
+      //   .update({ last_login: new Date().toISOString() })
+      //   .eq('id', uid)
+      // if (updateError) throw updateError
 
       const index = admins.value.findIndex(admin => admin.uid === uid)
       if (index !== -1) {
@@ -258,7 +254,6 @@ Date().toISOString() }
     }
   }
 
-  // Get admin by ID (from local cache)
   const getAdminById = (uid: string) => {
     return admins.value.find(admin => admin.uid === uid) || null
   }

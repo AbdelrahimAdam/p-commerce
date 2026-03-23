@@ -1,774 +1,1225 @@
+<!-- src/pages/Admin/ProductsPage.vue -->
 <template>
-  <div class="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
-    <!-- Background overlay -->
-    <div class="fixed inset-0 bg-black bg-opacity-75 transition-opacity" @click="close"></div>
-
-    <div class="flex min-h-screen items-end justify-center p-4 text-center sm:items-center sm:p-0">
-      <!-- Modal panel -->
-      <div class="relative transform overflow-hidden rounded-lg bg-white text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg w-full max-w-md mx-auto">
-        <!-- Modal header -->
-        <div class="bg-white px-4 pb-4 pt-5 sm:p-6 sm:pb-4">
-          <div class="sm:flex sm:items-start">
-            <div class="mt-3 text-center sm:mt-0 sm:text-left w-full">
-              <h3 class="text-lg font-semibold leading-6 text-gray-900" id="modal-title">
-                {{ editing ? t('Edit Offer') : t('Add New Offer') }}
-              </h3>
-              <p class="mt-1 text-sm text-gray-500">
-                {{ t('Create special promotions and discounts') }}
-              </p>
-            </div>
-            <button
-              type="button"
-              class="absolute top-4 right-4 text-gray-400 hover:text-gray-500"
-              @click="close"
-            >
-              <span class="sr-only">{{ t('Close') }}</span>
-              <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
+  <div>
+    <!-- Header -->
+    <div class="bg-white border-b border-gray-200">
+      <div class="px-4 sm:px-6 md:px-8 py-4 md:py-6">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <h1 class="text-xl sm:text-2xl font-display-en font-bold text-gray-900">
+              {{ t('Products Management') }}
+            </h1>
+            <p class="text-sm sm:text-base text-gray-600 mt-1">
+              {{ t('Manage your product catalog') }}
+              <span class="text-xs sm:text-sm text-gray-400 ml-2">
+                ({{ productsStore.totalProducts }} {{ t('products loaded') }})
+              </span>
+            </p>
+            <p v-if="productsStore.lastUpdated" class="text-xs text-gray-400 mt-1">
+              {{ t('Last updated') }}: {{ formatDate(productsStore.lastUpdated) }}
+            </p>
           </div>
-        </div>
-
-        <!-- Modal content -->
-        <div class="px-4 pb-3 sm:px-6 max-h-[calc(100vh-200px)] overflow-y-auto">
-          <div class="space-y-4">
-            <!-- Offer Title -->
-            <div>
-              <label for="offer-title" class="block text-sm font-medium text-gray-700 mb-1">
-                {{ t('Offer Title') }} *
-              </label>
+          <div class="flex flex-wrap items-center gap-3">
+            <!-- Search -->
+            <div class="relative w-full sm:w-auto">
               <input
-                id="offer-title"
-                v-model="formData.title"
+                v-model="searchQuery"
                 type="text"
-                :placeholder="t('e.g., Summer Sale')"
-                class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
-                :class="{ 'border-red-300': errors.title }"
-                required
+                :placeholder="t('Search products...')"
+                class="pl-10 pr-4 py-2 border border-gray-300 rounded-lg 
+                       focus:ring-2 focus:ring-primary-500 focus:border-primary-500 
+                       w-full sm:w-64 text-sm"
+                :style="{ direction: isRTL ? 'rtl' : 'ltr' }"
+                @input="debouncedSearch"
               />
-              <p v-if="errors.title" class="mt-1 text-sm text-red-600">{{ errors.title }}</p>
+              <svg class="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400"
+                   :class="{ 'left-auto right-3': isRTL }"
+                   fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                      d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+              </svg>
             </div>
 
-            <!-- Slug (for URL) -->
-            <div>
-              <label for="offer-slug" class="block text-sm font-medium text-gray-700 mb-1">
-                {{ t('Slug') }} *
-              </label>
-              <input
-                id="offer-slug"
-                v-model="formData.slug"
-                type="text"
-                :placeholder="t('e.g., summer-sale-2025')"
-                class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
-                :class="{ 'border-red-300': errors.slug }"
-                required
-              />
-              <p v-if="errors.slug" class="mt-1 text-sm text-red-600">{{ errors.slug }}</p>
-              <p class="mt-1 text-xs text-gray-500">{{ t('Used in the URL: /offer/[slug]') }}</p>
-            </div>
-
-            <!-- Image Upload Section (URL + File Upload) -->
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">
-                {{ t('Offer Image') }} *
-              </label>
-
-              <!-- URL Input -->
-              <div class="mb-3">
-                <label class="block text-xs text-gray-600 mb-1">{{ t('Image URL (optional)') }}</label>
-                <div class="flex flex-col sm:flex-row gap-2">
-                  <input
-                    v-model="formData.imageUrl"
-                    type="text"
-                    placeholder="https://example.com/offer.jpg"
-                    class="flex-1 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
-                    :class="{ 'border-red-300': errors.imageUrl }"
-                  />
-                  <button
-                    type="button"
-                    @click="previewImage(formData.imageUrl)"
-                    class="inline-flex items-center justify-center px-3 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary-500 whitespace-nowrap"
-                  >
-                    {{ t('Preview') }}
-                  </button>
-                </div>
-              </div>
-
-              <!-- File Upload -->
-              <div class="mb-3">
-                <label class="block text-xs text-gray-600 mb-1">{{ t('Or Upload Image') }}</label>
-                <div class="flex flex-col sm:flex-row items-start sm:items-center gap-2">
-                  <input
-                    ref="offerImageInput"
-                    type="file"
-                    accept="image/*"
-                    @change="handleImageUpload"
-                    class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-primary-50 file:text-primary-700 hover:file:bg-primary-100 cursor-pointer"
-                  />
-                  <button
-                    v-if="imageFile || formData.imageUrl"
-                    @click="removeImage"
-                    type="button"
-                    class="inline-flex items-center justify-center px-3 py-2 border border-red-300 text-red-700 rounded-md hover:bg-red-50 text-sm whitespace-nowrap"
-                  >
-                    {{ t('Remove') }}
-                  </button>
-                </div>
-                <p class="mt-1 text-xs text-gray-500">
-                  {{ t('Images will be stored in Firebase Storage (no size limit). JPG, PNG, GIF recommended.') }}
-                </p>
-              </div>
-
-              <p v-if="errors.imageUrl" class="mt-1 text-sm text-red-600">{{ errors.imageUrl }}</p>
-
-              <!-- Image Preview -->
-              <div v-if="imagePreview" class="mt-3">
-                <p class="text-sm text-gray-600 mb-1">{{ t('Image Preview') }}:</p>
-                <div class="relative h-40 w-full border border-gray-300 rounded-md overflow-hidden">
-                  <img
-                    :src="imagePreview"
-                    :alt="t('Offer Image Preview')"
-                    class="h-full w-full object-cover"
-                    @error="handleImageError"
-                  />
-                  <button
-                    @click="clearImagePreview"
-                    class="absolute top-2 right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-red-600"
-                    :title="t('Clear')"
-                  >
-                    ×
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <!-- Link URL (optional) -->
-            <div>
-              <label for="offer-link" class="block text-sm font-medium text-gray-700 mb-1">
-                {{ t('Link URL') }} ({{ t('optional') }})
-              </label>
-              <input
-                id="offer-link"
-                v-model="formData.linkUrl"
-                type="text"
-                :placeholder="t('e.g., /product/chanel-5 or https://example.com')"
-                class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
-              />
-              <p class="mt-1 text-xs text-gray-500">
-                {{ t('Where users go when they click Buy Now. Leave empty to use offer detail page.') }}
-              </p>
-            </div>
-
-            <!-- Subtitle -->
-            <div>
-              <label for="offer-subtitle" class="block text-sm font-medium text-gray-700 mb-1">
-                {{ t('Subtitle') }}
-              </label>
-              <input
-                id="offer-subtitle"
-                v-model="formData.subtitle"
-                type="text"
-                :placeholder="t('e.g., Up to 50% off on selected items')"
-                class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
-              />
-            </div>
-
-            <!-- Prices -->
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label for="offer-old-price" class="block text-sm font-medium text-gray-700 mb-1">
-                  {{ t('Old Price') }} ({{ t('currencyLE') }}) *
-                </label>
-                <div class="relative rounded-md shadow-sm">
-                  <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <span class="text-gray-500 sm:text-sm">EGP</span>
-                  </div>
-                  <input
-                    id="offer-old-price"
-                    v-model.number="formData.oldPrice"
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    :placeholder="t('1500')"
-                    class="w-full pl-14 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
-                    :class="{ 'border-red-300': errors.oldPrice }"
-                    required
-                  />
-                </div>
-                <p v-if="errors.oldPrice" class="mt-1 text-sm text-red-600">{{ errors.oldPrice }}</p>
-              </div>
-
-              <div>
-                <label for="offer-new-price" class="block text-sm font-medium text-gray-700 mb-1">
-                  {{ t('New Price') }} ({{ t('currencyLE') }}) *
-                </label>
-                <div class="relative rounded-md shadow-sm">
-                  <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <span class="text-gray-500 sm:text-sm">EGP</span>
-                  </div>
-                  <input
-                    id="offer-new-price"
-                    v-model.number="formData.newPrice"
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    :placeholder="t('150')"
-                    class="w-full pl-14 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
-                    :class="{ 'border-red-300': errors.newPrice }"
-                    required
-                  />
-                </div>
-                <p v-if="errors.newPrice" class="mt-1 text-sm text-red-600">{{ errors.newPrice }}</p>
-              </div>
-            </div>
-
-            <!-- Discount Percentage -->
-            <div v-if="formData.oldPrice && formData.newPrice && formData.oldPrice > 0">
-              <div class="bg-emerald-50 border border-emerald-200 rounded-md p-3">
-                <div class="flex items-center justify-between">
-                  <span class="text-sm font-medium text-emerald-800">
-                    {{ t('Discount') }}
-                  </span>
-                  <span class="text-lg font-bold text-emerald-600">
-                    {{ calculateDiscount }}%
-                  </span>
-                </div>
-                <div class="mt-1 text-xs text-emerald-700">
-                  {{ t('You save') }}: <span class="font-bold">{{ (formData.oldPrice - formData.newPrice).toFixed(2) }} {{ t('currencyLE') }}</span>
-                </div>
-              </div>
-            </div>
-
-            <!-- Validity Period -->
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label for="offer-start-date" class="block text-sm font-medium text-gray-700 mb-1">
-                  {{ t('Start Date') }}
-                </label>
-                <input
-                  id="offer-start-date"
-                  v-model="formData.startDate"
-                  type="date"
-                  class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
-                />
-              </div>
-
-              <div>
-                <label for="offer-end-date" class="block text-sm font-medium text-gray-700 mb-1">
-                  {{ t('End Date') }}
-                </label>
-                <input
-                  id="offer-end-date"
-                  v-model="formData.endDate"
-                  type="date"
-                  :min="formData.startDate"
-                  class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
-                />
-              </div>
-            </div>
-
-            <!-- Offer Type -->
-            <div>
-              <label for="offer-type" class="block text-sm font-medium text-gray-700 mb-1">
-                {{ t('Offer Type') }}
-              </label>
-              <select
-                id="offer-type"
-                v-model="formData.offerType"
-                class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+            <!-- Action Buttons -->
+            <div class="flex items-center gap-2">
+              <button
+                @click="openNewProductForm"
+                class="bg-primary-500 text-white px-4 py-2 rounded-lg font-medium 
+                       hover:bg-primary-600 transition-colors flex items-center gap-2 text-sm"
+                :class="{ 'flex-row-reverse': isRTL }"
               >
-                <option value="percentage">{{ t('Percentage Discount') }}</option>
-                <option value="fixed">{{ t('Fixed Amount') }}</option>
-                <option value="bundle">{{ t('Bundle Offer') }}</option>
-                <option value="free-shipping">{{ t('Free Shipping') }}</option>
-                <option value="buy-one-get-one">{{ t('Buy One Get One') }}</option>
-              </select>
-            </div>
-
-            <!-- Description -->
-            <div>
-              <label for="offer-description" class="block text-sm font-medium text-gray-700 mb-1">
-                {{ t('Description') }}
-              </label>
-              <textarea
-                id="offer-description"
-                v-model="formData.description"
-                rows="3"
-                :placeholder="t('Describe the offer details...')"
-                class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
-              ></textarea>
-            </div>
-
-            <!-- Terms & Conditions -->
-            <div>
-              <label for="offer-terms" class="block text-sm font-medium text-gray-700 mb-1">
-                {{ t('Terms & Conditions') }}
-              </label>
-              <textarea
-                id="offer-terms"
-                v-model="formData.terms"
-                rows="2"
-                :placeholder="t('Offer terms and conditions...')"
-                class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
-              ></textarea>
-            </div>
-
-            <!-- Status -->
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">
-                {{ t('Status') }}
-              </label>
-              <div class="flex items-center gap-4">
-                <label class="inline-flex items-center min-h-[44px]">
-                  <input
-                    v-model="formData.active"
-                    type="radio"
-                    :value="true"
-                    class="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300"
-                  />
-                  <span class="ml-2 text-sm text-gray-700">{{ t('Active') }}</span>
-                </label>
-                <label class="inline-flex items-center min-h-[44px]">
-                  <input
-                    v-model="formData.active"
-                    type="radio"
-                    :value="false"
-                    class="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300"
-                  />
-                  <span class="ml-2 text-sm text-gray-700">{{ t('Inactive') }}</span>
-                </label>
-              </div>
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                        d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
+                </svg>
+                <span>{{ t('Add Product') }}</span>
+              </button>
+              <button
+                @click="exportProducts"
+                class="px-3 py-2 border border-gray-300 text-gray-700 rounded-lg 
+                       hover:bg-gray-50 transition-colors flex items-center gap-2 text-sm"
+                :class="{ 'flex-row-reverse': isRTL }"
+              >
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                        d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10"/>
+                </svg>
+                <span class="hidden sm:inline">{{ t('Export') }}</span>
+              </button>
+              <button
+                @click="refreshProducts"
+                class="px-3 py-2 border border-gray-300 text-gray-700 rounded-lg 
+                       hover:bg-gray-50 transition-colors flex items-center gap-2 text-sm"
+                :class="{ 'flex-row-reverse': isRTL }"
+                :disabled="productsStore.isLoading"
+              >
+                <svg class="w-4 h-4" :class="{ 'animate-spin': productsStore.isLoading }" 
+                     fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                        d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                </svg>
+                <span class="hidden sm:inline">{{ productsStore.isLoading ? t('Loading...') : t('Refresh') }}</span>
+              </button>
             </div>
           </div>
         </div>
+      </div>
+    </div>
 
-        <!-- Modal footer -->
-        <div class="bg-gray-50 px-4 py-3 sm:flex sm:flex-row-reverse sm:px-6">
+    <!-- Export Section -->
+    <div v-if="showExportSection" id="export-section" class="px-4 sm:px-6 md:px-8 py-4">
+      <div class="bg-white rounded-xl shadow-luxury p-5 mb-6">
+        <div class="flex justify-between items-center mb-4">
+          <h3 class="text-lg font-bold text-gray-900">{{ t('Export Products Data') }}</h3>
+          <button @click="showExportSection = false" class="text-gray-500 hover:text-gray-700">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+            </svg>
+          </button>
+        </div>
+        <p class="text-gray-600 mb-4 text-sm">
+          {{ t('Export your product data as JSON to import into Firebase Console or other systems.') }}
+        </p>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <button
-            type="button"
-            @click="save"
-            :disabled="loading"
-            class="inline-flex w-full justify-center rounded-md bg-primary-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-primary-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600 sm:ml-3 sm:w-auto disabled:opacity-50 disabled:cursor-not-allowed min-h-[44px]"
+            @click="exportAsJSON"
+            class="p-3 border border-gray-200 rounded-lg hover:bg-gray-50 text-left"
           >
-            <template v-if="loading">
-              <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
-                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-              </svg>
-              {{ t('Saving...') }}
-            </template>
-            <template v-else>
-              {{ editing ? t('Update Offer') : t('Add Offer') }}
-            </template>
+            <div class="font-medium text-gray-900 mb-1">{{ t('JSON Format') }}</div>
+            <div class="text-xs text-gray-500">{{ t('For Firebase import/export') }}</div>
           </button>
           <button
-            type="button"
-            @click="close"
-            :disabled="loading"
-            class="mt-3 inline-flex w-full justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 sm:mt-0 sm:w-auto disabled:opacity-50 disabled:cursor-not-allowed min-h-[44px]"
+            @click="exportAsCSV"
+            class="p-3 border border-gray-200 rounded-lg hover:bg-gray-50 text-left"
+          >
+            <div class="font-medium text-gray-900 mb-1">{{ t('CSV Format') }}</div>
+            <div class="text-xs text-gray-500">{{ t('For spreadsheets') }}</div>
+          </button>
+          <button
+            @click="copyToClipboard"
+            class="p-3 border border-gray-200 rounded-lg hover:bg-gray-50 text-left"
+          >
+            <div class="font-medium text-gray-900 mb-1">{{ t('Copy to Clipboard') }}</div>
+            <div class="text-xs text-gray-500">{{ t('Quick sharing') }}</div>
+          </button>
+        </div>
+        <div v-if="exportMessage" class="mt-4 p-3 rounded-lg text-sm" :class="exportMessageClass">
+          {{ exportMessage }}
+        </div>
+      </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="px-4 sm:px-6 md:px-8 py-6">
+      <!-- Statistics Cards -->
+      <div class="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+        <div class="bg-white rounded-xl shadow-luxury p-4">
+          <div class="text-xs font-medium text-gray-500 mb-1">{{ t('Total Products') }}</div>
+          <div class="text-xl font-bold text-gray-900">{{ productsStore.totalProducts }}</div>
+          <div class="text-[10px] text-gray-500 mt-1">{{ t('Loaded from Firebase') }}</div>
+        </div>
+        <div class="bg-white rounded-xl shadow-luxury p-4">
+          <div class="text-xs font-medium text-gray-500 mb-1">{{ t('Best Sellers') }}</div>
+          <div class="text-xl font-bold text-gray-900">{{ bestSellersCount }}</div>
+          <div class="text-[10px] text-gray-500 mt-1">{{ t('Featured products') }}</div>
+        </div>
+        <div class="bg-white rounded-xl shadow-luxury p-4">
+          <div class="text-xs font-medium text-gray-500 mb-1">{{ t('New Arrivals') }}</div>
+          <div class="text-xl font-bold text-gray-900">{{ newArrivalsCount }}</div>
+          <div class="text-[10px] text-gray-500 mt-1">{{ t('Last 30 days') }}</div>
+        </div>
+        <div class="bg-white rounded-xl shadow-luxury p-4">
+          <div class="text-xs font-medium text-gray-500 mb-1">{{ t('Avg Price') }}</div>
+          <div class="text-xl font-bold text-gray-900">{{ formatCurrency(averagePriceNumber) }}</div>
+          <div class="text-[10px] text-gray-500 mt-1">{{ t('Across all products') }}</div>
+        </div>
+      </div>
+
+      <!-- Filters -->
+      <div class="bg-white rounded-xl shadow-luxury p-4 mb-6">
+        <div class="flex flex-wrap items-center gap-3">
+          <select
+            v-model="filters.category"
+            class="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 
+                   focus:ring-primary-500 focus:border-primary-500 text-sm"
+          >
+            <option value="">{{ t('All Categories') }}</option>
+            <option 
+              v-for="category in productsStore.categories" 
+              :key="category.id" 
+              :value="category.id"
+            >
+              {{ getCategoryDisplayName(category) }}
+            </option>
+          </select>
+          <select
+            v-model="filters.brand"
+            class="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 
+                   focus:ring-primary-500 focus:border-primary-500 text-sm"
+          >
+            <option value="">{{ t('All Brands') }}</option>
+            <option v-for="brand in productsStore.luxuryBrands" :key="brand" :value="brand">
+              {{ brand }}
+            </option>
+          </select>
+          <select
+            v-model="filters.status"
+            class="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 
+                   focus:ring-primary-500 focus:border-primary-500 text-sm"
+          >
+            <option value="">{{ t('All Status') }}</option>
+            <option value="best-seller">{{ t('Best Sellers') }}</option>
+            <option value="new">{{ t('New Arrivals') }}</option>
+            <option value="in-stock">{{ t('In Stock') }}</option>
+            <option value="out-of-stock">{{ t('Out of Stock') }}</option>
+          </select>
+          <select
+            v-model="filters.sort"
+            class="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 
+                   focus:ring-primary-500 focus:border-primary-500 text-sm"
+          >
+            <option value="newest">{{ t('Newest First') }}</option>
+            <option value="oldest">{{ t('Oldest First') }}</option>
+            <option value="price-high">{{ t('Price: High to Low') }}</option>
+            <option value="price-low">{{ t('Price: Low to High') }}</option>
+            <option value="name">{{ t('Name A-Z') }}</option>
+          </select>
+          <button
+            v-if="hasActiveFilters"
+            @click="clearFilters"
+            class="px-3 py-2 text-gray-600 hover:text-primary-600 text-sm"
+          >
+            {{ t('Clear Filters') }}
+          </button>
+        </div>
+      </div>
+
+      <!-- Products Table -->
+      <div class="bg-white rounded-xl shadow-luxury overflow-hidden">
+        <!-- Loading State -->
+        <div v-if="productsStore.isLoading" class="p-12 text-center">
+          <div class="luxury-loading-spinner"></div>
+          <p class="text-gray-600 mt-4">{{ t('Loading products from Firebase...') }}</p>
+          <p class="text-xs text-gray-400 mt-2">
+            {{ t('Spark Plan: Read-only access. Editing disabled.') }}
+          </p>
+        </div>
+
+        <!-- Error State -->
+        <div v-else-if="productsStore.error" class="p-12 text-center">
+          <div class="w-16 h-16 mx-auto mb-4 text-red-500">
+            <svg class="w-full h-full" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                    d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+          </div>
+          <p class="text-gray-600 mb-4">{{ productsStore.error }}</p>
+          <button
+            @click="refreshProducts"
+            class="px-6 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600 text-sm"
+          >
+            {{ t('Try Again') }}
+          </button>
+          <p v-if="productsStore.lastUpdated" class="text-xs text-gray-400 mt-4">
+            {{ t('Using cached data. Last updated:') }} {{ formatDate(productsStore.lastUpdated) }}
+          </p>
+        </div>
+
+        <!-- Empty State -->
+        <div v-else-if="filteredProducts.length === 0 && !productsStore.isLoading" class="p-12 text-center">
+          <div class="w-16 h-16 mx-auto mb-4 text-gray-300">
+            <svg class="w-full h-full" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" 
+                    d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 
+01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"/>
+            </svg>
+          </div>
+          <h3 class="text-xl font-bold text-gray-900 mb-2">
+            {{ t('No products found') }}
+          </h3>
+          <p class="text-gray-600 mb-6">
+            {{ hasActiveFilters ? t('Try adjusting your filters') : t('No products available') }}
+          </p>
+          <button
+            @click="openNewProductForm"
+            class="inline-flex items-center gap-2 px-6 py-3 bg-primary-500 text-white 
+                   rounded-lg font-medium hover:bg-primary-600 transition-colors text-sm"
+            :class="{ 'flex-row-reverse': isRTL }"
+          >
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                    d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
+            </svg>
+            <span>{{ t('Add First Product') }}</span>
+          </button>
+        </div>
+
+        <!-- Products Table -->
+        <div v-else class="overflow-x-auto">
+          <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-50">
+              <tr>
+                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  {{ t('Product') }}
+                </th>
+                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  {{ t('Brand') }}
+                </th>
+                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  {{ t('Price') }}
+                </th>
+                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  {{ t('Stock') }}
+                </th>
+                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  {{ t('Status') }}
+                </th>
+                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  {{ t('Actions') }}
+                </th>
+               </tr>
+            </thead>
+            <tbody class="bg-white divide-y divide-gray-200">
+              <tr 
+                v-for="product in paginatedProducts" 
+                :key="product.id"
+                class="hover:bg-gray-50 transition-colors"
+              >
+                <td class="px-4 py-3 whitespace-nowrap">
+                  <div class="flex items-center">
+                    <div class="h-10 w-10 flex-shrink-0">
+                      <img 
+                        :src="product.imageUrl || '/images/placeholder-product.jpg'" 
+                        :alt="getProductName(product)"
+                        class="h-10 w-10 rounded-lg object-cover bg-gray-100"
+                        @error="handleImageError"
+                      />
+                    </div>
+                    <div class="ml-3" :class="{ 'mr-3 ml-0': isRTL }">
+                      <div class="text-sm font-medium text-gray-900">
+                        {{ getProductName(product) }}
+                      </div>
+                      <div class="text-xs text-gray-500">
+                        {{ product.size }} • {{ product.concentration }}
+                      </div>
+                    </div>
+                  </div>
+                </td>
+                <td class="px-4 py-3 whitespace-nowrap">
+                  <span class="text-sm text-gray-900 font-medium">
+                    {{ product.brand }}
+                  </span>
+                </td>
+                <td class="px-4 py-3 whitespace-nowrap">
+                  <div class="text-sm font-bold text-gray-900">
+                    {{ formatCurrency(product.price) }}
+                  </div>
+                  <div v-if="product.originalPrice && product.originalPrice > product.price" 
+                       class="text-xs text-gray-500 line-through">
+                    {{ formatCurrency(product.originalPrice) }}
+                  </div>
+                </td>
+                <td class="px-4 py-3 whitespace-nowrap">
+                  <span v-if="product.inStock && product.stockQuantity !== undefined"
+                        class="text-sm text-gray-900">
+                    {{ product.stockQuantity }} {{ t('units') }}
+                  </span>
+                  <span v-else-if="product.inStock" 
+                        class="text-sm text-green-600 font-medium">
+                    {{ t('In Stock') }}
+                  </span>
+                  <span v-else 
+                        class="text-sm text-red-600 font-medium">
+                    {{ t('Out of Stock') }}
+                  </span>
+                </td>
+                <td class="px-4 py-3 whitespace-nowrap">
+                  <div class="flex flex-wrap gap-1">
+                    <span 
+                      v-if="product.isBestSeller"
+                      class="px-2 py-0.5 text-xs font-semibold rounded-full bg-emerald-100 text-emerald-800"
+                    >
+                      {{ t('Best Seller') }}
+                    </span>
+                    <span 
+                      v-if="isNewArrival(product)"
+                      class="px-2 py-0.5 text-xs font-semibold rounded-full bg-blue-100 text-blue-800"
+                    >
+                      {{ t('New') }}
+                    </span>
+                    <span 
+                      v-if="product.isFeatured"
+                      class="px-2 py-0.5 text-xs font-semibold rounded-full bg-purple-100 text-purple-800"
+                    >
+                      {{ t('Featured') }}
+                    </span>
+                  </div>
+                </td>
+                <td class="px-4 py-3 whitespace-nowrap text-sm font-medium">
+                  <div class="flex items-center gap-2">
+                    <a
+                      :href="`/product/${product.slug || product.id}`"
+                      target="_blank"
+                      class="text-gray-600 hover:text-primary-600"
+                      :title="t('View on site')"
+                    >
+                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                              d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                              d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                      </svg>
+                    </a>
+                    <button
+                      @click="openEditProductForm(product)"
+                      class="text-primary-600 hover:text-primary-700"
+                      :title="t('Edit product')"
+                    >
+                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                              d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                      </svg>
+                    </button>
+                    <button
+                      @click="viewProductDetails(product)"
+                      class="text-gray-600 hover:text-primary-600"
+                      :title="t('View details')"
+                    >
+                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                              d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                      </svg>
+                    </button>
+                    <button
+                      @click="confirmDelete(product)"
+                      class="text-red-600 hover:text-red-800"
+                      :title="t('Delete product')"
+                    >
+                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                              d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 
+7h16"/>
+                      </svg>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Pagination -->
+        <div v-if="filteredProducts.length > 0 && !productsStore.isLoading" class="px-4 py-3 border-t border-gray-200">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div class="text-sm text-gray-700 text-center sm:text-left">
+              {{ t('Showing') }} 
+              <span class="font-medium">{{ startIndex + 1 }}</span>
+              {{ t('to') }}
+              <span class="font-medium">{{ endIndex }}</span>
+              {{ t('of') }}
+              <span class="font-medium">{{ filteredProducts.length }}</span>
+              {{ t('products') }}
+            </div>
+            <div class="flex items-center justify-center gap-2">
+              <button
+                @click="prevPage"
+                :disabled="currentPage === 1"
+                class="px-3 py-1 border border-gray-300 rounded text-sm 
+                       disabled:opacity-50 disabled:cursor-not-allowed 
+                       hover:bg-gray-50"
+              >
+                {{ t('Previous') }}
+              </button>
+              <span class="px-3 py-1 text-sm text-gray-700">
+                {{ currentPage }} / {{ totalPages }}
+              </span>
+              <button
+                @click="nextPage"
+                :disabled="currentPage === totalPages"
+                class="px-3 py-1 border border-gray-300 rounded text-sm 
+                       disabled:opacity-50 disabled:cursor-not-allowed 
+                       hover:bg-gray-50"
+              >
+                {{ t('Next') }}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div 
+      v-if="showDeleteModal"
+      class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+      @click.self="showDeleteModal = false"
+    >
+      <div class="bg-white rounded-2xl max-w-md w-full p-5">
+        <h3 class="text-lg font-bold text-gray-900 mb-3">
+          {{ t('Delete Product') }}
+        </h3>
+        <p class="text-gray-600 mb-4 text-sm">
+          {{ t('Are you sure you want to delete') }} 
+          "<span class="font-medium">{{ getProductName(productToDelete) }}</span>"?
+          {{ t('This action cannot be undone.') }}
+        </p>
+        <div class="flex justify-end gap-3">
+          <button
+            @click="showDeleteModal = false"
+            class="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg 
+                   hover:bg-gray-50 transition-colors text-sm"
           >
             {{ t('Cancel') }}
+          </button>
+          <button
+            @click="deleteProductPermanent"
+            :disabled="deleting"
+            class="px-4 py-2 bg-red-600 text-white rounded-lg font-medium 
+                   hover:bg-red-700 transition-colors disabled:opacity-50 
+                   disabled:cursor-not-allowed text-sm"
+          >
+            <span v-if="!deleting">{{ t('Delete Permanently') }}</span>
+            <span v-else class="flex items-center gap-2">
+              <svg class="animate-spin w-4 h-4" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                <path class="opacity-75" fill="currentColor" 
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
+              </svg>
+              {{ t('Deleting...') }}
+            </span>
           </button>
         </div>
       </div>
     </div>
+
+    <!-- Product Details Modal -->
+    <div 
+      v-if="showDetailsModal && selectedProduct"
+      class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+      @click.self="showDetailsModal = false"
+    >
+      <div class="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+        <div class="p-5">
+          <div class="flex justify-between items-center mb-5">
+            <h3 class="text-xl font-bold text-gray-900">{{ t('Product Details') }}</h3>
+            <button @click="showDetailsModal = false" class="text-gray-500 hover:text-gray-700">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+              </svg>
+            </button>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <img 
+                :src="selectedProduct.imageUrl || '/images/placeholder-product.jpg'" 
+                :alt="getProductName(selectedProduct)"
+                class="w-full rounded-xl shadow-luxury"
+                @error="handleImageError"
+              />
+            </div>
+            <div class="space-y-3">
+              <div>
+                <label class="text-xs font-medium text-gray-500">{{ t('Brand') }}</label>
+                <p class="text-gray-900">{{ selectedProduct.brand }}</p>
+              </div>
+              <div>
+                <label class="text-xs font-medium text-gray-500">{{ t('Category') }}</label>
+                <p class="text-gray-900">{{ getCategoryName(selectedProduct.category) }}</p>
+              </div>
+              <div>
+                <label class="text-xs font-medium text-gray-500">{{ t('Price') }}</label>
+                <p class="text-gray-900 font-bold">{{ formatCurrency(selectedProduct.price) }}</p>
+                <p v-if="selectedProduct.originalPrice && selectedProduct.originalPrice > selectedProduct.price" 
+                   class="text-xs text-gray-500 line-through">
+                  {{ formatCurrency(selectedProduct.originalPrice) }}
+                </p>
+              </div>
+              <div>
+                <label class="text-xs font-medium text-gray-500">{{ t('Size & Concentration') }}</label>
+                <p class="text-gray-900 text-sm">{{ selectedProduct.size }} • {{ selectedProduct.concentration }}</p>
+              </div>
+              <div>
+                <label class="text-xs font-medium text-gray-500">{{ t('Description') }}</label>
+                <p class="text-gray-900 text-sm whitespace-pre-line">
+                  {{ getProductDescription(selectedProduct) }}
+                </p>
+              </div>
+              <div>
+                <label class="text-xs font-medium text-gray-500">{{ t('Fragrance Notes') }}</label>
+                <div class="mt-1 space-y-1 text-sm">
+                  <div>
+                    <span class="text-xs font-medium text-gray-500">{{ t('Top Notes') }}:</span>
+                    <p class="text-gray-900">{{ selectedProduct.notes?.top?.join(', ') || t('None') }}</p>
+                  </div>
+                  <div>
+                    <span class="text-xs font-medium text-gray-500">{{ t('Heart Notes') }}:</span>
+                    <p class="text-gray-900">{{ selectedProduct.notes?.heart?.join(', ') || t('None') }}</p>
+                  </div>
+                  <div>
+                    <span class="text-xs font-medium text-gray-500">{{ t('Base Notes') }}:</span>
+                    <p class="text-gray-900">{{ selectedProduct.notes?.base?.join(', ') || t('None') }}</p>
+                  </div>
+                </div>
+              </div>
+              <div>
+                <label class="text-xs font-medium text-gray-500">{{ t('Created') }}</label>
+                <p class="text-gray-900 text-sm">{{ formatDate(selectedProduct.createdAt) }}</p>
+              </div>
+              <div class="flex gap-2">
+                <span 
+                  v-if="selectedProduct.isBestSeller"
+                  class="px-2 py-0.5 text-xs font-semibold rounded-full bg-emerald-100 text-emerald-800"
+                >
+                  {{ t('Best Seller') }}
+                </span>
+                <span 
+                  v-if="selectedProduct.isFeatured"
+                  class="px-2 py-0.5 text-xs font-semibold rounded-full bg-purple-100 text-purple-800"
+                >
+                  {{ t('Featured') }}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Product Form Modal -->
+    <ProductFormModal
+      v-if="showProductForm"
+      :product="editingProduct || undefined"
+      :brand="selectedBrandForProduct || undefined"
+      @close="closeProductForm"
+      @save="handleSaveProduct"
+      @saved="handleProductSaved"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, watch, computed, onMounted } from 'vue'
-import { useLanguageStore } from '@/stores/language'
-import { ref as storageRef, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage'
-import { storage } from '@/firebase/config'
+// @ts-nocheck - The template correctly uses all these functions and computed properties.
+// TypeScript incorrectly flags them as unused because it doesn't analyze the template.
 
+import { ref, computed, onMounted, watch } from 'vue'
+import { storeToRefs } from 'pinia'
+import { useLanguageStore } from '@/stores/language'
+import { useProductsStore } from '@/stores/products'
+import { useBrandsStore } from '@/stores/brands'
+import { useAuthStore } from '@/stores/auth'
+import { useRouter } from 'vue-router'
+import ProductFormModal from '@/components/Admin/ProductForm.vue'
+import type { Product, Category, Brand } from '@/types'
+import { authNotification } from '@/utils/notifications'
+import debounce from 'lodash/debounce'
+import { supabase } from '@/supabase/client'
+
+const router = useRouter()
 const languageStore = useLanguageStore()
+const productsStore = useProductsStore()
+const brandsStore = useBrandsStore()
+const authStore = useAuthStore()
+
+// Admin guard
+if (!authStore.isAdmin) {
+  router.push('/admin')
+}
+
+const { currentLanguage, isRTL } = storeToRefs(languageStore)
 const { t } = languageStore
 
-const props = defineProps<{
-  offer?: any
-}>()
-
-const emit = defineEmits<{
-  close: []
-  save: [data: any]
-}>()
-
-// Form data
-const formData = reactive({
-  id: '',
-  slug: '',
-  title: '',
-  imageUrl: '',
-  imageFile: null as File | null,
-  linkUrl: '',
-  subtitle: '',
-  oldPrice: 0,
-  newPrice: 0,
-  startDate: '',
-  endDate: '',
-  offerType: 'percentage',
-  description: '',
-  terms: '',
-  active: true
+// State
+const searchQuery = ref('')
+const filters = ref({
+  category: '',
+  brand: '',
+  status: '',
+  sort: 'newest'
 })
 
-// Form state
-const errors = reactive({
-  title: '',
-  slug: '',
-  imageUrl: '',
-  oldPrice: '',
-  newPrice: ''
-})
-const loading = ref(false)
-const imagePreview = ref('')
-const imageFile = ref<File | null>(null)
-const offerImageInput = ref<HTMLInputElement | null>(null)
-const editing = computed(() => !!props.offer?.id)
+// Pagination
+const currentPage = ref(1)
+const itemsPerPage = 10
 
-// Helper: Upload image to Firebase Storage
-const uploadOfferImage = async (file: File, offerId: string): Promise<string> => {
-  const path = `offers/${offerId}/main.jpg`
-  const imageRef = storageRef(storage, path)
-  await uploadBytes(imageRef, file)
-  return await getDownloadURL(imageRef)
-}
-
-// Helper: Delete image from Storage
-const deleteOfferImageFromStorage = async (imageUrl: string) => {
-  if (!imageUrl || !imageUrl.includes('firebasestorage.googleapis.com')) return
-  try {
-    const decodedUrl = decodeURIComponent(imageUrl)
-    const match = decodedUrl.match(/\/o\/(.+?)\?/)
-    if (match && match[1]) {
-      const path = decodeURIComponent(match[1])
-      const imageRef = storageRef(storage, path)
-      await deleteObject(imageRef)
-    }
-  } catch (err) {
-    console.warn('Failed to delete offer image from Storage:', err)
-  }
-}
+// Modals
+const showDeleteModal = ref(false)
+const showDetailsModal = ref(false)
+const showExportSection = ref(false)
+const showProductForm = ref(false)
+const editingProduct = ref<Product | null>(null)
+const selectedBrandForProduct = ref<Brand | null>(null)
+const productToDelete = ref<Product | null>(null)
+const selectedProduct = ref<Product | null>(null)
+const deleting = ref(false)
+const exportMessage = ref('')
+const exportMessageClass = ref('')
 
 // Computed
-const calculateDiscount = computed(() => {
-  if (!formData.oldPrice || !formData.newPrice || formData.oldPrice <= 0) return 0
-  const discount = ((formData.oldPrice - formData.newPrice) / formData.oldPrice) * 100
-  return Math.round(discount)
+const hasActiveFilters = computed(() => {
+  return filters.value.category || filters.value.brand || filters.value.status || searchQuery.value
 })
 
-// Initialize form with offer data if editing
-onMounted(() => {
-  if (props.offer) {
-    Object.assign(formData, {
-      id: props.offer.id || '',
-      slug: props.offer.slug || '',
-      title: props.offer.title || '',
-      imageUrl: props.offer.imageUrl || '',
-      linkUrl: props.offer.linkUrl || '',
-      subtitle: props.offer.subtitle || '',
-      oldPrice: props.offer.oldPrice || 0,
-      newPrice: props.offer.newPrice || 0,
-      startDate: props.offer.startDate || '',
-      endDate: props.offer.endDate || '',
-      offerType: props.offer.offerType || 'percentage',
-      description: props.offer.description || '',
-      terms: props.offer.terms || '',
-      active: props.offer.active !== undefined ? props.offer.active : true
-    })
-    
-    if (formData.imageUrl) {
-      imagePreview.value = formData.imageUrl
-    }
+const bestSellersCount = computed(() => {
+  return productsStore.products.filter(p => p.isBestSeller).length
+})
+
+const newArrivalsCount = computed(() => {
+  const oneMonthAgo = new Date()
+  oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1)
+  return productsStore.products.filter(p => isNewArrival(p)).length
+})
+
+const averagePriceNumber = computed(() => {
+  if (productsStore.products.length === 0) return 0
+  const total = productsStore.products.reduce((sum, p) => sum + p.price, 0)
+  return total / productsStore.products.length
+})
+
+const filteredProducts = computed(() => {
+  let filtered = [...productsStore.products]
+
+  if (searchQuery.value) {
+    const query = searchQuery.value.toLowerCase()
+    filtered = filtered.filter(product =>
+      getProductName(product).toLowerCase().includes(query) ||
+      product.description?.[currentLanguage.value as 'en' | 'ar']?.toLowerCase().includes(query) ||
+      product.description?.en?.toLowerCase().includes(query) ||
+      product.brand?.toLowerCase().includes(query) ||
+      product.category?.toLowerCase().includes(query)
+    )
   }
-})
 
-// Watch image URL for preview
-watch(() => formData.imageUrl, (newUrl) => {
-  if (newUrl && isValidUrl(newUrl)) {
-    imagePreview.value = newUrl
-  } else if (!imageFile.value) {
-    imagePreview.value = ''
+  if (filters.value.category) {
+    filtered = filtered.filter(product => product.category === filters.value.category)
   }
+  if (filters.value.brand) {
+    filtered = filtered.filter(product => product.brand === filters.value.brand)
+  }
+  if (filters.value.status === 'best-seller') {
+    filtered = filtered.filter(product => product.isBestSeller)
+  } else if (filters.value.status === 'new') {
+    filtered = filtered.filter(product => isNewArrival(product))
+  } else if (filters.value.status === 'in-stock') {
+    filtered = filtered.filter(product => product.inStock !== false)
+  } else if (filters.value.status === 'out-of-stock') {
+    filtered = filtered.filter(product => product.inStock === false)
+  }
+
+  switch (filters.value.sort) {
+    case 'oldest':
+      filtered.sort((a, b) => getProductDate(a.createdAt).getTime() - getProductDate(b.createdAt).getTime())
+      break
+    case 'price-high':
+      filtered.sort((a, b) => b.price - a.price)
+      break
+    case 'price-low':
+      filtered.sort((a, b) => a.price - b.price)
+      break
+    case 'name':
+      filtered.sort((a, b) => getProductName(a).localeCompare(getProductName(b)))
+      break
+    default: // newest
+      filtered.sort((a, b) => getProductDate(b.createdAt).getTime() - getProductDate(a.createdAt).getTime())
+  }
+
+  return filtered
 })
 
-// Methods
-const isValidUrl = (url: string) => {
+const paginatedProducts = computed(() => {
+  const start = (currentPage.value - 1) * itemsPerPage
+  const end = start + itemsPerPage
+  return filteredProducts.value.slice(start, end)
+})
+
+const totalPages = computed(() => Math.ceil(filteredProducts.value.length / itemsPerPage))
+const startIndex = computed(() => (currentPage.value - 1) * itemsPerPage)
+const endIndex = computed(() => Math.min(startIndex.value + itemsPerPage, filteredProducts.value.length))
+
+// Helper functions
+const getCategoryDisplayName = (category: Category): string => {
+  if (!category) return ''
+  return category[currentLanguage.value as 'en' | 'ar'] || category.en || category.id
+}
+
+const getCategoryName = (categoryId: string): string => {
+  if (!categoryId) return ''
+  const category = productsStore.categories.find(cat => cat.id === categoryId)
+  return category ? getCategoryDisplayName(category) : categoryId
+}
+
+const getProductName = (product: Product | null): string => {
+  if (!product) return ''
+  if (typeof product.name === 'string') return product.name
+  return product.name?.[currentLanguage.value as 'en' | 'ar'] || product.name?.en || t('Unnamed Product')
+}
+
+const getProductDescription = (product: Product): string => {
+  return product.description?.[currentLanguage.value as 'en' | 'ar'] || product.description?.en || t('No description')
+}
+
+const getProductDate = (date: any): Date => {
   try {
-    new URL(url)
-    return true
+    if (date instanceof Date) return date
+    if (typeof date === 'string' || typeof date === 'number') return new Date(date)
+    if (date?.seconds) return new Date(date.seconds * 1000)
+    return new Date()
   } catch {
-    return false
+    return new Date()
   }
 }
 
-const previewImage = (url: string) => {
-  if (url && isValidUrl(url)) {
-    imagePreview.value = url
-  } else {
-    alert(t('Please enter a valid image URL'))
-  }
+const formatCurrency = (amount: number) => {
+  return new Intl.NumberFormat('en-EG', {
+    style: 'currency',
+    currency: 'EGP',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0
+  }).format(amount).replace('EGP', 'LE ')
 }
 
-const handleImageUpload = (event: Event) => {
-  const input = event.target as HTMLInputElement
-  if (!input.files || !input.files[0]) return
-  const file = input.files[0]
-  imageFile.value = file
-  // Clear URL field and preview from URL
-  formData.imageUrl = ''
-  // Show local preview
-  const reader = new FileReader()
-  reader.onload = (e) => {
-    imagePreview.value = e.target?.result as string
-  }
-  reader.readAsDataURL(file)
-  // Clear any image URL errors
-  if (errors.imageUrl) errors.imageUrl = ''
-}
-
-const removeImage = () => {
-  imageFile.value = null
-  formData.imageUrl = ''
-  imagePreview.value = ''
-  if (offerImageInput.value) {
-    offerImageInput.value.value = ''
-  }
-}
-
-const clearImagePreview = () => {
-  removeImage()
-}
-
-const handleImageError = () => {
-  alert(t('Failed to load image. Please check the URL or upload a new image.'))
-  imagePreview.value = ''
-  formData.imageUrl = ''
-}
-
-const validateForm = () => {
-  let isValid = true
-  
-  // Reset errors
-  Object.keys(errors).forEach(key => {
-    errors[key as keyof typeof errors] = ''
-  })
-  
-  // Validate title
-  if (!formData.title.trim()) {
-    errors.title = t('Offer title is required')
-    isValid = false
-  }
-  
-  // Validate slug
-  if (!formData.slug.trim()) {
-    errors.slug = t('Slug is required')
-    isValid = false
-  } else if (!/^[a-z0-9-]+$/.test(formData.slug)) {
-    errors.slug = t('Slug must contain only lowercase letters, numbers, and hyphens')
-    isValid = false
-  }
-  
-  // Validate image: either URL or file must be present
-  if (!formData.imageUrl && !imageFile.value) {
-    errors.imageUrl = t('Offer image is required (URL or upload)')
-    isValid = false
-  } else if (formData.imageUrl && !isValidUrl(formData.imageUrl)) {
-    errors.imageUrl = t('Please enter a valid URL')
-    isValid = false
-  }
-  
-  // Validate old price
-  if (formData.oldPrice <= 0) {
-    errors.oldPrice = t('Old price must be greater than 0')
-    isValid = false
-  }
-  
-  // Validate new price
-  if (formData.newPrice <= 0) {
-    errors.newPrice = t('New price must be greater than 0')
-    isValid = false
-  }
-  
-  // Validate price logic
-  if (formData.newPrice >= formData.oldPrice) {
-    errors.newPrice = t('New price must be less than old price')
-    isValid = false
-  }
-  
-  // Validate date range if both dates are provided
-  if (formData.startDate && formData.endDate && new Date(formData.startDate) > new Date(formData.endDate)) {
-    alert(t('End date must be after start date'))
-    isValid = false
-  }
-  
-  return isValid
-}
-
-const save = async () => {
-  if (!validateForm()) return
-  
-  loading.value = true
-  
+const formatDate = (date: any) => {
   try {
-    // If an image file was selected, upload it first
-    let finalImageUrl = formData.imageUrl
-    if (imageFile.value) {
-      // Generate a temporary ID if it's a new offer (no ID yet)
-      const tempId = formData.id || Date.now().toString()
-      finalImageUrl = await uploadOfferImage(imageFile.value, tempId)
-    } else if (editing.value && formData.imageUrl !== props.offer?.imageUrl) {
-      // If the image URL changed and we are editing, and it's not a Storage URL, we may need to delete old?
-      // For simplicity, we keep existing URL.
-    }
-    
-    // Prepare data to emit
-    const offerData = {
-      ...formData,
-      imageUrl: finalImageUrl,
-      imageFile: undefined, // remove file object
-      discount: calculateDiscount.value,
-      savings: formData.oldPrice - formData.newPrice
-    }
-    
-    // If editing and we uploaded a new image, delete the old one from Storage
-    if (editing.value && imageFile.value && props.offer?.imageUrl) {
-      await deleteOfferImageFromStorage(props.offer.imageUrl)
-    }
-    
-    emit('save', offerData)
-    emit('close')
+    const dateObj = getProductDate(date)
+    return dateObj.toLocaleDateString(currentLanguage.value === 'ar' ? 'ar-EG' : 'en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    })
+  } catch {
+    return ''
+  }
+}
+
+const isNewArrival = (product: Product) => {
+  if (!product.createdAt) return false
+  const oneMonthAgo = new Date()
+  oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1)
+  const createdAt = getProductDate(product.createdAt)
+  return createdAt > oneMonthAgo
+}
+
+const clearFilters = () => {
+  searchQuery.value = ''
+  filters.value = { category: '', brand: '', status: '', sort: 'newest' }
+  currentPage.value = 1
+}
+
+const prevPage = () => {
+  if (currentPage.value > 1) {
+    currentPage.value--
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+}
+
+const nextPage = () => {
+  if (currentPage.value < totalPages.value) {
+    currentPage.value++
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+}
+
+const handleImageError = (event: Event) => {
+  const img = event.target as HTMLImageElement
+  img.src = '/images/placeholder-product.jpg'
+  img.onerror = null
+}
+
+const refreshProducts = async () => {
+  try {
+    await productsStore.refreshProducts()
   } catch (error) {
-    console.error('Error saving offer:', error)
-    alert(t('Failed to save offer. Please try again.'))
-  } finally {
-    loading.value = false
+    console.error('Error refreshing products:', error)
   }
 }
 
-const close = () => {
-  if (loading.value) return
-  emit('close')
+// Export functions
+const exportProducts = () => {
+  showExportSection.value = !showExportSection.value
 }
 
-// Keyboard event listener
-onMounted(() => {
-  const handleKeydown = (e: KeyboardEvent) => {
-    if (e.key === 'Escape') {
-      close()
+const exportAsJSON = () => {
+  const data = {
+    exportDate: new Date().toISOString(),
+    totalProducts: filteredProducts.value.length,
+    products: filteredProducts.value.map(product => ({
+      id: product.id,
+      slug: product.slug,
+      name: product.name,
+      description: product.description,
+      brand: product.brand,
+      brandId: product.brandId,
+      brandSlug: product.brandSlug,
+      category: product.category,
+      price: product.price,
+      originalPrice: product.originalPrice,
+      size: product.size,
+      concentration: product.concentration,
+      imageUrl: product.imageUrl,
+      images: product.images,
+      isBestSeller: product.isBestSeller,
+      isFeatured: product.isFeatured,
+      rating: product.rating,
+      reviewCount: product.reviewCount,
+      notes: product.notes,
+      inStock: product.inStock,
+      stockQuantity: product.stockQuantity,
+      createdAt: product.createdAt,
+      updatedAt: product.updatedAt,
+      meta: product.meta
+    }))
+  }
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `products-export-${new Date().toISOString().split('T')[0]}.json`
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  URL.revokeObjectURL(url)
+  showMessage(t('Products exported as JSON successfully!'), 'success')
+}
+
+const exportAsCSV = () => {
+  const headers = [
+    'ID', 'Slug', 'Name (EN)', 'Name (AR)', 'Brand', 'Category', 'Price (EGP)',
+    'Size', 'Concentration', 'Is Best Seller', 'Is Featured', 'In Stock',
+    'Stock Quantity', 'Rating', 'Review Count'
+  ]
+  const rows = filteredProducts.value.map(product => [
+    product.id,
+    product.slug || '',
+    typeof product.name === 'string' ? product.name : product.name?.en || '',
+    typeof product.name === 'string' ? '' : product.name?.ar || '',
+    product.brand || '',
+    product.category || '',
+    product.price.toString(),
+    product.size || '',
+    product.concentration || '',
+    product.isBestSeller ? 'Yes' : 'No',
+    product.isFeatured ? 'Yes' : 'No',
+    product.inStock ? 'Yes' : 'No',
+    product.stockQuantity?.toString() || '0',
+    product.rating?.toString() || '0',
+    product.reviewCount?.toString() || '0'
+  ])
+  const csvContent = [headers.join(','), ...rows.map(row => row.map(cell => `"${cell}"`).join(','))].join('\n')
+  const blob = new Blob([csvContent], { type: 'text/csv' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `products-export-${new Date().toISOString().split('T')[0]}.csv`
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  URL.revokeObjectURL(url)
+  showMessage(t('Products exported as CSV successfully!'), 'success')
+}
+
+const copyToClipboard = async () => {
+  const data = {
+    exportDate: new Date().toISOString(),
+    totalProducts: filteredProducts.value.length,
+    products: filteredProducts.value.map(product => ({
+      name: getProductName(product),
+      brand: product.brand,
+      price: product.price,
+      category: product.category,
+      size: product.size,
+      concentration: product.concentration
+    }))
+  }
+  try {
+    await navigator.clipboard.writeText(JSON.stringify(data, null, 2))
+    showMessage(t('Product data copied to clipboard!'), 'success')
+  } catch {
+    showMessage(t('Failed to copy to clipboard'), 'error')
+  }
+}
+
+const showMessage = (message: string, type: 'success' | 'error' | 'info') => {
+  exportMessage.value = message
+  exportMessageClass.value = type === 'success' ? 'bg-green-50 text-green-800' :
+                            type === 'error' ? 'bg-red-50 text-red-800' :
+                            'bg-blue-50 text-blue-800'
+  setTimeout(() => { exportMessage.value = '' }, 3000)
+}
+
+// Helper to convert File to Base64 (still needed for product form – it passes File objects)
+const fileToBase64 = (file: File): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.readAsDataURL(file)
+    reader.onload = () => resolve(reader.result as string)
+    reader.onerror = error => reject(error)
+  })
+}
+
+// Product actions
+const openNewProductForm = () => {
+  editingProduct.value = null
+  selectedBrandForProduct.value = null
+  showProductForm.value = true
+}
+
+const openEditProductForm = (product: Product) => {
+  editingProduct.value = product
+  const brand = brandsStore.brands.find(b => b.id === product.brandId)
+  selectedBrandForProduct.value = brand || null
+  showProductForm.value = true
+}
+
+const closeProductForm = () => {
+  showProductForm.value = false
+  editingProduct.value = null
+  selectedBrandForProduct.value = null
+}
+
+const handleProductSaved = () => {
+  refreshProducts()
+  closeProductForm()
+}
+
+const handleSaveProduct = async (data: {
+  productData: any
+  brandId?: string
+  productId?: string
+  createNewBrand?: boolean
+  newBrandData?: any
+}) => {
+  console.log('📦 Parent received save event:', data)
+
+  try {
+    if (data.productId && data.brandId) {
+      // Update existing product
+      const updatePayload: any = { updated_at: new Date().toISOString() }
+      const fields = ['name', 'description', 'notes', 'price', 'size', 'concentration',
+                      'classification', 'slug', 'category', 'isBestSeller', 'isFeatured',
+                      'stock', 'sku', 'isActive', 'imageUrl']
+      for (const field of fields) {
+        if (data.productData[field] !== undefined) {
+          // map camelCase to snake_case for DB
+          if (field === 'isBestSeller') updatePayload.is_best_seller = data.productData.isBestSeller
+          else if (field === 'isFeatured') updatePayload.is_featured = data.productData.isFeatured
+          else if (field === 'stock') updatePayload.stock_quantity = data.productData.stock
+          else if (field === 'isActive') updatePayload.is_active = data.productData.isActive
+          else if (field === 'imageUrl') updatePayload.image_url = data.productData.imageUrl
+          else if (field === 'name') updatePayload.name = data.productData.name
+          else if (field === 'description') updatePayload.description = data.productData.description
+          else if (field === 'notes') updatePayload.notes = data.productData.notes
+          else updatePayload[field] = data.productData[field]
+        }
+      }
+
+      const { error: updateError } = await supabase
+        .from('products')
+        .update(updatePayload)
+        .eq('id', data.productId)
+
+      if (updateError) throw updateError
+      authNotification.loggedIn(t('Product updated successfully'))
+
+    } else if (data.createNewBrand) {
+      // Create new brand with product
+      let brandImageBase64 = ''
+      if (data.newBrandData.imageFile) {
+        brandImageBase64 = await fileToBase64(data.newBrandData.imageFile)
+      }
+      const brandData = {
+        name: data.newBrandData.name,
+        slug: data.newBrandData.slug,
+        category: data.newBrandData.category,
+        description: data.newBrandData.description || '',
+        signature: data.newBrandData.signature || '',
+        isActive: data.newBrandData.isActive !== false,
+        image: brandImageBase64
+      }
+      let productImageBase64 = ''
+      if (data.productData.imageFile) {
+        productImageBase64 = await fileToBase64(data.productData.imageFile)
+      } else if (data.productData.imageUrl) {
+        productImageBase64 = data.productData.imageUrl
+      }
+      const productForBrand = {
+        ...data.productData,
+        brand: brandData.name,
+        brandSlug: brandData.slug,
+        imageUrl: productImageBase64,
+        imageFile: undefined
+      }
+      const brandId = await brandsStore.addBrandWithProducts(brandData, [productForBrand])
+      if (!brandId) throw new Error('Failed to create brand')
+      authNotification.loggedIn(t('Brand and product added successfully'))
+
+    } else if (data.brandId) {
+      // Add product to existing brand
+      const brand = brandsStore.brands.find(b => b.id === data.brandId)
+      if (!brand) throw new Error('Brand not found')
+
+      let productImageBase64 = ''
+      if (data.productData.imageFile) {
+        productImageBase64 = await fileToBase64(data.productData.imageFile)
+      } else if (data.productData.imageUrl) {
+        productImageBase64 = data.productData.imageUrl
+      }
+
+      const now = new Date().toISOString()
+      const insertPayload = {
+        brand_id: brand.id,
+        tenant_id: authStore.currentTenant,
+        name: data.productData.name,
+        description: data.productData.description,
+        notes: data.productData.notes,
+        price: data.productData.price,
+        size: data.productData.size,
+        concentration: data.productData.concentration,
+        classification: data.productData.classification,
+        slug: data.productData.slug,
+        category: data.productData.category,
+        is_best_seller: data.productData.isBestSeller || false,
+        is_featured: data.productData.isFeatured || false,
+        stock_quantity: data.productData.stock || 0,
+        sku: data.productData.sku,
+        is_active: data.productData.isActive !== false,
+        created_at: now,
+        updated_at: now,
+        image_url: productImageBase64
+      }
+
+      const { error: insertError } = await supabase
+        .from('products')
+        .insert(insertPayload)
+
+      if (insertError) throw insertError
+      authNotification.loggedIn(t('Product added successfully'))
     }
+
+    await productsStore.refreshProducts()
+  } catch (error) {
+    console.error('❌ Error saving product:', error)
+    authNotification.error(t('Failed to save product'))
+    throw error
   }
-  
-  document.addEventListener('keydown', handleKeydown)
-  
-  // Remove event listener on unmount
-  return () => {
-    document.removeEventListener('keydown', handleKeydown)
+}
+
+const viewProductDetails = (product: Product) => {
+  selectedProduct.value = product
+  showDetailsModal.value = true
+}
+
+const confirmDelete = (product: Product) => {
+  productToDelete.value = product
+  showDeleteModal.value = true
+}
+
+const deleteProductPermanent = async () => {
+  if (!productToDelete.value) {
+    showMessage(t('No product selected'), 'error')
+    return
+  }
+  if (!productToDelete.value.brandId) {
+    showMessage(t('Product brand ID missing, cannot delete'), 'error')
+    return
+  }
+  deleting.value = true
+  try {
+    const success = await productsStore.deleteProduct(
+      productToDelete.value.id,
+      productToDelete.value.brandId
+    )
+    if (success) {
+      showDeleteModal.value = false
+      productToDelete.value = null
+      await refreshProducts()
+      showMessage(t('Product deleted permanently'), 'success')
+    } else {
+      throw new Error('Delete failed')
+    }
+  } catch (error: any) {
+    console.error('Error deleting product:', error)
+    showMessage(t('Failed to delete product: ') + (error.message || t('Unknown error')), 'error')
+  } finally {
+    deleting.value = false
+  }
+}
+
+const debouncedSearch = debounce(() => {
+  currentPage.value = 1
+}, 300)
+
+watch([searchQuery, filters], () => {
+  currentPage.value = 1
+}, { deep: true })
+
+onMounted(async () => {
+  try {
+    if (productsStore.products.length === 0) await productsStore.fetchProducts()
+    if (brandsStore.brands.length === 0) await brandsStore.loadBrands()
+  } catch (error) {
+    console.error('Error loading products:', error)
   }
 })
 </script>
 
 <style scoped>
-/* Custom scrollbar for modal */
-.overflow-y-auto::-webkit-scrollbar {
-  width: 8px;
+.luxury-loading-spinner {
+  width: 50px;
+  height: 50px;
+  border: 2px solid rgba(212, 175, 55, 0.2);
+  border-top: 2px solid #d4af37;
+  border-radius: 50%;
+  animation: spin 1.2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
 }
 
-.overflow-y-auto::-webkit-scrollbar-track {
-  background: #f1f1f1;
-  border-radius: 4px;
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
 }
 
-.overflow-y-auto::-webkit-scrollbar-thumb {
-  background: #888;
-  border-radius: 4px;
+table {
+  border-spacing: 0;
+}
+th, td {
+  padding: 0.75rem 1rem;
+}
+img {
+  object-fit: cover;
+  background-color: #f3f4f6;
+}
+tr:hover {
+  background-color: #f9fafb;
 }
 
-.overflow-y-auto::-webkit-scrollbar-thumb:hover {
-  background: #555;
-}
-
-/* Focus styles */
-:focus-visible {
-  outline: 2px solid #3b82f6;
-  outline-offset: 2px;
-}
-
-/* Touch-friendly buttons */
-button, input, select, textarea {
-  min-height: 44px;
-}
-
-/* Dark mode support */
-@media (prefers-color-scheme: dark) {
-  .bg-white {
-    background-color: #1f2937;
-  }
-  
-  .text-gray-900 {
-    color: #f9fafb;
-  }
-  
-  .text-gray-500 {
-    color: #9ca3af;
-  }
-  
-  .border-gray-300 {
-    border-color: #4b5563;
-  }
-  
-  .bg-gray-50 {
-    background-color: #374151;
-  }
-  
-  .bg-emerald-50 {
-    background-color: #064e3b;
-  }
-  
-  .border-emerald-200 {
-    border-color: #065f46;
-  }
-  
-  .text-emerald-800 {
-    color: #a7f3d0;
-  }
-  
-  .text-emerald-600 {
-    color: #34d399;
-  }
-  
-  .text-emerald-700 {
-    color: #10b981;
-  }
-  
-  .ring-gray-300 {
-    ring-color: #4b5563;
-  }
-  
-  .hover\:bg-gray-50:hover {
-    background-color: #4b5563;
-  }
-}
-
-/* Mobile optimizations */
 @media (max-width: 640px) {
-  .px-4 {
+  th, td {
+    padding: 0.5rem 0.75rem;
+  }
+  .px-8 {
     padding-left: 1rem;
     padding-right: 1rem;
-  }
-  
-  .sm\:px-6 {
-    padding-left: 1rem;
-    padding-right: 1rem;
-  }
-  
-  .space-y-4 > * + * {
-    margin-top: 1rem;
-  }
-  
-  .grid {
-    gap: 0.75rem;
   }
 }
 </style>

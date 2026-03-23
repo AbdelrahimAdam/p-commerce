@@ -406,8 +406,7 @@ export const useOrdersStore = defineStore('orders', () => {
         updatedBy: updatedByName
       }]
 
-      const shippingAddressString = `${shippingAddress.address}, ${shippingAddress.city}, ${shippingAddress.country 
-|| 'Egypt'}`
+      const shippingAddressString = `${shippingAddress.address}, ${shippingAddress.city}, ${shippingAddress.country || 'Egypt'}`
 
       const { data: orderData, error: rpcError } = await supabase.rpc('create_order', {
         _tenant_id: tenantId,
@@ -436,8 +435,7 @@ export const useOrdersStore = defineStore('orders', () => {
         })),
         _user_id: currentUserId,
         _guest_id: guestId,
-        _user_email: currentUserEmail
-      })
+        _user_email: currentUserEmail })
 
       if (rpcError) throw rpcError
 
@@ -539,8 +537,7 @@ export const useOrdersStore = defineStore('orders', () => {
         .single()
 
       if (fetchError || !currentOrderData) throw new Error('Order not found')
-      if (currentOrderData.tenant_id !== authStore.currentTenant) throw new Error('Order does not belong to this 
-tenant')
+      if (currentOrderData.tenant_id !== authStore.currentTenant) throw new Error('Order does not belong to thistenant')
 
       const currentStatus = currentOrderData.status
       if (currentStatus === status) return true
@@ -598,8 +595,7 @@ tenant')
 
       const updatedOrder: Order = { ...convertRowToOrder({ ...currentOrderData, ...updatePayload }), id: orderId }
       const index = orders.value.findIndex(o => o.id === orderId)
-      if (index !== -1) orders.value = [...orders.value.slice(0, index), updatedOrder, ...orders.value.slice(index + 
-1)]
+      if (index !== -1) orders.value = [...orders.value.slice(0, index), updatedOrder, ...orders.value.slice(index +1)]
       else orders.value = [updatedOrder, ...orders.value]
       if (currentOrder.value?.id === orderId) currentOrder.value = updatedOrder
 
@@ -638,8 +634,7 @@ tenant')
 
       const index = orders.value.findIndex(o => o.id === orderId)
       if (index !== -1) orders.value[index] = { ...orders.value[index], paymentStatus, updatedAt: new Date() }
-      if (currentOrder.value?.id === orderId) currentOrder.value = { ...currentOrder.value, paymentStatus, updatedAt: 
-new Date() }
+      if (currentOrder.value?.id === orderId) currentOrder.value = { ...currentOrder.value, paymentStatus, updatedAt:new Date() }
       return true
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Failed to update payment status'
