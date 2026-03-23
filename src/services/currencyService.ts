@@ -1,35 +1,32 @@
-// src/services/currencyService.ts
-declare const importMeta: any; // quick fix for import.meta
-
 import type { ExchangeRate } from '@/types/currency'
-import { db } from '@/firebase/config'
-import { doc, getDoc, setDoc, Timestamp } from 'firebase/firestore'
 
 const API_BASE_URL =
-  import.meta.env.VITE_CURRENCY_API_URL || 'https://api.exchangerate-api.com/v4'
-const API_KEY = import.meta.env.VITE_CURRENCY_API_KEY
+  (import.meta as any).env?.VITE_CURRENCY_API_URL || 'https://api.exchangerate-api.com/v4'
+const API_KEY = (import.meta as any).env?.VITE_CURRENCY_API_KEY
 
 const BASE_CURRENCY = 'EGP'
-const CACHE_DOC_ID = 'egp-latest'
+const CACHE_KEY = 'exchange_rates_cache'
 const CACHE_DURATION = 60 * 60 * 1000 // 1 hour
 
+interface CachedRates {
+  timestamp: number
+  rates: ExchangeRate[]
+}
+
 /**
- * Fetch exchange rates (EGP base) with Firestore caching
+ * Fetch exchange rates (EGP base) with localStorage caching
  */
 export const getExchangeRates = async (): Promise<ExchangeRate[]> => {
-  const cacheRef = doc(db, 'exchangeRates', CACHE_DOC_ID)
-
   // 1️⃣ Try cache
-  const cachedSnap = await getDoc(cacheRef)
-
-  if (cachedSnap.exists()) {
-    const data = cachedSnap.data()
-
-    if (
-      data.timestamp instanceof Timestamp &&
-      Date.now() - data.timestamp.toMillis() < CACHE_DURATION
-    ) {
-      return data.rates as ExchangeRate[]
+  const cachedStr = localStorage.getItem(CACHE_KEY)
+  if (cachedStr) {
+    try {
+      const cached: CachedRates = JSON.parse(cachedStr)
+      if (Date.now() - cached.timestamp < CACHE_DURATION) {
+        return cached.rates
+      }
+    } catch {
+      // Invalid cache, ignore
     }
   }
 
@@ -54,11 +51,10 @@ export const getExchangeRates = async (): Promise<ExchangeRate[]> => {
   )
 
   // 3️⃣ Save cache
-  await setDoc(cacheRef, {
-    base: BASE_CURRENCY,
-    rates,
-    timestamp: Timestamp.now()
-  })
+  localStorage.setItem(CACHE_KEY, JSON.stringify({
+    timestamp: Date.now(),
+    rates
+  }))
 
   return rates
 }

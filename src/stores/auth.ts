@@ -5,7 +5,6 @@ import { supabase } from '@/supabase/client'
 import { useTenantStore } from './tenant'
 import { authNotification, showInfo } from '@/utils/notifications'
 
-// List of public paths
 const PUBLIC_PATHS = [
   '/',
   '/shop',
@@ -73,26 +72,28 @@ export const useAuthStore = defineStore('auth', () => {
     user.value?.tenantId || customer.value?.tenantId || tenantStore.tenantId
   )
 
-  // Helper: fetch admin from 'admins' table (only columns that exist)
+  // Helper: fetch admin
   const getAdminFromSupabase = async (userId: string): Promise<AdminUser | null> => {
     try {
       const { data, error } = await supabase
         .from('admins')
-        .select('id, tenant_id, role, email, created_at, updated_at, last_login')
+        .select('*')
         .eq('id', userId)
         .single()
       if (error || !data) return null
       return {
         uid: data.id,
         email: data.email,
-        displayName: data.email, // fallback; use email as display name
+        displayName: data.display_name || data.email,
         role: data.role,
         tenantId: data.tenant_id,
-        isActive: true, // default
-        permissions: [], // default
+        isActive: data.is_active !== false,
+        permissions: data.permissions || ['all'],
+        photoURL: data.photo_url,
+        phoneNumber: data.phone_number,
         createdAt: new Date(data.created_at),
         updatedAt: new Date(data.updated_at),
-        lastLogin: data.last_login ? new Date(data.last_login) : undefined
+        lastLogin: data.last_login ? new Date(data.last_login) : new Date()
       }
     } catch (err) {
       console.error('❌ Error getting admin from Supabase:', err)
@@ -100,12 +101,12 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  // Helper: fetch customer from 'customers' table (columns that exist)
+  // Helper: fetch customer
   const getCustomerFromSupabase = async (userId: string): Promise<CustomerUser | null> => {
     try {
       const { data, error } = await supabase
         .from('customers')
-        .select('id, tenant_id, email, name, addresses, created_at, updated_at, phone_number')
+        .select('*')
         .eq('id', userId)
         .single()
       if (error || !data) return null
@@ -114,10 +115,11 @@ export const useAuthStore = defineStore('auth', () => {
         email: data.email,
         displayName: data.name || data.email,
         tenantId: data.tenant_id,
+        photoURL: data.photo_url,
         phoneNumber: data.phone_number,
         addresses: data.addresses || [],
-        wishlist: [], // wishlist is separate table
-        newsletter: false, // not in schema
+        wishlist: [],
+        newsletter: data.newsletter || false,
         createdAt: new Date(data.created_at),
         updatedAt: new Date(data.updated_at),
         lastLogin: new Date()
@@ -173,8 +175,7 @@ export const useAuthStore = defineStore('auth', () => {
 
       if (adminData) {
         setAdminUser(adminData)
-        // Optionally update last_login in admins table (if column exists)
-        // await supabase.from('admins').update({ last_login: new Date().toISOString() }).eq('id', userId)
+        await supabase.from('admins').update({ last_login: new Date().toISOString() }).eq('id', userId)
         authNotification.loggedIn(adminData.displayName ?? 'Admin')
         console.log('✅ Admin authenticated:', adminData.email)
         return { ...adminData, role: 'admin' }
@@ -183,6 +184,7 @@ export const useAuthStore = defineStore('auth', () => {
       if (customerData) {
         setCustomerUser(customerData, credentials.remember)
         await supabase.from('customers').update({ 
+          last_login: new Date().toISOString(),
           updated_at: new Date().toISOString()
         }).eq('id', userId)
         authNotification.loggedIn(customerData.displayName ?? 'Customer')
@@ -194,7 +196,7 @@ export const useAuthStore = defineStore('auth', () => {
     } catch (err: any) {
       console.error('❌ Authentication error:', err)
       error.value = err.message || 'Invalid credentials'
-      authNotification.error(error.value ?? 'Authentication failed')
+      authNotification.error(error.value || '')
       throw err
     } finally {
       isLoading.value = false
@@ -257,6 +259,7 @@ export const useAuthStore = defineStore('auth', () => {
         email: userData.email,
         displayName: userData.displayName,
         tenantId,
+        photoURL: undefined,
         phoneNumber: userData.phoneNumber,
         addresses: [],
         wishlist: [],
@@ -272,6 +275,7 @@ export const useAuthStore = defineStore('auth', () => {
         name: newCustomer.displayName,
         tenant_id: newCustomer.tenantId,
         addresses: newCustomer.addresses,
+        newsletter: newCustomer.newsletter,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       }
@@ -373,14 +377,14 @@ export const useAuthStore = defineStore('auth', () => {
     } catch (err: any) {
       console.error('❌ Error changing password:', err)
       if (!error.value) error.value = err.message || 'Failed to change password'
-      authNotification.error(error.value)
+      authNotification.error(error.value || '')
       throw err
     } finally {
       isLoading.value = false
     }
   }
 
-  // Address management (read‑modify‑write)
+  // Address management
   const addCustomerAddress = async (address: any): Promise<void> => {
     if (!customer.value) throw new Error('No customer logged in')
     isLoading.value = true
@@ -412,7 +416,7 @@ export const useAuthStore = defineStore('auth', () => {
     } catch (err: any) {
       console.error('❌ Error adding address:', err)
       error.value = err.message
-      authNotification.error('Failed to add address')
+      authNotification.error(error.value || '')
       throw err
     } finally {
       isLoading.value = false
@@ -448,7 +452,7 @@ export const useAuthStore = defineStore('auth', () => {
     } catch (err: any) {
       console.error('❌ Error updating address:', err)
       error.value = err.message
-      authNotification.error('Failed to update address')
+      authNotification.error(error.value || '')
       throw err
     } finally {
       isLoading.value = false
@@ -482,7 +486,7 @@ export const useAuthStore = defineStore('auth', () => {
     } catch (err: any) {
       console.error('❌ Error removing address:', err)
       error.value = err.message
-      authNotification.error('Failed to remove address')
+      authNotification.error(error.value || '')
       throw err
     } finally {
       isLoading.value = false
@@ -519,7 +523,7 @@ export const useAuthStore = defineStore('auth', () => {
     } catch (err: any) {
       console.error('❌ Error setting default address:', err)
       error.value = err.message
-      authNotification.error('Failed to set default address')
+      authNotification.error(error.value || '')
       throw err
     } finally {
       isLoading.value = false
@@ -536,7 +540,7 @@ export const useAuthStore = defineStore('auth', () => {
     } catch (err: any) {
       console.error('❌ Error uploading photo:', err)
       error.value = err.message
-      authNotification.error('Failed to upload photo')
+      authNotification.error(error.value || '')
       throw err
     } finally {
       isLoading.value = false
@@ -603,6 +607,7 @@ export const useAuthStore = defineStore('auth', () => {
     } catch (err: any) {
       error.value = err.message || 'Registration failed'
       console.error('Company registration error:', err)
+      authNotification.error(error.value || '')
       throw err
     } finally {
       isLoading.value = false
@@ -623,6 +628,7 @@ export const useAuthStore = defineStore('auth', () => {
       authNotification.loggedOut()
     } catch (err: any) {
       error.value = err.message
+      authNotification.error(error.value || '')
       throw err
     } finally {
       isLoading.value = false
@@ -751,17 +757,20 @@ export const useAuthStore = defineStore('auth', () => {
         role: 'super-admin',
         tenantId,
         isActive: true,
-        permissions: [],
+        permissions: ['all'],
         createdAt: new Date(),
         updatedAt: new Date(),
-        lastLogin: undefined
+        lastLogin: new Date()
       }
 
       const dbData = {
         id: userId,
         tenant_id: tenantId,
         email: adminData.email,
+        display_name: adminData.displayName,
         role: adminData.role,
+        is_active: adminData.isActive,
+        permissions: adminData.permissions,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       }
@@ -772,6 +781,7 @@ export const useAuthStore = defineStore('auth', () => {
       return adminData
     } catch (err: any) {
       error.value = err.message
+      authNotification.error(error.value || '')
       throw err
     } finally {
       isLoading.value = false

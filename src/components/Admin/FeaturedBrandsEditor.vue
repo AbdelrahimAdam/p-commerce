@@ -1,4 +1,3 @@
-<!-- src/components/Admin/FeaturedBrandsEditor.vue -->
 <template>
   <div class="featured-brands-editor space-y-6">
     <!-- Debug Banner (temporary) -->
@@ -11,7 +10,7 @@
       </div>
       <div class="mt-2 text-xs text-yellow-700">
         <div>Brands count: {{ localBrands.length }}</div>
-        <div>Upload function available: Yes (Firebase Storage)</div>
+        <div>Upload function available: Yes (Supabase Storage)</div>
       </div>
     </div>
 
@@ -53,12 +52,13 @@
             />
             <div v-else class="text-gray-400 text-center p-4">
               <svg class="w-12 h-12 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 
+012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
               </svg>
               <p class="text-sm">No image</p>
             </div>
           </div>
-          
+
           <!-- Image Upload Button -->
           <button
             @click="uploadBrandImage(index)"
@@ -88,7 +88,7 @@
               @input="emitUpdate"
             />
           </div>
-          
+
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Signature Scent</label>
             <input
@@ -99,7 +99,7 @@
               @input="emitUpdate"
             />
           </div>
-          
+
           <div class="grid grid-cols-2 gap-3">
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">Price (EGP)</label>
@@ -113,7 +113,7 @@
                 @input="emitUpdate"
               />
             </div>
-            
+
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">URL Slug</label>
               <input
@@ -134,7 +134,8 @@
             class="px-3 py-1.5 text-sm text-red-600 hover:bg-red-50 rounded-lg flex items-center gap-1 transition-colors"
           >
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 
+4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
             </svg>
             Remove
           </button>
@@ -149,7 +150,8 @@
     </div>
 
     <!-- Status Messages -->
-    <div v-if="uploadStatus" class="p-4 rounded-lg" :class="uploadStatus.type === 'success' ? 'bg-green-50 text-green-800 border border-green-200' : 'bg-red-50 text-red-800 border border-red-200'">
+    <div v-if="uploadStatus" class="p-4 rounded-lg" :class="uploadStatus.type === 'success' ? 'bg-green-50 text-green-800 border border-green-200' : 
+'bg-red-50 text-red-800 border border-red-200'">
       <div class="flex items-center gap-2">
         <svg v-if="uploadStatus.type === 'success'" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
@@ -193,8 +195,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage' // removed unused getStorage
-import { storage } from '@/firebase/config' // assuming you have this configured
+import { supabase } from '@/supabase/client'
 
 interface Brand {
   id: string
@@ -297,7 +298,20 @@ const uploadBrandImage = (index: number) => {
   }
 }
 
-// Handle image upload to Firebase Storage
+// Upload image to Supabase Storage
+const uploadImageToSupabase = async (file: File, brandId: string): Promise<string> => {
+  const timestamp = Date.now()
+  const safeName = file.name.replace(/[^a-zA-Z0-9.]/g, '_')
+  const path = `brands/${brandId}/${timestamp}_${safeName}`
+  const { error } = await supabase.storage
+    .from('images')
+    .upload(path, file, { upsert: true })
+  if (error) throw error
+  const { data: urlData } = supabase.storage.from('images').getPublicUrl(path)
+  return urlData.publicUrl
+}
+
+// Handle image upload
 const handleBrandImageUpload = async (event: Event, index: number) => {
   console.log('🔄 handleBrandImageUpload called')
   
@@ -329,17 +343,10 @@ const handleBrandImageUpload = async (event: Event, index: number) => {
   try {
     showStatus('success', 'Uploading image...')
     
-    // Create a unique filename
-    const timestamp = Date.now()
-    const safeName = file.name.replace(/[^a-zA-Z0-9.]/g, '_')
-    const filePath = `brands/${timestamp}_${safeName}`
-    const fileRef = storageRef(storage, filePath)
-    
-    // Upload file
-    await uploadBytes(fileRef, file)
-    
-    // Get download URL
-    const downloadURL = await getDownloadURL(fileRef)
+    const brand = localBrands.value[index]
+    // Use brand ID as folder name; if brand is new, use its slug or a temporary ID
+    const brandId = brand.id || brand.slug || `temp_${Date.now()}`
+    const downloadURL = await uploadImageToSupabase(file, brandId)
     
     console.log('✅ Image uploaded successfully:', downloadURL)
     

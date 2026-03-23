@@ -1,4 +1,3 @@
-<!-- src/pages/Customer/ProfilePage.vue -->
 <template>
   <div class="profile-page min-h-screen bg-gray-50">
     <!-- Header with Back Button -->
@@ -44,10 +43,12 @@
               <button
                 type="button"
                 @click="triggerFileUpload"
-                class="absolute bottom-0 right-0 w-8 h-8 bg-white rounded-full shadow-lg flex items-center justify-center text-gray-600 hover:text-gold-600 border border-gray-200"
+                class="absolute bottom-0 right-0 w-8 h-8 bg-white rounded-full shadow-lg flex items-center justify-center text-gray-600 hover:text-gold-600 
+border border-gray-200"
               >
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/>
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 
+4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/>
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/>
                 </svg>
               </button>
@@ -119,18 +120,6 @@
             />
           </div>
 
-          <!-- Date of Birth -->
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">
-              {{ t('dateOfBirth') }}
-            </label>
-            <input
-              v-model="form.dob"
-              type="date"
-              class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gold-500"
-            />
-          </div>
-
           <!-- Newsletter Preferences -->
           <div class="border-t border-gray-200 pt-6">
             <h3 class="text-lg font-medium text-gray-900 mb-4">{{ t('preferences') }}</h3>
@@ -142,14 +131,6 @@
                   class="w-4 h-4 text-gold-500 border-gray-300 rounded focus:ring-gold-500"
                 />
                 <span class="ml-2 text-sm text-gray-700">{{ t('subscribeNewsletter') }}</span>
-              </label>
-              <label class="flex items-center">
-                <input
-                  v-model="form.smsNotifications"
-                  type="checkbox"
-                  class="w-4 h-4 text-gold-500 border-gray-300 rounded focus:ring-gold-500"
-                />
-                <span class="ml-2 text-sm text-gray-700">{{ t('smsNotifications') }}</span>
               </label>
             </div>
           </div>
@@ -242,9 +223,7 @@ const form = reactive({
   lastName: '',
   email: '',
   phoneNumber: '',
-  dob: '',
-  newsletter: false,
-  smsNotifications: false
+  newsletter: false
 })
 
 // Password form
@@ -288,9 +267,7 @@ const handleSubmit = async () => {
     await authStore.updateCustomerProfile({
       displayName: `${form.firstName} ${form.lastName}`,
       phoneNumber: form.phoneNumber,
-      newsletter: form.newsletter,
-      smsNotifications: form.smsNotifications,
-      dob: form.dob
+      newsletter: form.newsletter
     })
     
     showSuccess(t('profileUpdated'), '')
@@ -331,7 +308,7 @@ const loadUserData = () => {
   form.lastName = nameParts.slice(1).join(' ') || ''
   form.email = customer.email || ''
   form.phoneNumber = customer.phoneNumber || ''
-  // Load other preferences from database (to be implemented)
+  form.newsletter = customer.newsletter || false
 }
 
 onMounted(() => {
