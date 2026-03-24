@@ -1,3 +1,4 @@
+<!-- src/components/Layout/LuxuryFooter.vue -->
 <template>
   <footer class="luxury-footer" :class="{ 'rtl': isRTL }">
     <!-- Main Footer -->
@@ -10,44 +11,50 @@
             <router-link to="/" class="footer-logo">
               <!-- Luxurious "P" Logo -->
               <div class="footer-p-logo">
-                <div class="footer-p-letter">P</div>
+                <div class="footer-p-letter">{{ brandLetter }}</div>
               </div>
               <div class="footer-logo-text">
-                <h3 class="footer-logo-title">P.NOTES</h3>
-                <p class="footer-logo-subtitle">PERFUME STORE</p>
+                <h3 class="footer-logo-title">{{ storeName }}</h3>
+                <p class="footer-logo-subtitle">{{ storeTagline }}</p>
               </div>
             </router-link>
-            
+
             <p class="footer-description">
               {{ $t('footerDescription') }}
             </p>
-            
+
             <!-- Social Links - Updated Icons -->
             <div class="footer-social">
-              <a href="https://facebook.com" class="social-link" target="_blank" rel="noopener" aria-label="Facebook">
+              <a :href="socialLinks.facebook" class="social-link" target="_blank" rel="noopener" aria-label="Facebook" v-if="socialLinks.facebook">
                 <svg class="social-icon" viewBox="0 0 24 24" fill="none">
                   <path d="M18 2h-3a5 5 0 00-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 011-1h3z" 
                         stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
                 </svg>
               </a>
-              <a href="https://instagram.com" class="social-link" target="_blank" rel="noopener" aria-label="Instagram">
+              <a :href="socialLinks.instagram" class="social-link" target="_blank" rel="noopener" aria-label="Instagram" v-if="socialLinks.instagram">
                 <svg class="social-icon" viewBox="0 0 24 24" fill="none">
                   <rect x="2" y="2" width="20" height="20" rx="5" ry="5" stroke="currentColor" stroke-width="1.5"/>
                   <circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="1.5"/>
                   <circle cx="18" cy="6" r="1" fill="currentColor"/>
                 </svg>
               </a>
-              <a href="https://x.com" class="social-link" target="_blank" rel="noopener" aria-label="X (Twitter)">
+              <a :href="socialLinks.twitter" class="social-link" target="_blank" rel="noopener" aria-label="X (Twitter)" v-if="socialLinks.twitter">
                 <svg class="social-icon" viewBox="0 0 24 24" fill="none">
-                  <path d="M17.751 3H20.818L13.918 10.78L22 20H15.828L10.994 14.487L5.464 20H2.394L9.809 11.611L2 3H8.328L12.692 7.958L17.751 3ZM16.675 18.272H18.368L7.404 4.633H5.58L16.675 18.272Z" 
+                  <path d="M17.751 3H20.818L13.918 10.78L22 20H15.828L10.994 14.487L5.464 20H2.394L9.809 11.611L2 3H8.328L12.692 7.958L17.751 3ZM16.675 
+18.272H18.368L7.404 4.633H5.58L16.675 18.272Z" 
                         stroke="currentColor" stroke-width="1.5" fill="currentColor"/>
                 </svg>
               </a>
-              <a href="https://wa.me/1234567890" class="social-link" target="_blank" rel="noopener" aria-label="WhatsApp">
+              <a :href="socialLinks.whatsapp" class="social-link" target="_blank" rel="noopener" aria-label="WhatsApp" v-if="socialLinks.whatsapp">
                 <svg class="social-icon" viewBox="0 0 24 24" fill="none">
-                  <path d="M12.031 2C6.482 2 2 6.482 2 12.031c0 2.283.784 4.401 2.099 6.114L2.5 21.5l3.44-1.612A10.014 10.014 0 0012.031 22c5.549 0 10.031-4.482 10.031-10.031C22.062 6.482 17.58 2 12.031 2z" 
+                  <path d="M12.031 2C6.482 2 2 6.482 2 12.031c0 2.283.784 4.401 2.099 6.114L2.5 21.5l3.44-1.612A10.014 10.014 0 0012.031 22c5.549 0 
+10.031-4.482 10.031-10.031C22.062 6.482 17.58 2 12.031 2z" 
                         stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
-                  <path d="M16.532 13.95c-.285.797-1.398 1.458-2.28 1.528-.86.067-1.5-.048-2.64-.668-1.246-.68-2.4-1.748-3.141-2.875-.441-.668-.825-1.489-.905-2.288-.08-.799.285-1.594.84-2.08.192-.168.42-.26.666-.267.243-.007.437.003.612.441.173.437.59 1.506.642 1.615.052.109.09.234.036.375-.055.141-.082.229-.17.354-.087.125-.185.273-.263.364-.088.105-.18.219-.076.429.105.209.466.77.999 1.247.686.614 1.264.804 1.442.886.18.082.284.068.39-.041.105-.109.45-.526.571-.706.12-.18.24-.15.405-.09.165.06 1.043.492 1.222.58.18.09.3.135.346.21.045.075.045.434-.24 1.231z" 
+                  <path d="M16.532 13.95c-.285.797-1.398 1.458-2.28 
+1.528-.86.067-1.5-.048-2.64-.668-1.246-.68-2.4-1.748-3.141-2.875-.441-.668-.825-1.489-.905-2.288-.08-.799.285-1.594.84-2.08.192-.168.42-.26.666-.267.243-.007.437.003.612.441.173.437.59 
+1.506.642 1.615.052.109.09.234.036.375-.055.141-.082.229-.17.354-.087.125-.185.273-.263.364-.088.105-.18.219-.076.429.105.209.466.77.999 1.247.686.614 
+1.264.804 1.442.886.18.082.284.068.39-.041.105-.109.45-.526.571-.706.12-.18.24-.15.405-.09.165.06 1.043.492 1.222.58.18.09.3.135.346.21.045.075.045.434-.24 
+1.231z" 
                         stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
                 </svg>
               </a>
@@ -72,7 +79,7 @@
             <p class="newsletter-description">
               {{ $t('newsletterDescription') }}
             </p>
-            
+
             <form @submit.prevent="subscribeNewsletter" class="newsletter-form">
               <div class="newsletter-input-group">
                 <input
@@ -101,9 +108,9 @@
         <div class="footer-bottom">
           <!-- Copyright -->
           <div class="footer-copyright">
-            <p class="copyright-text">© {{ currentYear }} P.NOTES. {{ $t('allRightsReserved') }}</p>
+            <p class="copyright-text">© {{ currentYear }} {{ storeName }}. {{ $t('allRightsReserved') }}</p>
           </div>
-          
+
           <!-- Legal Links -->
           <div class="footer-legal">
             <router-link to="/privacy" class="legal-link">{{ $t('privacy') }}</router-link>
@@ -113,7 +120,7 @@
         </div>
       </div>
     </div>
-    
+
     <!-- Back to Top -->
     <button v-if="showBackToTop" @click="scrollToTop" class="back-to-top" :class="{ 'show': showBackToTop }" aria-label="Back to top">
       <svg class="back-to-top-icon" viewBox="0 0 24 24" fill="none">
@@ -127,9 +134,11 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { useLanguageStore } from '@/stores/language'
+import { useTenantStore } from '@/stores/tenant'
 import { showNotification } from '@/utils/notifications'
 
 const languageStore = useLanguageStore()
+const tenantStore = useTenantStore()
 const { t: $t, currentLanguage } = languageStore
 
 // State
@@ -140,11 +149,45 @@ const showBackToTop = ref(false)
 const currentYear = computed(() => new Date().getFullYear())
 const isRTL = computed(() => currentLanguage === 'ar')
 
+// Tenant-aware store name and branding
+const storeName = computed(() => {
+  // You can customize this based on tenant settings
+  // For now, use a default or fetch from tenant settings if available
+  const tenantSettings = tenantStore.tenantId ? tenantStore.tenantId : 'main'
+  // You could fetch tenant-specific branding from a config table
+  // For demonstration, we'll use a default name that can be overridden per tenant
+  if (tenantStore.tenantId === 'main') {
+    return 'P.COMMERCE'
+  }
+  return 'P.COMMERCE'
+})
+
+const storeTagline = computed(() => {
+  if (tenantStore.tenantId === 'main') {
+    return 'LUXURY PERFUME STORE'
+  }
+  return 'PERFUME STORE'
+})
+
+const brandLetter = computed(() => {
+  return storeName.value.charAt(0).toUpperCase()
+})
+
+// Social links (can be made tenant-aware in the future)
+const socialLinks = computed(() => ({
+  facebook: import.meta.env.VITE_FACEBOOK_URL || 'https://facebook.com',
+  instagram: import.meta.env.VITE_INSTAGRAM_URL || 'https://instagram.com',
+  twitter: import.meta.env.VITE_TWITTER_URL || 'https://x.com',
+  whatsapp: import.meta.env.VITE_WHATSAPP_URL || 'https://wa.me/1234567890'
+}))
+
 // Methods
 const subscribeNewsletter = async () => {
   if (!newsletterEmail.value) return
   
   try {
+    // Here you would integrate with your Supabase newsletter subscription endpoint
+    // For now, simulate API call
     await new Promise(resolve => setTimeout(resolve, 1000))
     
     showNotification({

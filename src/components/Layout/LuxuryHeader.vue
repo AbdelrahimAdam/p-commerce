@@ -1,1346 +1,587 @@
+<!-- src/components/Layout/LuxuryFooter.vue -->
 <template>
-  <header class="luxury-header" :class="{ 'scrolled': scrolled, 'rtl': isRTL }">
-    <!-- Header Container -->
-    <div class="luxury-header-container">
-      <!-- Top Bar -->
-      <div class="luxury-top-bar">
-        <!-- Left: Logo -->
-        <router-link to="/" class="luxury-logo-container">
-          <div class="luxury-logo-icon">
-            <div class="logo-inner">
-              <div class="luxury-p-logo">P</div>
-            </div>
-          </div>
-          <div class="luxury-logo-text">
-            <h1 class="logo-title">P.NOTES</h1>
-            <p class="logo-subtitle">PERFUME STORE</p>
-          </div>
-        </router-link>
-        
-        <!-- Desktop Navigation -->
-        <nav class="luxury-nav-desktop">
-          <ul class="luxury-nav-list">
-            <li class="luxury-nav-item">
-              <router-link to="/" class="luxury-nav-link" active-class="active" exact>
-                {{ languageStore.t('home') }}
-              </router-link>
-              <div class="nav-preview">
-                <div class="preview-content">
-                  <h4 class="preview-title">Home</h4>
-                  <p class="preview-description">Discover our latest luxury fragrances</p>
-                </div>
+  <footer class="luxury-footer" :class="{ 'rtl': isRTL }">
+    <!-- Main Footer -->
+    <div class="footer-main">
+      <div class="footer-container">
+        <!-- Footer Grid - Optimized Spacing -->
+        <div class="footer-grid">
+          <!-- Brand Column - Left -->
+          <div class="footer-brand">
+            <router-link to="/" class="footer-logo">
+              <!-- Luxurious "P" Logo -->
+              <div class="footer-p-logo">
+                <div class="footer-p-letter">{{ brandLetter }}</div>
               </div>
-            </li>
-            <li class="luxury-nav-item">
-              <router-link to="/shop" class="luxury-nav-link" active-class="active">
-                {{ languageStore.t('shop') }}
-              </router-link>
-              <div class="nav-preview">
-                <div class="preview-content">
-                  <h4 class="preview-title">Shop</h4>
-                  <p class="preview-description">Browse all our premium perfumes</p>
-                </div>
+              <div class="footer-logo-text">
+                <h3 class="footer-logo-title">{{ storeName }}</h3>
+                <p class="footer-logo-subtitle">{{ storeTagline }}</p>
               </div>
-            </li>
-            <li class="luxury-nav-item">
-              <router-link to="/brands" class="luxury-nav-link" active-class="active">
-                {{ languageStore.t('brands') }}
-              </router-link>
-              <div class="nav-preview">
-                <div class="preview-content">
-                  <h4 class="preview-title">Brands</h4>
-                  <p class="preview-description">Explore luxury perfume houses</p>
-                </div>
-              </div>
-            </li>
-            <li class="luxury-nav-item">
-              <router-link to="/category/mens" class="luxury-nav-link" active-class="active">
-                {{ languageStore.t('mens') }}
-              </router-link>
-              <div class="nav-preview">
-                <div class="preview-content">
-                  <h4 class="preview-title">Men's Collection</h4>
-                  <p class="preview-description">Bold fragrances for the modern gentleman</p>
-                </div>
-              </div>
-            </li>
-            <li class="luxury-nav-item">
-              <router-link to="/category/womens" class="luxury-nav-link" active-class="active">
-                {{ languageStore.t('womens') }}
-              </router-link>
-              <div class="nav-preview">
-                <div class="preview-content">
-                  <h4 class="preview-title">Women's Collection</h4>
-                  <p class="preview-description">Elegant perfumes that capture timeless beauty</p>
-                </div>
-              </div>
-            </li>
-            <li class="luxury-nav-item">
-              <router-link to="/category/unisex" class="luxury-nav-link" active-class="active">
-                {{ languageStore.t('unisex') }}
-              </router-link>
-              <div class="nav-preview">
-                <div class="preview-content">
-                  <h4 class="preview-title">Unisex Collection</h4>
-                  <p class="preview-description">Fragrances for everyone, transcending boundaries</p>
-                </div>
-              </div>
-            </li>
-            <li class="luxury-nav-item">
-              <router-link to="/about" class="luxury-nav-link" active-class="active">
-                {{ languageStore.t('about') }}
-              </router-link>
-              <div class="nav-preview">
-                <div class="preview-content">
-                  <h4 class="preview-title">About Us</h4>
-                  <p class="preview-description">Our story and passion for luxury fragrances</p>
-                </div>
-              </div>
-            </li>
-            <li class="luxury-nav-item">
-              <router-link to="/contact" class="luxury-nav-link" active-class="active">
-                {{ languageStore.t('contact') }}
-              </router-link>
-              <div class="nav-preview">
-                <div class="preview-content">
-                  <h4 class="preview-title">Contact</h4>
-                  <p class="preview-description">Get in touch with our concierge team</p>
-                </div>
-              </div>
-            </li>
-          </ul>
-        </nav>
-        
-        <!-- Right: Actions -->
-        <div class="luxury-header-right">
-          <!-- Desktop Actions -->
-          <div class="luxury-desktop-section">
-            <div class="luxury-header-toggles">
-              <LuxuryLanguageToggle />
-            </div>
-            
-            <div class="luxury-header-actions">
-              <button class="luxury-header-action" @click="toggleSearch" :aria-label="languageStore.t('search')">
-                <svg class="luxury-icon" viewBox="0 0 24 24" fill="none">
-                  <path d="M21 21L15 15M17 10C17 13.866 13.866 17 10 17C6.13401 17 3 13.866 3 10C3 6.13401 6.13401 3 10 3C13.866 3 17 6.13401 17 10Z" 
-                        stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-                </svg>
-              </button>
-              
-              <!-- Unified User Login / Account -->
-              <button 
-                v-if="!isAuthenticated" 
-                class="luxury-header-action" 
-                @click="router.push('/login')" 
-                :aria-label="languageStore.t('login')"
-              >
-                <svg class="luxury-icon" viewBox="0 0 24 24" fill="none">
-                  <path d="M16 7C16 9.20914 14.2091 11 12 11C9.79086 11 8 9.20914 8 7C8 4.79086 9.79086 3 12 3C14.2091 3 16 4.79086 16 7Z" 
-                        stroke="currentColor" stroke-width="1.5"/>
-                  <path d="M3 20C3 16.6863 5.68629 14 9 14H15C18.3137 14 21 16.6863 21 20V21H3V20Z" 
-                        stroke="currentColor" stroke-width="1.5"/>
-                </svg>
-              </button>
-              
-              <button v-else class="luxury-header-action" @click="handleUserClick" :aria-label="languageStore.t('account')">
-                <svg class="luxury-icon" viewBox="0 0 24 24" fill="none">
-                  <path d="M16 7C16 9.20914 14.2091 11 12 11C9.79086 11 8 9.20914 8 7C8 4.79086 9.79086 3 12 3C14.2091 3 16 4.79086 16 7Z" 
-                        stroke="currentColor" stroke-width="1.5"/>
-                  <path d="M3 20C3 16.6863 5.68629 14 9 14H15C18.3137 14 21 16.6863 21 20V21H3V20Z" 
-                        stroke="currentColor" stroke-width="1.5"/>
-                </svg>
-              </button>
-              
-              <!-- Wishlist Link -->
-              <router-link to="/wishlist" class="luxury-header-action">
-                <svg class="luxury-icon" viewBox="0 0 24 24" fill="none">
-                  <path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" 
-                        stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-                </svg>
-                <span v-if="wishlistStore.totalItems > 0" class="wishlist-badge">{{ wishlistStore.totalItems > 99 ? '99+' : wishlistStore.totalItems }}</span>
-              </router-link>
-              
-              <!-- Cart Link -->
-              <router-link to="/cart" class="luxury-header-action">
-                <svg class="luxury-icon" viewBox="0 0 24 24" fill="none">
-                  <path d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" 
-                        stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-                </svg>
-                <span v-if="cartStore.totalItems > 0" class="cart-badge">{{ cartStore.totalItems > 99 ? '99+' : cartStore.totalItems }}</span>
-              </router-link>
-            </div>
-          </div>
-          
-          <!-- Mobile Actions Row -->
-          <div class="mobile-actions-row">
-            <!-- Only hamburger, cart, and wishlist on mobile -->
-            <!-- Wishlist Link (Mobile) -->
-            <router-link to="/wishlist" class="mobile-action-icon-link">
-              <svg class="mobile-icon" viewBox="0 0 24 24" fill="none">
-                <path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" 
-                      stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-              </svg>
-              <span v-if="wishlistStore.totalItems > 0" class="mobile-wishlist-badge">{{ wishlistStore.totalItems > 99 ? '99+' : wishlistStore.totalItems }}</span>
             </router-link>
-            
-            <!-- Cart Link (Mobile) -->
-            <router-link to="/cart" class="mobile-action-icon-link">
-              <svg class="mobile-icon" viewBox="0 0 24 24" fill="none">
-                <path d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" 
-                      stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-              </svg>
-              <span v-if="cartStore.totalItems > 0" class="mobile-cart-badge">{{ cartStore.totalItems > 99 ? '99+' : cartStore.totalItems }}</span>
-            </router-link>
-            
-            <!-- Menu Toggle (Hamburger) -->
-            <button class="luxury-mobile-toggle" @click="toggleMobileMenu" :class="{ 'open': mobileMenuOpen }" :aria-label="languageStore.t('menu')">
-              <span class="mobile-toggle-line"></span>
-              <span class="mobile-toggle-line"></span>
-              <span class="mobile-toggle-line"></span>
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-    
-    <!-- Mobile Menu Overlay -->
-    <div v-if="mobileMenuOpen" class="luxury-mobile-overlay" @click="closeMobileMenu"></div>
-    
-    <!-- Mobile Menu (Half Screen) -->
-    <div class="luxury-mobile-menu" :class="{ 'open': mobileMenuOpen }">
-      <div class="mobile-menu-container">
-        <div class="mobile-menu-header">
-          <div class="mobile-menu-logo">
-            <div class="mobile-logo-icon">
-              <div class="mobile-logo-inner">
-                <div class="mobile-logo-p">P</div>
-              </div>
+
+            <p class="footer-description">
+              {{ $t('footerDescription') }}
+            </p>
+
+            <!-- Social Links - Updated Icons -->
+            <div class="footer-social">
+              <a :href="socialLinks.facebook" class="social-link" target="_blank" rel="noopener" aria-label="Facebook" v-if="socialLinks.facebook">
+                <svg class="social-icon" viewBox="0 0 24 24" fill="none">
+                  <path d="M18 2h-3a5 5 0 00-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 011-1h3z" 
+                        stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </a>
+              <a :href="socialLinks.instagram" class="social-link" target="_blank" rel="noopener" aria-label="Instagram" v-if="socialLinks.instagram">
+                <svg class="social-icon" viewBox="0 0 24 24" fill="none">
+                  <rect x="2" y="2" width="20" height="20" rx="5" ry="5" stroke="currentColor" stroke-width="1.5"/>
+                  <circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="1.5"/>
+                  <circle cx="18" cy="6" r="1" fill="currentColor"/>
+                </svg>
+              </a>
+              <a :href="socialLinks.twitter" class="social-link" target="_blank" rel="noopener" aria-label="X (Twitter)" v-if="socialLinks.twitter">
+                <svg class="social-icon" viewBox="0 0 24 24" fill="none">
+                  <path d="M17.751 3H20.818L13.918 10.78L22 20H15.828L10.994 14.487L5.464 20H2.394L9.809 11.611L2 3H8.328L12.692 7.958L17.751 3ZM16.675 
+18.272H18.368L7.404 4.633H5.58L16.675 18.272Z" 
+                        stroke="currentColor" stroke-width="1.5" fill="currentColor"/>
+                </svg>
+              </a>
+              <a :href="socialLinks.whatsapp" class="social-link" target="_blank" rel="noopener" aria-label="WhatsApp" v-if="socialLinks.whatsapp">
+                <svg class="social-icon" viewBox="0 0 24 24" fill="none">
+                  <path d="M12.031 2C6.482 2 2 6.482 2 12.031c0 2.283.784 4.401 2.099 6.114L2.5 21.5l3.44-1.612A10.014 10.014 0 0012.031 22c5.549 0 
+10.031-4.482 10.031-10.031C22.062 6.482 17.58 2 12.031 2z" 
+                        stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+                  <path d="M16.532 13.95c-.285.797-1.398 1.458-2.28 
+1.528-.86.067-1.5-.048-2.64-.668-1.246-.68-2.4-1.748-3.141-2.875-.441-.668-.825-1.489-.905-2.288-.08-.799.285-1.594.84-2.08.192-.168.42-.26.666-.267.243-.007.437.003.612.441.173.437.59 
+1.506.642 1.615.052.109.09.234.036.375-.055.141-.082.229-.17.354-.087.125-.185.273-.263.364-.088.105-.18.219-.076.429.105.209.466.77.999 1.247.686.614 
+1.264.804 1.442.886.18.082.284.068.39-.041.105-.109.45-.526.571-.706.12-.18.24-.15.405-.09.165.06 1.043.492 1.222.58.18.09.3.135.346.21.045.075.045.434-.24 
+1.231z" 
+                        stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+                </svg>
+              </a>
             </div>
-            <div class="mobile-logo-text">
-              <h3 class="mobile-logo-title">P.NOTES</h3>
-              <p class="mobile-logo-subtitle">PERFUME STORE</p>
-            </div>
           </div>
-          <button class="mobile-menu-close" @click="closeMobileMenu" :aria-label="languageStore.t('close')">
-            <svg class="luxury-icon" viewBox="0 0 24 24" fill="none">
-              <path d="M6 18L18 6M6 6L18 18" stroke="currentColor" stroke-width="1.5" 
-                    stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-          </button>
-        </div>
-        
-        <div class="mobile-menu-content">
-          <!-- Mobile Navigation -->
-          <nav class="mobile-nav">
-            <ul class="mobile-nav-list">
-              <li class="mobile-nav-item">
-                <router-link to="/" class="mobile-nav-link" @click="closeMobileMenu" exact>
-                  {{ languageStore.t('home') }}
-                </router-link>
-              </li>
-              <li class="mobile-nav-item">
-                <router-link to="/shop" class="mobile-nav-link" @click="closeMobileMenu">
-                  {{ languageStore.t('shop') }}
-                </router-link>
-              </li>
-              <li class="mobile-nav-item">
-                <router-link to="/brands" class="mobile-nav-link" @click="closeMobileMenu">
-                  {{ languageStore.t('brands') }}
-                </router-link>
-              </li>
-              <li class="mobile-nav-item">
-                <router-link to="/category/mens" class="mobile-nav-link" @click="closeMobileMenu">
-                  {{ languageStore.t('mens') }}
-                </router-link>
-              </li>
-              <li class="mobile-nav-item">
-                <router-link to="/category/womens" class="mobile-nav-link" @click="closeMobileMenu">
-                  {{ languageStore.t('womens') }}
-                </router-link>
-              </li>
-              <li class="mobile-nav-item">
-                <router-link to="/category/unisex" class="mobile-nav-link" @click="closeMobileMenu">
-                  {{ languageStore.t('unisex') }}
-                </router-link>
-              </li>
-              <li class="mobile-nav-item">
-                <router-link to="/about" class="mobile-nav-link" @click="closeMobileMenu">
-                  {{ languageStore.t('about') }}
-                </router-link>
-              </li>
-              <li class="mobile-nav-item">
-                <router-link to="/contact" class="mobile-nav-link" @click="closeMobileMenu">
-                  {{ languageStore.t('contact') }}
-                </router-link>
-              </li>
+
+          <!-- Quick Links - Single Column -->
+          <div class="footer-links">
+            <h4 class="links-title">{{ $t('quickLinks') }}</h4>
+            <ul class="links-list">
+              <li><router-link to="/" class="footer-link">{{ $t('home') }}</router-link></li>
+              <li><router-link to="/shop" class="footer-link">{{ $t('shop') }}</router-link></li>
+              <li><router-link to="/brands" class="footer-link">{{ $t('brands') }}</router-link></li>
+              <li><router-link to="/about" class="footer-link">{{ $t('about') }}</router-link></li>
+              <li><router-link to="/contact" class="footer-link">{{ $t('contact') }}</router-link></li>
             </ul>
-          </nav>
-          
-          <!-- Mobile Actions -->
-          <div class="mobile-actions">
-            <!-- Language Toggle (inside sidebar) -->
-            <div class="mobile-action-btn" @click="closeMobileMenu">
-              <LuxuryLanguageToggle />
-            </div>
-            
-            <!-- Search (inside sidebar) -->
-            <button class="mobile-action-btn" @click="handleMobileAction('search')">
-              <svg class="mobile-action-icon" viewBox="0 0 24 24" fill="none">
-                <path d="M21 21L15 15M17 10C17 13.866 13.866 17 10 17C6.13401 17 3 13.866 3 10C3 6.13401 6.13401 3 10 3C13.866 3 17 6.13401 17 10Z" 
-                      stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-              </svg>
-              <span>{{ languageStore.t('search') }}</span>
-            </button>
-            
-            <!-- Unified Login/Account in Mobile Menu -->
-            <template v-if="!isAuthenticated">
-              <router-link to="/login" class="mobile-action-btn" @click="closeMobileMenu">
-                <svg class="mobile-action-icon" viewBox="0 0 24 24" fill="none">
-                  <path d="M16 7C16 9.20914 14.2091 11 12 11C9.79086 11 8 9.20914 8 7C8 4.79086 9.79086 3 12 3C14.2091 3 16 4.79086 16 7Z" 
-                        stroke="currentColor" stroke-width="1.5"/>
-                  <path d="M3 20C3 16.6863 5.68629 14 9 14H15C18.3137 14 21 16.6863 21 20V21H3V20Z" 
-                        stroke="currentColor" stroke-width="1.5"/>
-                </svg>
-                <span>{{ languageStore.t('login') }}</span>
-              </router-link>
-              
-              <router-link to="/register" class="mobile-action-btn" @click="closeMobileMenu">
-                <svg class="mobile-action-icon" viewBox="0 0 24 24" fill="none">
-                  <path d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" 
-                        stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-                </svg>
-                <span>{{ languageStore.t('register') }}</span>
-              </router-link>
-            </template>
-            
-            <template v-else>
-              <router-link to="/account" class="mobile-action-btn" @click="closeMobileMenu">
-                <svg class="mobile-action-icon" viewBox="0 0 24 24" fill="none">
-                  <path d="M16 7C16 9.20914 14.2091 11 12 11C9.79086 11 8 9.20914 8 7C8 4.79086 9.79086 3 12 3C14.2091 3 16 4.79086 16 7Z" 
-                        stroke="currentColor" stroke-width="1.5"/>
-                  <path d="M3 20C3 16.6863 5.68629 14 9 14H15C18.3137 14 21 16.6863 21 20V21H3V20Z" 
-                        stroke="currentColor" stroke-width="1.5"/>
-                </svg>
-                <span>{{ languageStore.t('account') }}</span>
-              </router-link>
-            </template>
-            
-            <!-- Returns in Mobile Menu -->
-            <router-link to="/returns" class="mobile-action-btn" @click="closeMobileMenu">
-              <svg class="mobile-action-icon" viewBox="0 0 24 24" fill="none">
-                <path d="M16 15v-1a4 4 0 00-8 0v1m-4 0a4 4 0 014-4h8a4 4 0 014 4v4a4 4 0 01-4 4H8a4 4 0 01-4-4v-4z" 
-                      stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-                <path d="M12 5v4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-              </svg>
-              <span>{{ languageStore.t('returns') }}</span>
-            </router-link>
-            
-            <!-- Admin Panel (if admin) -->
-            <router-link v-if="isAdmin" to="/admin" class="mobile-action-btn" @click="closeMobileMenu">
-              <svg class="mobile-action-icon" viewBox="0 0 24 24" fill="none">
-                <path d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" 
-                      stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-                <path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" 
-                      stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-              </svg>
-              <span>{{ languageStore.t('adminPanel') }}</span>
-            </router-link>
-            
-            <!-- Logout (if authenticated) -->
-            <button v-if="isAuthenticated" @click="handleLogout" class="mobile-action-btn logout-btn">
-              <svg class="mobile-action-icon" viewBox="0 0 24 24" fill="none">
-                <path d="M17 16L21 12M21 12L17 8M21 12H7M13 16C13 17.6569 11.6569 19 10 19H6C4.34315 19 3 17.6569 3 16V8C3 6.34315 4.34315 5 6 5H10C11.6569 5 13 6.34315 13 8" 
-                      stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-              </svg>
-              <span>{{ languageStore.t('logout') }}</span>
-            </button>
+          </div>
+
+          <!-- Newsletter - Right -->
+          <div class="footer-newsletter">
+            <h4 class="newsletter-title">{{ $t('stayUpdated') }}</h4>
+            <p class="newsletter-description">
+              {{ $t('newsletterDescription') }}
+            </p>
+
+            <form @submit.prevent="subscribeNewsletter" class="newsletter-form">
+              <div class="newsletter-input-group">
+                <input
+                  v-model="newsletterEmail"
+                  type="email"
+                  :placeholder="$t('yourEmail')"
+                  class="newsletter-input"
+                  required
+                  aria-label="Email for newsletter subscription"
+                />
+                <button type="submit" class="newsletter-button" aria-label="Subscribe">
+                  <svg class="newsletter-icon" viewBox="0 0 24 24" fill="none">
+                    <path d="M22 2L11 13M22 2L15 22L11 13M22 2L2 9L11 13" 
+                          stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                  </svg>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        <!-- Divider -->
+        <div class="footer-divider"></div>
+
+        <!-- Bottom Section - Compact -->
+        <div class="footer-bottom">
+          <!-- Copyright -->
+          <div class="footer-copyright">
+            <p class="copyright-text">© {{ currentYear }} {{ storeName }}. {{ $t('allRightsReserved') }}</p>
+          </div>
+
+          <!-- Legal Links -->
+          <div class="footer-legal">
+            <router-link to="/privacy" class="legal-link">{{ $t('privacy') }}</router-link>
+            <router-link to="/terms" class="legal-link">{{ $t('terms') }}</router-link>
+            <router-link to="/cookies" class="legal-link">{{ $t('cookies') }}</router-link>
           </div>
         </div>
       </div>
     </div>
-    
-    <!-- User Menu Dropdown (For Authenticated Users) -->
-    <div v-if="userMenuOpen && isAuthenticated" class="luxury-dropdown user-dropdown" @click.stop>
-      <div class="dropdown-content">
-        <div class="dropdown-user">
-          <div class="user-avatar">
-            <span class="avatar-initials">{{ userInitials }}</span>
-          </div>
-          <div class="user-info">
-            <h4 class="user-name">{{ user?.displayName || languageStore.t('customer') }}</h4>
-            <p class="user-email">{{ user?.email }}</p>
-          </div>
-        </div>
-        
-        <div class="dropdown-menu">
-          <router-link to="/account" class="dropdown-item" @click="userMenuOpen = false">
-            <svg class="dropdown-icon" viewBox="0 0 24 24" fill="none">
-              <path d="M12 12C14.2091 12 16 10.2091 16 8C16 5.79086 14.2091 4 12 4C9.79086 4 8 5.79086 8 8C8 10.2091 9.79086 12 12 12Z" 
-                    stroke="currentColor" stroke-width="1.5"/>
-              <path d="M6 20C6 16.6863 8.68629 14 12 14C15.3137 14 18 16.6863 18 20V21H6V20Z" 
-                    stroke="currentColor" stroke-width="1.5"/>
-            </svg>
-            <span>{{ languageStore.t('profile') }}</span>
-          </router-link>
-          
-          <router-link to="/orders" class="dropdown-item" @click="userMenuOpen = false">
-            <svg class="dropdown-icon" viewBox="0 0 24 24" fill="none">
-              <path d="M9 5H7C5.89543 5 5 5.89543 5 7V19C5 20.1046 5.89543 21 7 21H17C18.1046 21 19 20.1046 19 19V7C19 5.89543 18.1046 5 17 5H15M9 5C9 6.10457 9.89543 7 11 7H13C14.1046 7 15 6.10457 15 5M9 5C9 3.89543 9.89543 3 11 3H13C14.1046 3 15 3.89543 15 5M12 12H15M12 16H15M9 12H9.01M9 16H9.01" 
-                    stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-            <span>{{ languageStore.t('orders') }}</span>
-          </router-link>
-          
-          <router-link to="/returns" class="dropdown-item" @click="userMenuOpen = false">
-            <svg class="dropdown-icon" viewBox="0 0 24 24" fill="none">
-              <path d="M16 15v-1a4 4 0 00-8 0v1m-4 0a4 4 0 014-4h8a4 4 0 014 4v4a4 4 0 01-4 4H8a4 4 0 01-4-4v-4z" 
-                    stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-              <path d="M12 5v4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-            </svg>
-            <span>{{ languageStore.t('returns') }}</span>
-          </router-link>
-          
-          <router-link to="/wishlist" class="dropdown-item" @click="userMenuOpen = false">
-            <svg class="dropdown-icon" viewBox="0 0 24 24" fill="none">
-              <path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" 
-                    stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-            <span>{{ languageStore.t('wishlist') }}</span>
-          </router-link>
-          
-          <router-link v-if="isAdmin" to="/admin" class="dropdown-item" @click="userMenuOpen = false">
-            <svg class="dropdown-icon" viewBox="0 0 24 24" fill="none">
-              <path d="M10.325 4.317C10.751 2.561 13.249 2.561 13.675 4.317C13.861 5.151 14.687 5.657 15.514 5.421C17.227 4.926 18.675 6.374 18.18 8.087C17.944 8.914 18.45 9.74 19.284 9.926C21.04 10.352 21.04 12.85 19.284 13.276C18.45 13.462 17.944 14.288 18.18 15.115C18.675 16.828 17.227 18.276 15.514 17.781C14.687 17.545 13.861 18.051 13.675 18.885C13.249 20.641 10.751 20.641 10.325 18.885C10.139 18.051 9.313 17.545 8.486 17.781C6.773 18.276 5.325 16.828 5.82 15.115C6.056 14.288 5.55 13.462 4.716 13.276C2.96 12.85 2.96 10.352 4.716 9.926C5.55 9.74 6.056 8.914 5.82 8.087C5.325 6.374 6.773 4.926 8.486 5.421C9.313 5.657 10.139 5.151 10.325 4.317Z" 
-                    stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-              <path d="M15 12C15 13.6569 13.6569 15 12 15C10.3431 15 9 13.6569 9 12C9 10.3431 10.3431 9 12 9C13.6569 9 15 10.3431 15 12Z" 
-                    stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-            <span>{{ languageStore.t('adminPanel') }}</span>
-          </router-link>
-          
-          <button @click="handleLogout" class="dropdown-item logout-btn">
-            <svg class="dropdown-icon" viewBox="0 0 24 24" fill="none">
-              <path d="M17 16L21 12M21 12L17 8M21 12H7M13 16C13 17.6569 11.6569 19 10 19H6C4.34315 19 3 17.6569 3 16V8C3 6.34315 4.34315 5 6 5H10C11.6569 5 13 6.34315 13 8" 
-                    stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-            <span>{{ languageStore.t('logout') }}</span>
-          </button>
-        </div>
-      </div>
-    </div>
-    
-    <!-- Search Modal -->
-    <div v-if="searchOpen" class="luxury-search-overlay" @click="searchOpen = false">
-      <div class="search-modal" @click.stop>
-        <div class="search-input-container">
-          <input type="text" class="search-input" :placeholder="languageStore.t('search') + '...'" autofocus>
-          <button class="search-close" @click="searchOpen = false">
-            <svg class="search-icon" viewBox="0 0 24 24" fill="none">
-              <path d="M6 18L18 6M6 6L18 18" stroke="currentColor" stroke-width="1.5" 
-                    stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-          </button>
-        </div>
-      </div>
-    </div>
-  </header>
+
+    <!-- Back to Top -->
+    <button v-if="showBackToTop" @click="scrollToTop" class="back-to-top" :class="{ 'show': showBackToTop }" aria-label="Back to top">
+      <svg class="back-to-top-icon" viewBox="0 0 24 24" fill="none">
+        <path d="M12 19V5M5 12L12 5L19 12" 
+              stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </button>
+  </footer>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
-import { useRouter } from 'vue-router'
-import { useAuthStore } from '@/stores/auth'
+import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { useLanguageStore } from '@/stores/language'
-import { useCartStore } from '@/stores/cart'
-import { useWishlistStore } from '@/stores/wishlist'
-import LuxuryLanguageToggle from '@/components/UI/LuxuryLanguageToggle.vue'
+import { useTenantStore } from '@/stores/tenant'
+import { showNotification } from '@/utils/notifications'
 
-const router = useRouter()
-const authStore = useAuthStore()
 const languageStore = useLanguageStore()
-const cartStore = useCartStore()
-const wishlistStore = useWishlistStore()
-
-const { user, isAuthenticated, isAdmin, logout } = authStore
+const tenantStore = useTenantStore()
+const { t: $t, currentLanguage } = languageStore
 
 // State
-const scrolled = ref(false)
-const mobileMenuOpen = ref(false)
-const userMenuOpen = ref(false)
-const searchOpen = ref(false)
+const newsletterEmail = ref('')
+const showBackToTop = ref(false)
 
 // Computed
-const userInitials = computed(() => {
-  if (!user || !user.displayName) return 'U'
-  return user.displayName
-    .split(' ')
-    .map((n: string) => n[0])
-    .join('')
-    .toUpperCase()
-    .slice(0, 2)
+const currentYear = computed(() => new Date().getFullYear())
+const isRTL = computed(() => currentLanguage === 'ar')
+
+// Tenant-aware store name and branding
+const storeName = computed(() => {
+  // You can customize this based on tenant settings
+  // For now, use a default or fetch from tenant settings if available
+  const tenantSettings = tenantStore.tenantId ? tenantStore.tenantId : 'main'
+  // You could fetch tenant-specific branding from a config table
+  // For demonstration, we'll use a default name that can be overridden per tenant
+  if (tenantStore.tenantId === 'main') {
+    return 'P.COMMERCE'
+  }
+  return 'P.COMMERCE'
 })
 
-const isRTL = computed(() => languageStore.currentLanguage === 'ar')
+const storeTagline = computed(() => {
+  if (tenantStore.tenantId === 'main') {
+    return 'LUXURY PERFUME STORE'
+  }
+  return 'PERFUME STORE'
+})
+
+const brandLetter = computed(() => {
+  return storeName.value.charAt(0).toUpperCase()
+})
+
+// Social links (can be made tenant-aware in the future)
+const socialLinks = computed(() => ({
+  facebook: import.meta.env.VITE_FACEBOOK_URL || 'https://facebook.com',
+  instagram: import.meta.env.VITE_INSTAGRAM_URL || 'https://instagram.com',
+  twitter: import.meta.env.VITE_TWITTER_URL || 'https://x.com',
+  whatsapp: import.meta.env.VITE_WHATSAPP_URL || 'https://wa.me/1234567890'
+}))
 
 // Methods
-const toggleMobileMenu = () => {
-  mobileMenuOpen.value = !mobileMenuOpen.value
-  if (mobileMenuOpen.value) {
-    document.body.classList.add('no-scroll')
-    userMenuOpen.value = false
-    searchOpen.value = false
-  } else {
-    document.body.classList.remove('no-scroll')
-  }
-}
-
-const closeMobileMenu = () => {
-  mobileMenuOpen.value = false
-  document.body.classList.remove('no-scroll')
-}
-
-const handleUserClick = () => {
-  if (isAuthenticated) {
-    userMenuOpen.value = !userMenuOpen.value
-    if (userMenuOpen.value) {
-      mobileMenuOpen.value = false
-      searchOpen.value = false
-    }
-  }
-}
-
-const toggleSearch = () => {
-  searchOpen.value = !searchOpen.value
-  if (searchOpen.value) {
-    document.body.classList.add('no-scroll')
-    mobileMenuOpen.value = false
-    userMenuOpen.value = false
-  } else {
-    document.body.classList.remove('no-scroll')
-  }
-}
-
-const handleMobileAction = (action: string) => {
-  closeMobileMenu()
-  switch(action) {
-    case 'search':
-      toggleSearch()
-      break
+const subscribeNewsletter = async () => {
+  if (!newsletterEmail.value) return
+  
+  try {
+    // Here you would integrate with your Supabase newsletter subscription endpoint
+    // For now, simulate API call
+    await new Promise(resolve => setTimeout(resolve, 1000))
+    
+    showNotification({
+      type: 'success',
+      title: $t('newsletterSuccess'),
+      message: $t('newsletterSuccessMessage'),
+      duration: 5000
+    })
+    
+    newsletterEmail.value = ''
+  } catch (error) {
+    showNotification({
+      type: 'error',
+      title: $t('newsletterError'),
+      message: $t('newsletterErrorMessage'),
+      duration: 5000
+    })
   }
 }
 
 const handleScroll = () => {
-  scrolled.value = window.scrollY > 20
+  showBackToTop.value = window.scrollY > 300
 }
 
-const handleClickOutside = (event: MouseEvent) => {
-  const target = event.target as HTMLElement
-  
-  if (mobileMenuOpen.value && target.closest('.luxury-mobile-overlay')) {
-    closeMobileMenu()
-  }
-  
-  if (userMenuOpen.value && 
-      !target.closest('.user-dropdown') && 
-      !target.closest('.luxury-header-action[aria-label="account"]')) {
-    userMenuOpen.value = false
-  }
+const scrollToTop = () => {
+  window.scrollTo({
+    top: 0,
+    behavior: 'smooth'
+  })
 }
-
-const handleLogout = async () => {
-  try {
-    await logout()
-    userMenuOpen.value = false
-    router.push('/')
-  } catch (error) {
-    console.error('Logout failed:', error)
-  }
-}
-
-const handleKeydown = (event: KeyboardEvent) => {
-  if (event.key === 'Escape') {
-    if (searchOpen.value) {
-      searchOpen.value = false
-      document.body.classList.remove('no-scroll')
-    }
-    if (userMenuOpen.value) {
-      userMenuOpen.value = false
-    }
-    if (mobileMenuOpen.value) {
-      closeMobileMenu()
-    }
-  }
-}
-
-const updateDirection = () => {
-  const direction = isRTL.value ? 'rtl' : 'ltr'
-  document.documentElement.dir = direction
-  document.documentElement.lang = languageStore.currentLanguage
-  
-  if (isRTL.value) {
-    document.body.classList.add('rtl')
-  } else {
-    document.body.classList.remove('rtl')
-  }
-}
-
-watch(() => languageStore.currentLanguage, () => {
-  updateDirection()
-})
 
 onMounted(() => {
   window.addEventListener('scroll', handleScroll)
-  document.addEventListener('click', handleClickOutside)
-  document.addEventListener('keydown', handleKeydown)
-  
-  updateDirection()
-  handleScroll()
 })
 
 onUnmounted(() => {
   window.removeEventListener('scroll', handleScroll)
-  document.removeEventListener('click', handleClickOutside)
-  document.removeEventListener('keydown', handleKeydown)
-  document.body.classList.remove('no-scroll')
 })
 </script>
 
 <style scoped>
-/* ========== LUXURY HEADER STYLES ========== */
-.luxury-header {
-  background: linear-gradient(180deg, 
-    rgba(10, 10, 10, 0.98) 0%, 
-    rgba(26, 18, 11, 0.95) 100%);
-  backdrop-filter: blur(20px);
-  border-bottom: 1px solid rgba(212, 175, 55, 0.15);
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
+/* ===== MOBILE-FIRST FOOTER - OPTIMIZED SPACING ===== */
+.luxury-footer {
+  background: linear-gradient(180deg, #0a0a0a 0%, #1a120b 100%);
+  border-top: 1px solid rgba(212, 175, 55, 0.1);
+  margin-top: auto;
   width: 100%;
-  z-index: 1000;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  direction: ltr;
 }
 
-/* Add padding to the main content to account for fixed header */
-:global(body) {
-  padding-top: 69px; /* exactly matches header height on desktop */
-}
-
-@media (max-width: 768px) {
-  :global(body) {
-    padding-top: 53px; /* exactly matches header height on mobile */
-  }
-}
-
-.luxury-header.scrolled {
-  background: rgba(10, 10, 10, 0.98);
-  border-bottom-color: rgba(212, 175, 55, 0.25);
-  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
-}
-
-.luxury-header.rtl {
+.luxury-footer.rtl {
   direction: rtl;
 }
 
-.luxury-header-container {
-  max-width: 1440px;
+.footer-main {
+  padding: 2rem 1rem;
+}
+
+@media (min-width: 768px) {
+  .footer-main {
+    padding: 2.5rem 1.5rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .footer-main {
+    padding: 3rem 2rem;
+  }
+}
+
+.footer-container {
+  max-width: 1280px;
   margin: 0 auto;
-  padding: 0 2rem;
+  width: 100%;
 }
 
-@media (max-width: 768px) {
-  .luxury-header-container {
-    padding: 0 1rem;
-  }
-}
-
-/* Top Bar */
-.luxury-top-bar {
+/* ===== FOOTER GRID - CLEAN 3-COLUMN LAYOUT ===== */
+.footer-grid {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0.75rem 0;
+  flex-direction: column;
   gap: 2rem;
-  position: relative;
+  margin-bottom: 2rem;
 }
 
-@media (max-width: 768px) {
-  .luxury-top-bar {
-    padding: 0.5rem 0;
-    gap: 1rem;
+@media (min-width: 768px) {
+  .footer-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 2rem;
+    align-items: start;
   }
 }
 
-/* Logo */
-.luxury-logo-container {
+@media (min-width: 1024px) {
+  .footer-grid {
+    gap: 3rem;
+  }
+}
+
+/* ===== BRAND COLUMN ===== */
+.footer-brand {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.footer-logo {
   display: flex;
   align-items: center;
   gap: 0.75rem;
   text-decoration: none;
-  transition: transform 0.3s ease;
-  flex-shrink: 0;
-  min-width: 0;
-  z-index: 1001;
+  margin-bottom: 1.25rem;
 }
 
-.luxury-logo-container:hover {
-  transform: scale(1.02);
-}
-
-.luxury-logo-icon {
-  width: 44px;
-  height: 44px;
-  position: relative;
-  flex-shrink: 0;
-}
-
-@media (max-width: 768px) {
-  .luxury-logo-icon {
-    width: 36px;
-    height: 36px;
-  }
-}
-
-.logo-inner {
-  width: 100%;
-  height: 100%;
+.footer-p-logo {
+  width: 48px;
+  height: 48px;
   background: linear-gradient(135deg, #d4af37 0%, #b8941f 100%);
-  border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 0 30px rgba(212, 175, 55, 0.4);
-  border: 1px solid rgba(212, 175, 55, 0.3);
+  box-shadow: 0 4px 12px rgba(212, 175, 55, 0.2);
   animation: logo-glow 3s ease-in-out infinite;
+  flex-shrink: 0;
 }
 
 @keyframes logo-glow {
-  0%, 100% { 
-    box-shadow: 0 0 30px rgba(212, 175, 55, 0.3),
-                0 0 60px rgba(212, 175, 55, 0.1);
-  }
-  50% { 
-    box-shadow: 0 0 50px rgba(212, 175, 55, 0.5),
-                0 0 100px rgba(212, 175, 55, 0.2);
+  0%, 100% { box-shadow: 0 0 20px rgba(212, 175, 55, 0.3); }
+  50% { box-shadow: 0 0 30px rgba(212, 175, 55, 0.5); }
+}
+
+@media (min-width: 768px) {
+  .footer-p-logo {
+    width: 52px;
+    height: 52px;
   }
 }
 
-.luxury-p-logo {
+.footer-p-letter {
   font-family: 'Cormorant Garamond', serif;
-  font-size: 1.8rem;
+  font-size: 1.75rem;
   font-weight: 700;
   color: #ffffff;
   line-height: 1;
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
 }
 
-@media (max-width: 768px) {
-  .luxury-p-logo {
-    font-size: 1.4rem;
+@media (min-width: 768px) {
+  .footer-p-letter {
+    font-size: 2rem;
   }
 }
 
-.luxury-logo-text {
-  text-align: left;
-  min-width: 0;
-  overflow: hidden;
+.footer-logo-text {
+  display: flex;
+  flex-direction: column;
 }
 
-.luxury-header.rtl .luxury-logo-text {
+.footer-logo-title {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #d4af37;
+  margin: 0 0 0.15rem 0;
+  line-height: 1;
+  letter-spacing: 0.5px;
+}
+
+.luxury-footer.rtl .footer-logo-title {
   text-align: right;
 }
 
-.logo-title {
-  font-family: 'Cormorant Garamond', serif;
-  font-size: 1.3rem;
-  font-weight: 700;
-  color: #d4af37;
-  margin: 0;
-  letter-spacing: 0.5px;
-  line-height: 1;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-@media (max-width: 768px) {
-  .logo-title {
-    font-size: 1rem;
+@media (min-width: 768px) {
+  .footer-logo-title {
+    font-size: 1.6rem;
   }
 }
 
-.logo-subtitle {
+.footer-logo-subtitle {
   font-family: 'Inter', sans-serif;
-  font-size: 0.6rem;
+  font-size: 0.65rem;
   color: #999999;
-  margin: 0.2rem 0 0 0;
-  letter-spacing: 1.5px;
+  letter-spacing: 2px;
   text-transform: uppercase;
-  opacity: 0.9;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  margin: 0;
+  line-height: 1;
   font-weight: 400;
 }
 
-@media (max-width: 768px) {
-  .logo-subtitle {
-    font-size: 0.5rem;
-    letter-spacing: 1px;
+.luxury-footer.rtl .footer-logo-subtitle {
+  text-align: right;
+}
+
+.footer-description {
+  font-family: 'Inter', sans-serif;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: #f4e7c1;
+  opacity: 0.8;
+  margin-bottom: 1.25rem;
+  max-width: 280px;
+}
+
+@media (min-width: 768px) {
+  .footer-description {
+    font-size: 0.9rem;
+    max-width: 260px;
   }
 }
 
-@media (max-width: 480px) {
-  .logo-subtitle {
-    display: none;
-  }
-}
-
-/* Desktop Navigation */
-.luxury-nav-desktop {
-  display: none;
-}
-
-@media (min-width: 1024px) {
-  .luxury-nav-desktop {
-    display: block;
-    flex: 1;
-  }
-}
-
-.luxury-nav-list {
+/* ===== SOCIAL LINKS - UPDATED ===== */
+.footer-social {
   display: flex;
+  gap: 0.5rem;
+}
+
+.social-link {
+  width: 38px;
+  height: 38px;
+  display: flex;
+  align-items: center;
   justify-content: center;
-  gap: 1.5rem;
+  background: rgba(212, 175, 55, 0.08);
+  border: 1px solid rgba(212, 175, 55, 0.15);
+  color: #f4e7c1;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.social-link:hover {
+  background: rgba(212, 175, 55, 0.15);
+  border-color: #d4af37;
+  color: #d4af37;
+  transform: translateY(-2px);
+}
+
+.social-icon {
+  width: 18px;
+  height: 18px;
+  stroke: currentColor;
+}
+
+/* ===== QUICK LINKS - SINGLE COLUMN ===== */
+.footer-links {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+@media (min-width: 768px) {
+  .footer-links {
+    align-items: center;
+  }
+}
+
+.links-title {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #d4af37;
+  margin: 0 0 1rem 0;
+  letter-spacing: 0.5px;
+}
+
+@media (min-width: 768px) {
+  .links-title {
+    font-size: 1.2rem;
+    margin-bottom: 1.25rem;
+  }
+}
+
+.links-list {
   list-style: none;
   margin: 0;
   padding: 0;
 }
 
-@media (min-width: 1280px) {
-  .luxury-nav-list {
-    gap: 2rem;
+.links-list li {
+  margin-bottom: 0.5rem;
+}
+
+@media (min-width: 768px) {
+  .links-list li {
+    margin-bottom: 0.6rem;
   }
 }
 
-@media (max-width: 1279px) and (min-width: 1024px) {
-  .luxury-nav-list {
-    gap: 1rem;
-  }
-}
-
-.luxury-nav-item {
-  position: relative;
-}
-
-.luxury-nav-link {
+.footer-link {
   font-family: 'Inter', sans-serif;
-  font-size: 0.8rem;
-  font-weight: 500;
+  font-size: 0.85rem;
   color: #f4e7c1;
+  opacity: 0.8;
   text-decoration: none;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  padding: 0.5rem 0;
-  position: relative;
-  transition: all 0.3s ease;
-  opacity: 0.9;
-  white-space: nowrap;
+  transition: all 0.2s ease;
+  display: inline-block;
+  line-height: 1.4;
 }
 
-@media (min-width: 1280px) {
-  .luxury-nav-link {
-    font-size: 0.875rem;
-    letter-spacing: 1px;
-  }
-}
-
-.luxury-nav-link::after {
-  content: '';
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  width: 0;
-  height: 1px;
-  background: linear-gradient(90deg, #d4af37, #b8941f);
-  transition: width 0.3s ease;
-}
-
-.luxury-header.rtl .luxury-nav-link::after {
-  left: auto;
-  right: 0;
-}
-
-.luxury-nav-link:hover::after,
-.luxury-nav-link.active::after {
-  width: 100%;
-}
-
-.luxury-nav-link:hover,
-.luxury-nav-link.active {
+.footer-link:hover {
   color: #d4af37;
   opacity: 1;
+  transform: translateX(3px);
 }
 
-/* Navigation Preview */
-.nav-preview {
-  position: absolute;
-  top: 100%;
-  left: 50%;
-  transform: translateX(-50%) translateY(10px);
-  width: 250px;
-  background: rgba(10, 10, 10, 0.98);
-  backdrop-filter: blur(20px);
-  border: 1px solid rgba(212, 175, 55, 0.2);
-  border-radius: 12px;
-  padding: 1rem;
-  opacity: 0;
-  visibility: hidden;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  z-index: 1002;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
-  pointer-events: none;
+.luxury-footer.rtl .footer-link:hover {
+  transform: translateX(-3px);
 }
 
-.luxury-header.rtl .nav-preview {
-  left: auto;
-  right: 50%;
-  transform: translateX(50%) translateY(10px);
+/* ===== NEWSLETTER ===== */
+.footer-newsletter {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
 }
 
-.luxury-nav-item:hover .nav-preview {
-  opacity: 1;
-  visibility: visible;
-  transform: translateX(-50%) translateY(15px);
+@media (min-width: 768px) {
+  .footer-newsletter {
+    align-items: flex-end;
+  }
 }
 
-.luxury-header.rtl .luxury-nav-item:hover .nav-preview {
-  transform: translateX(50%) translateY(15px);
-}
-
-.preview-content {
-  text-align: left;
-}
-
-.luxury-header.rtl .preview-content {
-  text-align: right;
-}
-
-.preview-title {
+.newsletter-title {
   font-family: 'Cormorant Garamond', serif;
-  font-size: 1rem;
+  font-size: 1.1rem;
   font-weight: 600;
   color: #d4af37;
-  margin: 0 0 0.25rem 0;
+  margin: 0 0 0.75rem 0;
   letter-spacing: 0.5px;
 }
 
-.preview-description {
+@media (min-width: 768px) {
+  .newsletter-title {
+    font-size: 1.2rem;
+    margin-bottom: 1rem;
+    text-align: right;
+  }
+  .luxury-footer.rtl .newsletter-title {
+    text-align: left;
+  }
+}
+
+.newsletter-description {
   font-family: 'Inter', sans-serif;
-  font-size: 0.75rem;
+  font-size: 0.85rem;
+  line-height: 1.5;
   color: #f4e7c1;
-  margin: 0;
-  line-height: 1.4;
-  opacity: 0.9;
-}
-
-/* Header Right Actions */
-.luxury-header-right {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  flex-shrink: 0;
-}
-
-@media (max-width: 768px) {
-  .luxury-header-right {
-    gap: 0.5rem;
-  }
-}
-
-/* Desktop Section */
-.luxury-desktop-section {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-}
-
-@media (max-width: 1023px) {
-  .luxury-desktop-section {
-    display: none;
-  }
-}
-
-.luxury-header-toggles {
-  display: flex;
-  align-items: center;
-}
-
-.luxury-header-actions {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-/* Header Actions */
-.luxury-header-action {
-  width: 40px;
-  height: 40px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(212, 175, 55, 0.08);
-  border: 1px solid rgba(212, 175, 55, 0.15);
-  border-radius: 10px;
-  color: #f4e7c1;
-  cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  position: relative;
-  flex-shrink: 0;
-  text-decoration: none;
-}
-
-@media (max-width: 768px) {
-  .luxury-header-action {
-    width: 36px;
-    height: 36px;
-  }
-}
-
-.luxury-header-action:hover {
-  background: rgba(212, 175, 55, 0.15);
-  border-color: #d4af37;
-  color: #d4af37;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 20px rgba(212, 175, 55, 0.2);
-}
-
-/* Wishlist badge */
-.wishlist-badge {
-  position: absolute;
-  top: -4px;
-  right: -4px;
-  min-width: 16px;
-  height: 16px;
-  background: #ec4899;
-  color: white;
-  font-size: 10px;
-  font-weight: 700;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 8px;
-  padding: 0 3px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-}
-
-.luxury-header.rtl .wishlist-badge {
-  right: auto;
-  left: -4px;
-}
-
-/* Cart badge */
-.cart-badge {
-  position: absolute;
-  top: -4px;
-  right: -4px;
-  min-width: 16px;
-  height: 16px;
-  background: #d4af37;
-  color: #0a0a0a;
-  font-size: 10px;
-  font-weight: 700;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 8px;
-  padding: 0 3px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-}
-
-.luxury-header.rtl .cart-badge {
-  right: auto;
-  left: -4px;
-}
-
-.luxury-icon {
-  width: 18px;
-  height: 18px;
-  stroke: currentColor;
-  fill: none;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
-/* Mobile Actions Row - Only hamburger, cart, wishlist */
-.mobile-actions-row {
-  display: none;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 0.2rem;
-  flex: 1;
-}
-
-@media (max-width: 1023px) {
-  .mobile-actions-row {
-    display: flex;
-  }
-}
-
-/* Mobile Action Icon Links */
-.mobile-action-icon-link {
-  position: relative;
-  width: 30px;
-  height: 30px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(212, 175, 55, 0.08);
-  border: 1px solid rgba(212, 175, 55, 0.15);
-  border-radius: 6px;
-  color: #f4e7c1;
-  text-decoration: none;
-  flex-shrink: 0;
-}
-
-.mobile-icon {
-  width: 15px;
-  height: 15px;
-  stroke: currentColor;
-}
-
-.mobile-wishlist-badge,
-.mobile-cart-badge {
-  position: absolute;
-  top: -3px;
-  right: -3px;
-  min-width: 13px;
-  height: 13px;
-  background: #ec4899;
-  color: white;
-  font-size: 7px;
-  font-weight: 700;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 7px;
-  padding: 0 2px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-}
-
-.mobile-cart-badge {
-  background: #d4af37;
-  color: #0a0a0a;
-}
-
-/* Mobile Toggle */
-.luxury-mobile-toggle {
-  display: none;
-  flex-direction: column;
-  gap: 2px;
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 0;
-  flex-shrink: 0;
-  z-index: 1001;
-  width: 30px;
-  height: 30px;
-  align-items: center;
-  justify-content: center;
-  background: rgba(212, 175, 55, 0.08);
-  border: 1px solid rgba(212, 175, 55, 0.15);
-  border-radius: 6px;
-  margin-left: auto;
-}
-
-@media (max-width: 1023px) {
-  .luxury-mobile-toggle {
-    display: flex;
-  }
-}
-
-.luxury-mobile-toggle:hover {
-  background: rgba(212, 175, 55, 0.15);
-  border-color: #d4af37;
-}
-
-.mobile-toggle-line {
-  width: 15px;
-  height: 1.5px;
-  background: #f4e7c1;
-  transition: all 0.3s ease;
-  border-radius: 1px;
-}
-
-.luxury-mobile-toggle.open .mobile-toggle-line:nth-child(1) {
-  transform: rotate(45deg) translate(3.5px, 3.5px);
-}
-
-.luxury-mobile-toggle.open .mobile-toggle-line:nth-child(2) {
-  opacity: 0;
-}
-
-.luxury-mobile-toggle.open .mobile-toggle-line:nth-child(3) {
-  transform: rotate(-45deg) translate(3.5px, -3.5px);
-}
-
-/* Mobile Overlay */
-.luxury-mobile-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(4px);
-  z-index: 1001;
-}
-
-/* Mobile Menu - Half Screen */
-.luxury-mobile-menu {
-  position: fixed;
-  top: 0;
-  right: -50%;
-  width: 50%;
+  opacity: 0.8;
+  margin-bottom: 1rem;
   max-width: 280px;
-  height: 100vh;
-  background: linear-gradient(180deg, 
-    rgba(10, 10, 10, 0.98) 0%, 
-    rgba(26, 18, 11, 0.95) 100%);
-  backdrop-filter: blur(20px);
-  border-left: 1px solid rgba(212, 175, 55, 0.15);
-  z-index: 1002;
-  transition: right 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  overflow-y: auto;
 }
 
-.luxury-header.rtl .luxury-mobile-menu {
-  right: auto;
-  left: -50%;
-  border-left: none;
-  border-right: 1px solid rgba(212, 175, 55, 0.15);
-}
-
-.luxury-mobile-menu.open {
-  right: 0;
-}
-
-.luxury-header.rtl .luxury-mobile-menu.open {
-  left: 0;
-  right: auto;
-}
-
-@media (max-width: 768px) {
-  .luxury-mobile-menu {
-    width: 50%;
-    right: -50%;
+@media (min-width: 768px) {
+  .newsletter-description {
+    font-size: 0.9rem;
+    text-align: right;
+    max-width: 260px;
   }
-  
-  .luxury-header.rtl .luxury-mobile-menu {
-    left: -50%;
+  .luxury-footer.rtl .newsletter-description {
+    text-align: left;
   }
 }
 
-@media (max-width: 480px) {
-  .luxury-mobile-menu {
-    width: 70%;
-    right: -70%;
-  }
-  
-  .luxury-header.rtl .luxury-mobile-menu {
-    left: -70%;
-  }
-}
-
-.mobile-menu-container {
-  height: 100%;
-  padding: 1.5rem;
-  display: flex;
-  flex-direction: column;
-}
-
-.mobile-menu-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding-bottom: 1.5rem;
-  border-bottom: 1px solid rgba(212, 175, 55, 0.1);
-  flex-shrink: 0;
-}
-
-.mobile-menu-logo {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-}
-
-.mobile-logo-icon {
-  width: 36px;
-  height: 36px;
+.newsletter-input-group {
   position: relative;
-  flex-shrink: 0;
-}
-
-.mobile-logo-inner {
   width: 100%;
-  height: 100%;
-  background: linear-gradient(135deg, #d4af37 0%, #b8941f 100%);
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 0 30px rgba(212, 175, 55, 0.3);
+  max-width: 280px;
+}
+
+.newsletter-input {
+  width: 100%;
+  padding: 0.7rem 2.8rem 0.7rem 1rem;
+  background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(212, 175, 55, 0.2);
-}
-
-.mobile-logo-p {
-  font-family: 'Cormorant Garamond', serif;
-  font-size: 1.2rem;
-  font-weight: 700;
-  color: #ffffff;
-  line-height: 1;
-}
-
-.mobile-logo-text {
-  text-align: left;
-  min-width: 0;
-}
-
-.luxury-header.rtl .mobile-logo-text {
-  text-align: right;
-}
-
-.mobile-logo-title {
-  font-family: 'Cormorant Garamond', serif;
-  font-size: 0.9rem;
-  font-weight: 700;
-  color: #d4af37;
-  margin: 0;
-  line-height: 1;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.mobile-logo-subtitle {
+  color: #f4e7c1;
   font-family: 'Inter', sans-serif;
-  font-size: 0.5rem;
-  color: #999999;
-  margin: 0.2rem 0 0 0;
-  letter-spacing: 0.5px;
-  text-transform: uppercase;
-  opacity: 0.9;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  font-weight: 400;
+  font-size: 0.85rem;
+  transition: all 0.2s ease;
 }
 
-.mobile-menu-close {
+.luxury-footer.rtl .newsletter-input {
+  padding: 0.7rem 1rem 0.7rem 2.8rem;
+}
+
+.newsletter-input:focus {
+  outline: none;
+  border-color: #d4af37;
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: 0 0 0 2px rgba(212, 175, 55, 0.1);
+}
+
+.newsletter-button {
+  position: absolute;
+  right: 0.3rem;
+  top: 50%;
+  transform: translateY(-50%);
   width: 32px;
   height: 32px;
   display: flex;
@@ -1348,230 +589,160 @@ onUnmounted(() => {
   justify-content: center;
   background: rgba(212, 175, 55, 0.1);
   border: 1px solid rgba(212, 175, 55, 0.2);
-  border-radius: 8px;
   color: #f4e7c1;
   cursor: pointer;
-  transition: all 0.3s ease;
-  flex-shrink: 0;
+  transition: all 0.2s ease;
 }
 
-.mobile-menu-close:hover {
+.luxury-footer.rtl .newsletter-button {
+  right: auto;
+  left: 0.3rem;
+}
+
+.newsletter-button:hover {
   background: rgba(212, 175, 55, 0.2);
   border-color: #d4af37;
   color: #d4af37;
-  transform: rotate(90deg);
 }
 
-.mobile-menu-close svg {
-  width: 14px;
-  height: 14px;
-}
-
-.mobile-menu-content {
-  flex: 1;
-  padding: 1.5rem 0;
-  display: flex;
-  flex-direction: column;
-  overflow-y: auto;
-}
-
-/* Mobile Navigation */
-.mobile-nav {
-  flex: 1;
-  margin-bottom: 1.5rem;
-}
-
-.mobile-nav-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
-
-.mobile-nav-item {
-  border-bottom: 1px solid rgba(212, 175, 55, 0.1);
-}
-
-.mobile-nav-link {
-  display: block;
-  padding: 0.875rem 0;
-  font-family: 'Inter', sans-serif;
-  font-size: 0.9rem;
-  font-weight: 500;
-  color: #f4e7c1;
-  text-decoration: none;
-  transition: all 0.3s ease;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  opacity: 0.9;
-}
-
-.mobile-nav-link:hover {
-  color: #d4af37;
-  opacity: 1;
-  padding-left: 0.5rem;
-}
-
-.luxury-header.rtl .mobile-nav-link:hover {
-  padding-left: 0;
-  padding-right: 0.5rem;
-}
-
-.mobile-nav-link.router-link-active {
-  color: #d4af37;
-}
-
-/* Mobile Actions */
-.mobile-actions {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  padding-top: 1.5rem;
-  border-top: 1px solid rgba(212, 175, 55, 0.1);
-}
-
-.mobile-action-btn {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0.75rem 1rem;
-  background: rgba(212, 175, 55, 0.08);
-  border: 1px solid rgba(212, 175, 55, 0.15);
-  border-radius: 8px;
-  color: #f4e7c1;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  font-family: 'Inter', sans-serif;
-  font-size: 0.85rem;
-  font-weight: 500;
-  width: 100%;
-  text-align: left;
-  text-decoration: none;
-  position: relative;
-}
-
-.luxury-header.rtl .mobile-action-btn {
-  text-align: right;
-}
-
-.mobile-action-btn:hover {
-  background: rgba(212, 175, 55, 0.15);
-  border-color: #d4af37;
-  color: #d4af37;
-  transform: translateX(4px);
-}
-
-.luxury-header.rtl .mobile-action-btn:hover {
-  transform: translateX(-4px);
-}
-
-.mobile-action-icon {
+.newsletter-icon {
   width: 16px;
   height: 16px;
   stroke: currentColor;
-  fill: none;
-  flex-shrink: 0;
 }
 
-/* Ensure language toggle inside sidebar looks like other buttons */
-.mobile-action-btn :deep(.luxury-language-toggle) {
-  width: 100%;
+/* ===== DIVIDER ===== */
+.footer-divider {
+  height: 1px;
+  background: linear-gradient(90deg, 
+    transparent 0%, 
+    rgba(212, 175, 55, 0.2) 50%, 
+    transparent 100%);
+  margin: 1.5rem 0;
 }
 
-.mobile-action-btn :deep(.current-language) {
-  background: none;
-  border: none;
-  color: inherit;
-  font-size: 0.85rem;
-  font-weight: 500;
-  padding: 0;
-  justify-content: flex-start;
+@media (min-width: 768px) {
+  .footer-divider {
+    margin: 2rem 0;
+  }
 }
 
-/* Search Overlay */
-.luxury-search-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(4px);
-  z-index: 1004;
+/* ===== BOTTOM SECTION - COMPACT ===== */
+.footer-bottom {
   display: flex;
-  align-items: flex-start;
-  justify-content: center;
-  padding-top: 100px;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
 }
 
-.search-modal {
-  background: linear-gradient(180deg, 
-    rgba(10, 10, 10, 0.98) 0%, 
-    rgba(26, 18, 11, 0.95) 100%);
-  border: 1px solid rgba(212, 175, 55, 0.15);
-  border-radius: 16px;
-  padding: 1.5rem;
-  width: 90%;
-  max-width: 500px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+@media (min-width: 768px) {
+  .footer-bottom {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+  }
 }
 
-.search-input-container {
-  position: relative;
+.footer-copyright {
+  order: 2;
 }
 
-.search-input {
-  width: 100%;
-  padding: 0.875rem 1.25rem;
-  background: rgba(212, 175, 55, 0.05);
-  border: 1px solid rgba(212, 175, 55, 0.15);
-  border-radius: 10px;
-  color: #f4e7c1;
+@media (min-width: 768px) {
+  .footer-copyright {
+    order: 1;
+  }
+}
+
+.copyright-text {
   font-family: 'Inter', sans-serif;
-  font-size: 0.95rem;
-  transition: all 0.3s ease;
-  text-align: left;
+  font-size: 0.8rem;
+  color: #f4e7c1;
+  opacity: 0.7;
+  margin: 0;
 }
 
-.luxury-header.rtl .search-input {
-  text-align: right;
+.footer-legal {
+  order: 1;
+  display: flex;
+  gap: 1.25rem;
 }
 
-.search-input:focus {
-  outline: none;
-  border-color: #d4af37;
+@media (min-width: 768px) {
+  .footer-legal {
+    order: 2;
+    gap: 1.5rem;
+  }
+}
+
+.legal-link {
+  font-family: 'Inter', sans-serif;
+  font-size: 0.8rem;
+  color: #f4e7c1;
+  opacity: 0.7;
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.legal-link:hover {
+  color: #d4af37;
+  opacity: 1;
+}
+
+/* ===== BACK TO TOP ===== */
+.back-to-top {
+  position: fixed;
+  bottom: 1.25rem;
+  right: 1.25rem;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   background: rgba(212, 175, 55, 0.1);
-}
-
-.search-close {
-  position: absolute;
-  right: 1rem;
-  top: 50%;
-  transform: translateY(-50%);
-  background: none;
-  border: none;
-  color: #a89c7c;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(212, 175, 55, 0.2);
+  color: #f4e7c1;
   cursor: pointer;
-  padding: 0.5rem;
-  transition: color 0.3s ease;
+  transition: all 0.2s ease;
+  z-index: 999;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(10px);
 }
 
-.luxury-header.rtl .search-close {
+.luxury-footer.rtl .back-to-top {
   right: auto;
-  left: 1rem;
+  left: 1.25rem;
 }
 
-.search-close:hover {
+.back-to-top:hover {
+  background: rgba(212, 175, 55, 0.2);
+  border-color: #d4af37;
   color: #d4af37;
 }
 
-.search-icon {
-  width: 18px;
-  height: 18px;
+.back-to-top.show {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+
+.back-to-top-icon {
+  width: 20px;
+  height: 20px;
   stroke: currentColor;
 }
 
-/* No Scroll */
-.no-scroll {
-  overflow: hidden;
+@media (min-width: 768px) {
+  .back-to-top {
+    bottom: 1.5rem;
+    right: 1.5rem;
+    width: 48px;
+    height: 48px;
+  }
+  .luxury-footer.rtl .back-to-top {
+    left: 1.5rem;
+    right: auto;
+  }
 }
 </style>

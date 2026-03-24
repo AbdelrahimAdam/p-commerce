@@ -15,16 +15,26 @@ import HomePage from '@/pages/HomePage.vue'
 const tenantStore = useTenantStore()
 const isLoading = ref(true)
 
-// The tenant ID of the main domain (from environment or fallback)
-const MAIN_TENANT_ID = import.meta.env.VITE_MAIN_TENANT_ID || 'X7NGavYOCBo7MUYReWpx'
+// Determine if current tenant is the main domain (not a subdomain)
+// The main domain is the one that matches the root domain (no subdomain prefix)
+const isMainDomain = computed(() => {
+  const hostname = window.location.hostname
+  const rootDomain = import.meta.env.VITE_ROOT_DOMAIN || 'p-commerce-peach.vercel.app'
+  
+  // Check if current hostname equals the root domain (no subdomain)
+  // Examples:
+  // - p-commerce-peach.vercel.app -> main domain (no subdomain)
+  // - mycompany.p-commerce-peach.vercel.app -> subdomain (tenant store)
+  return hostname === rootDomain
+})
 
 // Decide which component to render once tenant is known
 const activeComponent = computed(() => {
-  // If tenant matches the main domain, show landing page
-  if (tenantStore.tenantId === MAIN_TENANT_ID) {
+  // If this is the main domain, show the marketing landing page
+  if (isMainDomain.value) {
     return LandingPage
   }
-  // Otherwise (subdomain or no tenant) show the store home page
+  // Otherwise (subdomain) show the store home page
   return HomePage
 })
 
@@ -32,6 +42,7 @@ onMounted(async () => {
   // Wait for tenant resolution with a 5-second timeout
   try {
     await tenantStore.whenReady(5000)
+    console.log('✅ Tenant resolved:', tenantStore.tenantId)
   } catch (err) {
     console.warn('Tenant resolution timed out or failed, falling back to store home')
   }
