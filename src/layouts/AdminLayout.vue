@@ -308,7 +308,6 @@ import { useRouter, useRoute } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { useAuthStore } from '@/stores/auth'
 import { useLanguageStore } from '@/stores/language'
-import AdminSidebar from '@/components/Admin/AdminSidebar.vue'
 import { getLocalizedTitle } from '@/router/routes'
 
 const router = useRouter()
