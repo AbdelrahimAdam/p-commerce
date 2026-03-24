@@ -3,39 +3,24 @@
   <div v-if="isLoading" class="min-h-screen flex items-center justify-center">
     <div class="luxury-loading-spinner"></div>
   </div>
-  <component :is="activeComponent" v-else />
+  <component v-else :is="activeComponent" />
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, defineAsyncComponent, shallowRef } from 'vue'
 import { useTenantStore } from '@/stores/tenant'
-import LandingPage from '@/pages/LandingPage.vue'
-import HomePage from '@/pages/HomePage.vue'
 
 const tenantStore = useTenantStore()
 const isLoading = ref(true)
+const activeComponent = shallowRef(null)
 
 // Determine if current tenant is the main domain (not a subdomain)
-// The main domain is the one that matches the root domain (no subdomain prefix)
 const isMainDomain = computed(() => {
   const hostname = window.location.hostname
   const rootDomain = import.meta.env.VITE_ROOT_DOMAIN || 'p-commerce-peach.vercel.app'
   
   // Check if current hostname equals the root domain (no subdomain)
-  // Examples:
-  // - p-commerce-peach.vercel.app -> main domain (no subdomain)
-  // - mycompany.p-commerce-peach.vercel.app -> subdomain (tenant store)
   return hostname === rootDomain
-})
-
-// Decide which component to render once tenant is known
-const activeComponent = computed(() => {
-  // If this is the main domain, show the marketing landing page
-  if (isMainDomain.value) {
-    return LandingPage
-  }
-  // Otherwise (subdomain) show the store home page
-  return HomePage
 })
 
 onMounted(async () => {
@@ -46,7 +31,18 @@ onMounted(async () => {
   } catch (err) {
     console.warn('Tenant resolution timed out or failed, falling back to store home')
   }
-  // Hide the spinner
+  
+  // Dynamically load the appropriate component based on domain
+  if (isMainDomain.value) {
+    // Load LandingPage dynamically
+    const module = await import('@/pages/LandingPage.vue')
+    activeComponent.value = module.default
+  } else {
+    // Load HomePage dynamically
+    const module = await import('@/pages/HomePage.vue')
+    activeComponent.value = module.default
+  }
+  
   isLoading.value = false
 })
 </script>
