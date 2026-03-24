@@ -1,4 +1,3 @@
-<!-- src/components/Layout/LuxuryFooter.vue -->
 <template>
   <footer class="luxury-footer" :class="{ 'rtl': isRTL }">
     <!-- Main Footer -->
@@ -149,13 +148,8 @@ const showBackToTop = ref(false)
 const currentYear = computed(() => new Date().getFullYear())
 const isRTL = computed(() => currentLanguage === 'ar')
 
-// Tenant-aware store name and branding
+// Tenant-aware branding
 const storeName = computed(() => {
-  // You can customize this based on tenant settings
-  // For now, use a default or fetch from tenant settings if available
-  const tenantSettings = tenantStore.tenantId ? tenantStore.tenantId : 'main'
-  // You could fetch tenant-specific branding from a config table
-  // For demonstration, we'll use a default name that can be overridden per tenant
   if (tenantStore.tenantId === 'main') {
     return 'P.COMMERCE'
   }
