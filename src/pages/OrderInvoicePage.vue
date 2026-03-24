@@ -12,7 +12,7 @@
       <div v-else-if="!isVerified && !order" class="bg-white rounded-lg shadow-lg p-8 max-w-md mx-auto">
         <h2 class="text-xl font-medium text-gray-900 mb-4">{{ t('Verify Your Email') }}</h2>
         <p class="text-sm text-gray-600 mb-6">{{ t('Please enter the email address used for this order to view the invoice.') }}</p>
-        
+
         <form @submit.prevent="verifyEmail">
           <div class="mb-4">
             <label class="block text-sm font-medium text-gray-700 mb-2">{{ t('Email Address') }}</label>
@@ -66,13 +66,9 @@
           <!-- Header -->
           <div class="flex justify-between items-start mb-8">
             <div>
-              <h2 class="text-2xl font-bold text-gray-900">LUXURY PERFUME STORE</h2>
-              <p class="text-sm text-gray-600 mt-1">123 Nile Street, Cairo, Egypt</p>
-              <p class="text-sm text-gray-600">info@luxuryperfume.com | +20 100 123 4567</p>
-            </div>
-            <div class="text-right">
-              <h3 class="text-lg font-bold text-gray-900">{{ t('INVOICE') }}</h3>
-              <p class="text-sm text-gray-600 mt-1">{{ t('Invoice #') }}: {{ order.orderNumber }}</p>
+              <h2 class="text-2xl font-bold text-gray-900">P.COMMERCE</h2>
+              <p class="text-sm text-gray-600 mt-1">{{ t('Luxury Perfume Store') }}</p>
+              <p class="text-sm text-gray-600 mt-1">{{ t('Order #') }}: {{ order.orderNumber }}</p>
               <p class="text-sm text-gray-600">{{ t('Date') }}: {{ formatDate(order.createdAt) }}</p>
             </div>
           </div>
@@ -81,8 +77,7 @@
           <div class="mb-8 p-4 bg-gray-50 rounded-lg">
             <h4 class="text-sm font-medium text-gray-700 mb-2">{{ t('Bill To:') }}</h4>
             <p class="text-sm text-gray-900">{{ order.customer.name }}</p>
-            <p class="text-sm text-gray-600">{{ order.customer.address }}</p>
-            <p class="text-sm text-gray-600">{{ order.customer.city }}, {{ order.customer.country }}</p>
+            <p class="text-sm text-gray-600">{{ order.shippingAddress || order.customer.address }}</p>
             <p class="text-sm text-gray-600">{{ t('Email') }}: {{ order.customer.email }}</p>
             <p class="text-sm text-gray-600">{{ t('Phone') }}: {{ order.customer.phone }}</p>
           </div>
@@ -118,7 +113,7 @@
               </div>
               <div class="flex justify-between py-2">
                 <span class="text-sm text-gray-600">{{ t('Shipping') }}</span>
-                <span class="text-sm font-medium text-gray-900">{{ order.shipping === 0 ? t('Free') : formatCurrency(order.shipping || 0) + ' EGP' }}</span>
+                <span class="text-sm font-medium text-gray-900">{{ order.shippingCost === 0 ? t('Free') : formatCurrency(order.shippingCost || 0) + ' EGP' }}</span>
               </div>
               <div class="flex justify-between py-2">
                 <span class="text-sm text-gray-600">{{ t('Tax') }}</span>
@@ -137,7 +132,7 @@
               <p><span class="font-medium">{{ t('Payment Method') }}:</span> {{ getPaymentMethodText(order.paymentMethod) }}</p>
               <p><span class="font-medium">{{ t('Payment Status') }}:</span> 
                 <span :class="order.paymentStatus === 'paid' ? 'text-green-600' : 'text-yellow-600'">
-                  {{ t(order.paymentStatus) }}
+                  {{ getPaymentStatusText(order.paymentStatus) }}
                 </span>
               </p>
               <p><span class="font-medium">{{ t('Order Status') }}:</span> {{ getStatusText(order.status) }}</p>
@@ -146,7 +141,7 @@
 
           <!-- Footer -->
           <div class="mt-8 text-center text-sm text-gray-500">
-            <p>{{ t('Thank you for shopping with Luxury Perfume Store!') }}</p>
+            <p>{{ t('Thank you for shopping with P.COMMERCE!') }}</p>
             <p class="mt-1">{{ t('This is a computer generated invoice. No signature required.') }}</p>
           </div>
         </div>
@@ -178,7 +173,8 @@ const formatCurrency = (amount: number) => {
   return new Intl.NumberFormat('en-EG').format(amount)
 }
 
-const formatDate = (date: Date) => {
+const formatDate = (date: Date | string) => {
+  if (!date) return ''
   return new Date(date).toLocaleDateString('en-EG', {
     year: 'numeric',
     month: 'long',
@@ -193,6 +189,16 @@ const getPaymentMethodText = (method: string) => {
     bank_transfer: t('Bank Transfer')
   }
   return methods[method] || method
+}
+
+const getPaymentStatusText = (status: string) => {
+  const texts: Record<string, string> = {
+    pending: t('Pending'),
+    paid: t('Paid'),
+    failed: t('Failed'),
+    refunded: t('Refunded')
+  }
+  return texts[status] || status
 }
 
 const getStatusText = (status: string) => {
@@ -219,6 +225,7 @@ const verifyEmail = async () => {
       showError(t('Invalid email address'), '')
     }
   } catch (err) {
+    console.error('Email verification error:', err)
     showError(t('Failed to verify email'), '')
   } finally {
     verifying.value = false
@@ -230,25 +237,22 @@ const printInvoice = () => {
 }
 
 const downloadInvoice = async () => {
+  // Check if we're in a browser environment
+  if (typeof window === 'undefined') return
+  
   const element = document.getElementById('invoice-content')
   if (!element) return
 
   try {
     // Dynamically import html2pdf with error handling
-    const html2pdfModule = await import('html2pdf.js').catch((err) => {
-      console.error('Failed to load html2pdf.js:', err)
-      showError(t('PDF library not available. Please install html2pdf.js'), '')
-      return null
-    })
-
-    if (!html2pdfModule) return
-
+    const html2pdfModule = await import('html2pdf.js')
     const html2pdf = html2pdfModule.default
+    
     const opt = {
-      margin: 1,
+      margin: 0.5,
       filename: `invoice-${order.value.orderNumber}.pdf`,
       image: { type: 'jpeg' as const, quality: 0.98 },
-      html2canvas: { scale: 2 },
+      html2canvas: { scale: 2, letterRendering: true },
       jsPDF: { 
         unit: 'in' as const, 
         format: 'letter' as const, 
@@ -260,7 +264,7 @@ const downloadInvoice = async () => {
     showSuccess(t('Invoice downloaded successfully'), '')
   } catch (error) {
     console.error('Error generating PDF:', error)
-    showError(t('Failed to generate PDF. Please try again.'), '')
+    showError(t('Failed to generate PDF. Please try again or use print.'), '')
   }
 }
 
@@ -275,8 +279,11 @@ onMounted(async () => {
       if (fetchedOrder) {
         order.value = fetchedOrder
         isVerified.value = true
+      } else {
+        showError(t('Order not found'), '')
       }
     } catch (err) {
+      console.error('Error fetching order:', err)
       showError(t('Order not found'), '')
     } finally {
       loading.value = false
@@ -285,20 +292,27 @@ onMounted(async () => {
 })
 </script>
 
-<style>
+<style scoped>
 @media print {
   .order-invoice-page {
     background: white;
     padding: 0;
+    margin: 0;
   }
   .bg-gray-50,
   .bg-gold-500,
   button {
-    display: none;
+    display: none !important;
   }
   #invoice-content {
     box-shadow: none;
-    padding: 1rem;
+    padding: 0;
+    margin: 0;
+  }
+  .rounded-lg,
+  .shadow-lg {
+    border-radius: 0;
+    box-shadow: none;
   }
 }
 </style>
