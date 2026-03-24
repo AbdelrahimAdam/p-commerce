@@ -34,13 +34,9 @@ export default defineConfig({
       output: {
         manualChunks: {
           "vue-vendor": ["vue", "vue-router", "pinia"],
-          "firebase-vendor": [
-            "firebase/app",
-            "firebase/auth",
-            "firebase/firestore",
-            "firebase/storage"
-          ],
-          "ui-vendor": ["@vueuse/core"]
+          "supabase-vendor": ["@supabase/supabase-js"],
+          "ui-vendor": ["@vueuse/core"],
+          "utils-vendor": ["date-fns", "yup"]
         },
 
         entryFileNames: "assets/js/[name]-[hash].js",
