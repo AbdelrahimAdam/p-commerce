@@ -7,12 +7,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, defineAsyncComponent, shallowRef } from 'vue'
+import { ref, computed, onMounted, shallowRef, type Component } from 'vue'
 import { useTenantStore } from '@/stores/tenant'
 
 const tenantStore = useTenantStore()
 const isLoading = ref(true)
-const activeComponent = shallowRef(null)
+const activeComponent = shallowRef<Component | null>(null)
 
 // Determine if current tenant is the main domain (not a subdomain)
 const isMainDomain = computed(() => {
