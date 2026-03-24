@@ -1,4 +1,4 @@
-// src/stores/auth.ts – final version with fallback insert for admin
+// src/stores/auth.ts – final version with metadata in sign-up
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import type { AdminUser, CustomerUser } from '@/types'
@@ -199,7 +199,11 @@ export const useAuthStore = defineStore('auth', () => {
         email: userData.email,
         password: userData.password,
         options: {
-          data: { displayName: userData.displayName }
+          data: {
+            displayName: userData.displayName,
+            tenant_id: currentTenant.value,
+            role: 'customer'
+          }
         }
       })
       if (signUpError) throw signUpError
@@ -504,7 +508,7 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  // ========== COMPANY REGISTRATION (with fallback insert) ==========
+  // ========== COMPANY REGISTRATION (with metadata and fallback insert) ==========
   const registerCompany = async (data: {
     email: string
     password: string
@@ -516,24 +520,7 @@ export const useAuthStore = defineStore('auth', () => {
     error.value = null
 
     try {
-      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-        email: data.email,
-        password: data.password,
-        options: {
-          data: { displayName: data.displayName }
-        }
-      })
-      if (signUpError) throw signUpError
-      if (!signUpData.user) throw new Error('Failed to create user')
-      const userId = signUpData.user.id
-
-      // Ensure session is established
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        console.log('Waiting for session to be established...');
-        await new Promise(resolve => setTimeout(resolve, 1000));
-      }
-
+      // Compute tenant ID from company name
       const tenantId = data.companyName
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, '-')
@@ -543,6 +530,30 @@ export const useAuthStore = defineStore('auth', () => {
       if (!rootDomain) throw new Error('VITE_ROOT_DOMAIN environment variable is not set')
       const fullDomain = `${data.domain}.${rootDomain}`
 
+      // Create the auth user with metadata (tenant_id, role, displayName)
+      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+        email: data.email,
+        password: data.password,
+        options: {
+          data: {
+            displayName: data.displayName,
+            tenant_id: tenantId,
+            role: 'admin'
+          }
+        }
+      })
+      if (signUpError) throw signUpError
+      if (!signUpData.user) throw new Error('Failed to create user')
+      const userId = signUpData.user.id
+
+      // Ensure session is established (sometimes needed for immediate RLS)
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) {
+        console.log('Waiting for session to be established...')
+        await new Promise(resolve => setTimeout(resolve, 1000))
+      }
+
+      // Call the RPC function to create tenant and admin
       const { error: rpcError } = await supabase.rpc('register_company', {
         _tenant_id: tenantId,
         _tenant_name: data.companyName,
@@ -554,33 +565,27 @@ export const useAuthStore = defineStore('auth', () => {
       if (rpcError) throw rpcError
 
       // Delete any existing customer record (if any)
-      const { error: deleteError } = await supabase
-        .from('customers')
-        .delete()
-        .eq('id', userId)
-      if (deleteError && deleteError.code !== 'PGRST116') {
-        console.warn('Could not delete customer record:', deleteError)
-      }
+      await supabase.from('customers').delete().eq('id', userId)
 
       // Wait a moment for the transaction to commit
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await new Promise(resolve => setTimeout(resolve, 500))
 
       // Retry fetching the admin (with exponential backoff)
-      let retries = 0;
-      let admin: AdminUser | null = null;
+      let retries = 0
+      let admin: AdminUser | null = null
       while (retries < 5 && !admin) {
         if (retries > 0) {
-          const delay = Math.min(200 * Math.pow(2, retries - 1), 2000);
-          console.log(`Retrying admin fetch (${retries}/5) after ${delay}ms...`);
-          await new Promise(r => setTimeout(r, delay));
+          const delay = Math.min(200 * Math.pow(2, retries - 1), 2000)
+          console.log(`Retrying admin fetch (${retries}/5) after ${delay}ms...`)
+          await new Promise(r => setTimeout(r, delay))
         }
-        admin = await getAdminFromSupabase(userId);
-        retries++;
+        admin = await getAdminFromSupabase(userId)
+        retries++
       }
 
       // Fallback: if still not found, insert the admin row directly
       if (!admin) {
-        console.warn('Admin record not found after retries – inserting directly');
+        console.warn('Admin record not found after retries – inserting directly')
         const { error: insertError } = await supabase
           .from('admins')
           .insert({
@@ -593,17 +598,17 @@ export const useAuthStore = defineStore('auth', () => {
             updated_at: new Date().toISOString(),
             is_active: true,
             permissions: ['all']
-          });
+          })
         if (insertError) {
-          console.error('Fallback admin insert failed:', insertError);
-          throw new Error('Admin document could not be created');
+          console.error('Fallback admin insert failed:', insertError)
+          throw new Error('Admin document could not be created')
         }
         // Re‑fetch
-        admin = await getAdminFromSupabase(userId);
-        if (!admin) throw new Error('Admin document not found after insertion');
+        admin = await getAdminFromSupabase(userId)
+        if (!admin) throw new Error('Admin document not found after insertion')
       }
 
-      setAdminUser(admin);
+      setAdminUser(admin)
 
       console.log('✅ Company registered:', tenantId)
       return { tenantId, uid: userId }
@@ -652,7 +657,7 @@ export const useAuthStore = defineStore('auth', () => {
     if (error) throw error
   }
 
-  // ========== CHECK AUTH (SIMPLIFIED) ==========
+  // ========== CHECK AUTH ==========
   const checkAuth = async () => {
     isLoading.value = true
     try {
@@ -685,14 +690,20 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  // ========== CREATE SUPER ADMIN (for bootstrapping) ==========
+  // ========== CREATE SUPER ADMIN ==========
   const createSuperAdmin = async (email: string, password: string, displayName: string) => {
     isLoading.value = true
     try {
       const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
         email,
         password,
-        options: { data: { displayName } }
+        options: {
+          data: {
+            displayName,
+            tenant_id: currentTenant.value,
+            role: 'super-admin'
+          }
+        }
       })
       if (signUpError) throw signUpError
       if (!signUpData.user) throw new Error('Signup failed')
@@ -739,7 +750,6 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  // ========== REFRESH SESSION ==========
   const refreshSession = () => {
     const current = user.value || customer.value
     if (!current) return
@@ -761,7 +771,6 @@ export const useAuthStore = defineStore('auth', () => {
 
   const clearError = () => { error.value = null }
 
-  // ========== INITIALIZE AUTH LISTENER ==========
   const init = () => {
     if (authListenerInitialized.value) return
     authListenerInitialized.value = true
