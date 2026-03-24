@@ -1,6 +1,6 @@
 <template>
   <div class="min-h-screen bg-gray-50">
-    <AdminSidebar />
+    <!-- Remove AdminSidebar - it's already provided by the admin layout -->
     
     <div class="lg:ml-64">
       <!-- Header -->
@@ -45,7 +45,6 @@ import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useLanguageStore } from '@/stores/language'
 import { useProductsStore } from '@/stores/products'
-import AdminSidebar from '@/components/Admin/AdminSidebar.vue'
 import ProductForm from '@/components/Admin/ProductForm.vue'
 import type { Product } from '@/types'
 
