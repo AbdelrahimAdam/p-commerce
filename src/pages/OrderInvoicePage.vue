@@ -91,7 +91,7 @@
                 <th class="text-center py-3 text-sm font-medium text-gray-700">{{ t('Qty') }}</th>
                 <th class="text-right py-3 text-sm font-medium text-gray-700">{{ t('Price') }}</th>
                 <th class="text-right py-3 text-sm font-medium text-gray-700">{{ t('Total') }}</th>
-              </tr>
+               </tr>
             </thead>
             <tbody>
               <tr v-for="item in order.items" :key="item.id" class="border-b border-gray-100">
@@ -244,9 +244,10 @@ const downloadInvoice = async () => {
   if (!element) return
 
   try {
-    // Dynamically import html2pdf with error handling
+    // Dynamically import html2pdf with proper error handling
     const html2pdfModule = await import('html2pdf.js')
-    const html2pdf = html2pdfModule.default
+    // Handle both default export and module.exports
+    const html2pdf = (html2pdfModule as any).default || html2pdfModule
     
     const opt = {
       margin: 0.5,
