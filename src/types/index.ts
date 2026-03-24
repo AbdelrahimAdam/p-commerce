@@ -59,9 +59,9 @@ export interface HomepageData {
     defaultLanguage: Language
   }
   productCount?: number
-  tenantId?: string                // <-- ADDED
+  tenantId?: string
   lastUpdated?: string
-  source?: 'firebase' | 'local' | 'api'
+  source?: 'supabase' | 'local' | 'api' // changed from 'firebase' to 'supabase'
 }
 
 // ===============================
@@ -124,7 +124,7 @@ export interface Product {
   inStock: boolean
   stockQuantity: number
 
-  // Additional fields from Firestore (used in some places)
+  // Additional fields
   ratings?: number
   ratingCount?: number
   stock?: number // alias for stockQuantity
@@ -134,7 +134,7 @@ export interface Product {
 
   sku?: string
 
-  tenantId: string                // <-- ADDED (required)
+  tenantId: string
 
   createdAt?: any
   updatedAt?: any
@@ -206,7 +206,7 @@ export interface AdminUser {
   photoURL?: string
   phoneNumber?: string
   role: 'admin' | 'super-admin'
-  tenantId: string                 // <-- ADDED (required)
+  tenantId: string
   lastLogin?: Date
   isActive?: boolean
   createdAt?: Date
@@ -221,7 +221,7 @@ export interface CustomerUser {
   displayName?: string
   photoURL?: string
   phoneNumber?: string
-  tenantId: string                 // <-- ADDED (required)
+  tenantId: string
   addresses?: Address[]
   defaultAddressId?: string
   wishlist?: string[]
@@ -358,7 +358,7 @@ export interface Order {
   guestId?: string
   userEmail?: string // legacy
 
-  tenantId: string                // <-- ADDED (required)
+  tenantId: string
 
   statusHistory?: StatusHistoryItem[]
 
@@ -369,24 +369,18 @@ export interface Order {
   cancelledAt?: Date
 }
 
-// Firestore order type (with Timestamps)
-import type { Timestamp, FieldValue } from 'firebase/firestore'
-
-export interface FirestoreOrder extends Omit<Order, 
-  'createdAt' | 'updatedAt' | 'shippedAt' | 'deliveredAt' | 'cancelledAt' | 
-  'statusHistory' | 'id' | 'userId' | 'guestId'
+// Supabase order type (using ISO strings)
+export interface SupabaseOrder extends Omit<Order,
+  'createdAt' | 'updatedAt' | 'shippedAt' | 'deliveredAt' | 'cancelledAt' | 'statusHistory'
 > {
-  userId?: string | null
-  guestId?: string | null
-  tenantId: string                 // <-- ADDED (required)
-  createdAt: Timestamp | FieldValue
-  updatedAt: Timestamp | FieldValue
-  shippedAt?: Timestamp | FieldValue | null
-  deliveredAt?: Timestamp | FieldValue | null
-  cancelledAt?: Timestamp | FieldValue | null
+  createdAt: string
+  updatedAt: string
+  shippedAt?: string | null
+  deliveredAt?: string | null
+  cancelledAt?: string | null
   statusHistory?: Array<{
     status: OrderStatus
-    timestamp: Timestamp
+    timestamp: string
     note?: string
     updatedBy?: string
   }>
@@ -533,7 +527,7 @@ export interface Brand {
   productCount?: number
   isActive: boolean
   productIds?: string[]
-  tenantId: string                // <-- ADDED (required)
+  tenantId: string
   createdAt: Date
   updatedAt: Date
 }
@@ -564,7 +558,7 @@ export interface CreateAdminDto {
   phoneNumber?: string
   role: 'admin' | 'super-admin'
   photoURL?: string
-  tenantId: string                // <-- ADDED (required for creation)
+  tenantId: string
 }
 
 export interface UpdateAdminDto {
@@ -575,8 +569,3 @@ export interface UpdateAdminDto {
   isActive?: boolean
   // tenantId should not be changed
 }
-
-// ===============================
-// Exports for convenience
-// ===============================
-export type { Timestamp, FieldValue }
