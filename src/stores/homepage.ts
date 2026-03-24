@@ -1,10 +1,11 @@
-// stores/homepage.ts – SUPABASE VERSION
+// src/stores/homepage.ts – SUPABASE VERSION
 import { defineStore } from 'pinia'
 import { ref, reactive, onUnmounted } from 'vue'
 import { supabase } from '@/supabase/client'
 import { useAuthStore } from '@/stores/auth'
 
 // =================== TYPE DEFINITIONS ===================
+
 interface HeroBanner {
   imageUrl: string
   linkText?: string
@@ -50,7 +51,7 @@ interface HomepageData {
   settings: Settings
   tenantId?: string
   lastUpdated?: string
-  source?: 'firebase' | 'cache' | 'default'  // kept for compatibility
+  source?: 'supabase' | 'cache' | 'default'
 }
 
 type ListenerCallback = (data: HomepageData) => void
@@ -155,7 +156,7 @@ export const useHomepageStore = defineStore('homepage', () => {
           },
           (payload) => {
             if (payload.eventType === 'DELETE') {
-              // Document deleted – we could fallback to default, but we'll keep cached data
+              // Document deleted – fallback to cached or default
               console.log('Homepage document deleted for tenant', tenantId)
               const cached = getCachedData()
               if (cached) {
@@ -169,7 +170,7 @@ export const useHomepageStore = defineStore('homepage', () => {
               const data = payload.new as any
               const sections = data.sections as HomepageData
               if (sections) {
-                Object.assign(homepageData, { ...sections, source: 'firebase' })
+                Object.assign(homepageData, { ...sections, source: 'supabase' })
                 saveToCache(homepageData)
                 notifyListeners(homepageData)
                 if (homepageData.settings?.isDarkMode) {
@@ -239,7 +240,7 @@ export const useHomepageStore = defineStore('homepage', () => {
 
       if (data?.sections) {
         const sections = data.sections as HomepageData
-        Object.assign(homepageData, { ...sections, source: 'firebase' })
+        Object.assign(homepageData, { ...sections, source: 'supabase' })
         saveToCache(homepageData)
         notifyListeners(homepageData)
       } else {
@@ -282,7 +283,7 @@ export const useHomepageStore = defineStore('homepage', () => {
         ...updates,
         tenantId,
         lastUpdated: new Date().toISOString(),
-        source: 'firebase'
+        source: 'supabase'
       }
 
       // Upsert into Supabase
