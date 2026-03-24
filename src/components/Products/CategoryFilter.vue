@@ -162,47 +162,11 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, onMounted } from 'vue'
+import { computed } from 'vue'
 import type { FilterOptions } from '@/types'
 import { useLanguageStore } from '@/stores/language'
 import { useProductsStore } from '@/stores/products'
-
-// Import constants directly with explicit path to avoid circular dependencies
-import LUXURY_PRICE_RANGES from '@/utils/luxuryConstants?raw'
-import LUXURY_SORT_OPTIONS from '@/utils/luxuryConstants?raw'
-import LUXURY_CONCENTRATIONS from '@/utils/luxuryConstants?raw'
-
-// Better approach: use dynamic import to break circular dependencies
-const constants = ref<any>({})
-
-onMounted(async () => {
-  try {
-    const module = await import('@/utils/luxuryConstants')
-    constants.value = module
-  } catch (error) {
-    console.error('Failed to load constants:', error)
-    // Fallback values if import fails
-    constants.value = {
-      LUXURY_PRICE_RANGES: [
-        { min: 0, max: 100, label: { en: 'Under $100', ar: 'أقل من ١٠٠ دولار' } },
-        { min: 100, max: 200, label: { en: '$100 - $200', ar: '١٠٠ - ٢٠٠ دولار' } },
-        { min: 200, max: 300, label: { en: '$200 - $300', ar: '٢٠٠ - ٣٠٠ دولار' } },
-        { min: 300, max: 500, label: { en: '$300 - $500', ar: '٣٠٠ - ٥٠٠ دولار' } },
-        { min: 500, max: 1000, label: { en: '$500+', ar: '٥٠٠ دولار فأكثر' } }
-      ],
-      LUXURY_SORT_OPTIONS: [
-        { value: 'newest', label: { en: 'Newest', ar: 'الأحدث' } },
-        { value: 'price-low', label: { en: 'Price: Low to High', ar: 'السعر: منخفض إلى مرتفع' } },
-        { value: 'price-high', label: { en: 'Price: High to Low', ar: 'السعر: مرتفع إلى منخفض' } }
-      ],
-      LUXURY_CONCENTRATIONS: [
-        { value: 'eau-de-parfum', label: { en: 'Eau de Parfum', ar: 'أو دو بارفيوم' } },
-        { value: 'eau-de-toilette', label: { en: 'Eau de Toilette', ar: 'أو دو تواليت' } },
-        { value: 'parfum', label: { en: 'Parfum', ar: 'بارفيوم' } }
-      ]
-    }
-  }
-})
+import { LUXURY_PRICE_RANGES, LUXURY_SORT_OPTIONS, LUXURY_CONCENTRATIONS } from '@/utils/luxuryConstants'
 
 interface Props {
   filters: FilterOptions
@@ -216,7 +180,7 @@ const emit = defineEmits<{
 const languageStore = useLanguageStore()
 const productsStore = useProductsStore()
 
-// currentLanguage is a string, not a ref
+// Get values from stores
 const { currentLanguage, isRTL } = languageStore
 const { categories, products } = productsStore
 
@@ -226,10 +190,10 @@ const safeLang = computed(() => {
   return lang === 'en' || lang === 'ar' ? lang : 'en'
 })
 
-// Use constants from loaded module
-const concentrations = computed(() => constants.value.LUXURY_CONCENTRATIONS || [])
-const priceRanges = computed(() => constants.value.LUXURY_PRICE_RANGES || [])
-const sortOptions = computed(() => constants.value.LUXURY_SORT_OPTIONS || [])
+// Use constants directly (they are now used in the template)
+const concentrations = LUXURY_CONCENTRATIONS
+const priceRanges = LUXURY_PRICE_RANGES
+const sortOptions = LUXURY_SORT_OPTIONS
 
 // Category counts
 const categoryCounts = computed(() => {
@@ -245,16 +209,16 @@ const getCategoryName = (category: any) => {
   return category[safeLang.value] || category.en || category.id
 }
 
-const getRangeLabel = (range: any) => {
-  return range?.label?.[safeLang.value] || range?.label?.en || ''
+const getRangeLabel = (range: typeof priceRanges[number]) => {
+  return range.label[safeLang.value] || range.label.en
 }
 
-const getConcentrationLabel = (concentration: any) => {
-  return concentration?.label?.[safeLang.value] || concentration?.label?.en || concentration?.value || ''
+const getConcentrationLabel = (concentration: typeof concentrations[number]) => {
+  return concentration.label[safeLang.value] || concentration.label.en
 }
 
-const getSortOptionLabel = (option: any) => {
-  return option?.label?.[safeLang.value] || option?.label?.en || option?.value || ''
+const getSortOptionLabel = (option: typeof sortOptions[number]) => {
+  return option.label[safeLang.value] || option.label.en
 }
 
 // Methods
@@ -270,7 +234,7 @@ const updateFilter = (key: keyof FilterOptions, value: any) => {
   emit('update:filters', newFilters)
 }
 
-const updatePriceRange = (range: any) => {
+const updatePriceRange = (range: typeof priceRanges[number]) => {
   const newFilters = { ...props.filters }
   
   if (isPriceRangeSelected(range)) {
@@ -288,7 +252,7 @@ const clearFilters = () => {
   emit('update:filters', {})
 }
 
-const isPriceRangeSelected = (range: any) => {
+const isPriceRangeSelected = (range: typeof priceRanges[number]) => {
   return (
     props.filters.minPrice === range.min &&
     (props.filters.maxPrice === range.max || 
