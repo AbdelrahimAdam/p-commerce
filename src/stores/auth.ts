@@ -530,7 +530,7 @@ export const useAuthStore = defineStore('auth', () => {
       })
 
       const result = await response.json()
-      if (!response.ok) throw new Error(result.error)
+      if (!response.ok) throw new Error(result.error || 'Registration failed')
 
       const { tenantId, uid } = result
       console.log('✅ API response:', { tenantId, uid })
