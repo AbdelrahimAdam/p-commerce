@@ -1,4 +1,4 @@
-// src/stores/auth.ts – final version with unique tenant IDs and existence check
+// src/stores/auth.ts – final version with robust company registration
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import type { AdminUser, CustomerUser } from '@/types'
@@ -508,7 +508,7 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  // ========== COMPANY REGISTRATION (with unique tenant IDs and existence check) ==========
+  // ========== COMPANY REGISTRATION (with existing user handling) ==========
   const registerCompany = async (data: {
     email: string
     password: string
@@ -520,7 +520,7 @@ export const useAuthStore = defineStore('auth', () => {
     error.value = null
 
     try {
-      // Create a unique tenant ID (slugified company name + timestamp)
+      // Generate unique tenant ID (slugified company name + timestamp)
       const baseSlug = data.companyName
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, '-')
@@ -531,17 +531,8 @@ export const useAuthStore = defineStore('auth', () => {
       if (!rootDomain) throw new Error('VITE_ROOT_DOMAIN environment variable is not set')
       const fullDomain = `${data.domain}.${rootDomain}`
 
-      // Optional: check if a tenant with this ID already exists (extremely unlikely with timestamp, but safe)
-      const { data: existingTenant } = await supabase
-        .from('tenants')
-        .select('id')
-        .eq('id', tenantId)
-        .maybeSingle()
-      if (existingTenant) {
-        throw new Error(`Tenant "${tenantId}" already exists. Please try again.`)
-      }
-
-      // Create the auth user with metadata (tenant_id, role, displayName)
+      // Try to sign up; if user already exists, log in instead
+      let userId: string
       const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
         email: data.email,
         password: data.password,
@@ -553,11 +544,27 @@ export const useAuthStore = defineStore('auth', () => {
           }
         }
       })
-      if (signUpError) throw signUpError
-      if (!signUpData.user) throw new Error('Failed to create user')
-      const userId = signUpData.user.id
 
-      // Ensure session is established (sometimes needed for immediate RLS)
+      if (signUpError && signUpError.message.includes('already registered')) {
+        // User exists – log in
+        console.log('User already exists, logging in...')
+        const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+          email: data.email,
+          password: data.password
+        })
+        if (signInError) throw signInError
+        if (!signInData.user) throw new Error('Login failed')
+        userId = signInData.user.id
+      } else if (signUpError) {
+        throw signUpError
+      } else {
+        if (!signUpData.user) throw new Error('Failed to create user')
+        userId = signUpData.user.id
+      }
+
+      console.log('User ID:', userId)
+
+      // Ensure session is established
       const { data: { session } } = await supabase.auth.getSession()
       if (!session) {
         console.log('Waiting for session to be established...')
@@ -594,38 +601,14 @@ export const useAuthStore = defineStore('auth', () => {
         retries++
       }
 
-      // Fallback: if still not found, insert the admin row directly
-      if (!admin) {
-        console.warn('Admin record not found after retries – inserting directly')
-        const { error: insertError } = await supabase
-          .from('admins')
-          .insert({
-            id: userId,
-            tenant_id: tenantId,
-            role: 'admin',
-            email: data.email,
-            display_name: data.displayName,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-            is_active: true,
-            permissions: ['all']
-          })
-        if (insertError) {
-          console.error('Fallback admin insert failed:', insertError)
-          throw new Error('Admin document could not be created')
-        }
-        // Re‑fetch
-        admin = await getAdminFromSupabase(userId)
-        if (!admin) throw new Error('Admin document not found after insertion')
-      }
-
+      if (!admin) throw new Error('Admin document not found after registration')
       setAdminUser(admin)
 
       console.log('✅ Company registered:', tenantId)
       return { tenantId, uid: userId }
     } catch (err: any) {
+      console.error('Registration error:', err)
       error.value = err.message || 'Registration failed'
-      console.error('Company registration error:', err)
       authNotification.error(error.value || '')
       throw err
     } finally {
