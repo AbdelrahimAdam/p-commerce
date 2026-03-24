@@ -1,4 +1,4 @@
-// src/stores/auth.ts – final version with robust company registration
+// src/stores/auth.ts – final version with serverless API registration
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import type { AdminUser, CustomerUser } from '@/types'
@@ -508,7 +508,7 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  // ========== COMPANY REGISTRATION (with existing user handling) ==========
+  // ========== COMPANY REGISTRATION (via serverless API) ==========
   const registerCompany = async (data: {
     email: string
     password: string
@@ -520,94 +520,43 @@ export const useAuthStore = defineStore('auth', () => {
     error.value = null
 
     try {
-      // Generate unique tenant ID (slugified company name + timestamp)
-      const baseSlug = data.companyName
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, '-')
-        .replace(/^-|-$/g, '')
-      const tenantId = `${baseSlug}-${Date.now()}`
+      console.log('🚀 Calling registration API...')
 
-      const rootDomain = import.meta.env.VITE_ROOT_DOMAIN
-      if (!rootDomain) throw new Error('VITE_ROOT_DOMAIN environment variable is not set')
-      const fullDomain = `${data.domain}.${rootDomain}`
+      // Call the serverless function
+      const response = await fetch('/api/register-company', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      })
 
-      // Try to sign up; if user already exists, log in instead
-      let userId: string
-      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+      const result = await response.json()
+      if (!response.ok) throw new Error(result.error)
+
+      const { tenantId, uid } = result
+      console.log('✅ API response:', { tenantId, uid })
+
+      // Now log in with the created user
+      console.log('🔐 Logging in...')
+      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
         email: data.email,
-        password: data.password,
-        options: {
-          data: {
-            displayName: data.displayName,
-            tenant_id: tenantId,
-            role: 'admin'
-          }
-        }
+        password: data.password
       })
+      if (signInError) throw signInError
+      console.log('✅ Logged in:', signInData.user?.id)
 
-      if (signUpError && signUpError.message.includes('already registered')) {
-        // User exists – log in
-        console.log('User already exists, logging in...')
-        const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-          email: data.email,
-          password: data.password
-        })
-        if (signInError) throw signInError
-        if (!signInData.user) throw new Error('Login failed')
-        userId = signInData.user.id
-      } else if (signUpError) {
-        throw signUpError
-      } else {
-        if (!signUpData.user) throw new Error('Failed to create user')
-        userId = signUpData.user.id
-      }
-
-      console.log('User ID:', userId)
-
-      // Ensure session is established
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session) {
-        console.log('Waiting for session to be established...')
-        await new Promise(resolve => setTimeout(resolve, 1000))
-      }
-
-      // Call the RPC function to create tenant and admin
-      const { error: rpcError } = await supabase.rpc('register_company', {
-        _tenant_id: tenantId,
-        _tenant_name: data.companyName,
-        _domain: fullDomain,
-        _admin_id: userId,
-        _admin_email: data.email,
-        _admin_display_name: data.displayName
-      })
-      if (rpcError) throw rpcError
-
-      // Delete any existing customer record (if any)
-      await supabase.from('customers').delete().eq('id', userId)
-
-      // Wait a moment for the transaction to commit
+      // Wait a moment for session to be ready
       await new Promise(resolve => setTimeout(resolve, 500))
 
-      // Retry fetching the admin (with exponential backoff)
-      let retries = 0
-      let admin: AdminUser | null = null
-      while (retries < 5 && !admin) {
-        if (retries > 0) {
-          const delay = Math.min(200 * Math.pow(2, retries - 1), 2000)
-          console.log(`Retrying admin fetch (${retries}/5) after ${delay}ms...`)
-          await new Promise(r => setTimeout(r, delay))
-        }
-        admin = await getAdminFromSupabase(userId)
-        retries++
-      }
-
+      // Fetch the admin (now exists)
+      const admin = await getAdminFromSupabase(uid)
       if (!admin) throw new Error('Admin document not found after registration')
+      
       setAdminUser(admin)
 
-      console.log('✅ Company registered:', tenantId)
-      return { tenantId, uid: userId }
+      console.log('✅ Company registered successfully:', tenantId)
+      return { tenantId, uid }
     } catch (err: any) {
-      console.error('Registration error:', err)
+      console.error('❌ Registration error:', err)
       error.value = err.message || 'Registration failed'
       authNotification.error(error.value || '')
       throw err
