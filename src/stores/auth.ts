@@ -1,3 +1,4 @@
+// src/stores/auth.ts – final version with fallback insert for admin
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import type { AdminUser, CustomerUser } from '@/types'
@@ -129,7 +130,7 @@ export const useAuthStore = defineStore('auth', () => {
       if (signInError || !data.user) throw new Error(signInError?.message || 'Invalid credentials')
       const userId = data.user.id
 
-      // Wait a moment for the session to be available (optional, keeps consistency)
+      // Wait a moment for the session to be available
       await new Promise(resolve => setTimeout(resolve, 500))
 
       // Fetch admin and customer (RLS will filter appropriately)
@@ -503,7 +504,7 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  // ========== COMPANY REGISTRATION ==========
+  // ========== COMPANY REGISTRATION (with fallback insert) ==========
   const registerCompany = async (data: {
     email: string
     password: string
@@ -564,7 +565,7 @@ export const useAuthStore = defineStore('auth', () => {
       // Wait a moment for the transaction to commit
       await new Promise(resolve => setTimeout(resolve, 500));
 
-      // Retry fetching the admin (with a few attempts)
+      // Retry fetching the admin (with exponential backoff)
       let retries = 0;
       let admin: AdminUser | null = null;
       while (retries < 5 && !admin) {
@@ -577,7 +578,31 @@ export const useAuthStore = defineStore('auth', () => {
         retries++;
       }
 
-      if (!admin) throw new Error('Admin document not found after registration');
+      // Fallback: if still not found, insert the admin row directly
+      if (!admin) {
+        console.warn('Admin record not found after retries – inserting directly');
+        const { error: insertError } = await supabase
+          .from('admins')
+          .insert({
+            id: userId,
+            tenant_id: tenantId,
+            role: 'admin',
+            email: data.email,
+            display_name: data.displayName,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+            is_active: true,
+            permissions: ['all']
+          });
+        if (insertError) {
+          console.error('Fallback admin insert failed:', insertError);
+          throw new Error('Admin document could not be created');
+        }
+        // Re‑fetch
+        admin = await getAdminFromSupabase(userId);
+        if (!admin) throw new Error('Admin document not found after insertion');
+      }
+
       setAdminUser(admin);
 
       console.log('✅ Company registered:', tenantId)
@@ -766,7 +791,6 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   const resetAuthState = () => {
-    // No public path filtering – just reset the state (called from main.ts for public pages)
     user.value = null
     customer.value = null
     sessionExpiry.value = null
