@@ -5,34 +5,6 @@ import { supabase } from '@/supabase/client'
 import { useTenantStore } from './tenant'
 import { authNotification, showInfo } from '@/utils/notifications'
 
-const PUBLIC_PATHS = [
-  '/',
-  '/shop',
-  '/offers',
-  '/offer',
-  '/brands',
-  '/brand',
-  '/cart',
-  '/checkout',
-  '/contact',
-  '/about',
-  '/collections',
-  '/product',
-  '/category',
-  '/wishlist',
-  '/admin/login',
-  '/login',
-  '/register',
-  '/forgot-password',
-  '/reset-password'
-]
-
-const isPublicPath = (path: string): boolean => {
-  return PUBLIC_PATHS.some(publicPath => 
-    path === publicPath || path.startsWith(publicPath + '/')
-  )
-}
-
 export const useAuthStore = defineStore('auth', () => {
   const tenantStore = useTenantStore()
 
@@ -62,74 +34,62 @@ export const useAuthStore = defineStore('auth', () => {
   })
 
   const currentUser = computed(() => user.value || customer.value)
-
   const sessionTimeLeft = computed(() => {
     if (!sessionExpiry.value) return 0
     return Math.max(0, sessionExpiry.value.getTime() - new Date().getTime())
   })
-
   const currentTenant = computed(() => 
     user.value?.tenantId || customer.value?.tenantId || tenantStore.tenantId
   )
 
-  // Helper: fetch admin
+  // ========== HELPERS ==========
   const getAdminFromSupabase = async (userId: string): Promise<AdminUser | null> => {
-    try {
-      const { data, error } = await supabase
-        .from('admins')
-        .select('*')
-        .eq('id', userId)
-        .single()
-      if (error || !data) return null
-      return {
-        uid: data.id,
-        email: data.email,
-        displayName: data.display_name || data.email,
-        role: data.role,
-        tenantId: data.tenant_id,
-        isActive: data.is_active !== false,
-        permissions: data.permissions || ['all'],
-        photoURL: data.photo_url,
-        phoneNumber: data.phone_number,
-        createdAt: new Date(data.created_at),
-        updatedAt: new Date(data.updated_at),
-        lastLogin: data.last_login ? new Date(data.last_login) : new Date()
-      }
-    } catch (err) {
-      console.error('❌ Error getting admin from Supabase:', err)
-      return null
+    const { data, error } = await supabase
+      .from('admins')
+      .select('*')
+      .eq('id', userId)
+      .single()
+    if (error || !data) return null
+    return {
+      uid: data.id,
+      email: data.email,
+      displayName: data.display_name || data.email,
+      role: data.role,
+      tenantId: data.tenant_id,
+      isActive: data.is_active !== false,
+      permissions: data.permissions || ['all'],
+      photoURL: data.photo_url,
+      phoneNumber: data.phone_number,
+      createdAt: new Date(data.created_at),
+      updatedAt: new Date(data.updated_at),
+      lastLogin: data.last_login ? new Date(data.last_login) : new Date()
     }
   }
 
-  // Helper: fetch customer
   const getCustomerFromSupabase = async (userId: string): Promise<CustomerUser | null> => {
-    try {
-      const { data, error } = await supabase
-        .from('customers')
-        .select('*')
-        .eq('id', userId)
-        .single()
-      if (error || !data) return null
-      return {
-        uid: data.id,
-        email: data.email,
-        displayName: data.name || data.email,
-        tenantId: data.tenant_id,
-        photoURL: data.photo_url,
-        phoneNumber: data.phone_number,
-        addresses: data.addresses || [],
-        wishlist: [],
-        newsletter: data.newsletter || false,
-        createdAt: new Date(data.created_at),
-        updatedAt: new Date(data.updated_at),
-        lastLogin: new Date()
-      }
-    } catch (err) {
-      console.error('❌ Error getting customer from Supabase:', err)
-      return null
+    const { data, error } = await supabase
+      .from('customers')
+      .select('*')
+      .eq('id', userId)
+      .single()
+    if (error || !data) return null
+    return {
+      uid: data.id,
+      email: data.email,
+      displayName: data.name || data.email,
+      tenantId: data.tenant_id,
+      photoURL: data.photo_url,
+      phoneNumber: data.phone_number,
+      addresses: data.addresses || [],
+      wishlist: [],
+      newsletter: data.newsletter || false,
+      createdAt: new Date(data.created_at),
+      updatedAt: new Date(data.updated_at),
+      lastLogin: new Date()
     }
   }
 
+  // ========== SESSION MANAGEMENT ==========
   const setAdminUser = (adminData: AdminUser) => {
     user.value = adminData
     customer.value = null
@@ -155,7 +115,7 @@ export const useAuthStore = defineStore('auth', () => {
     }))
   }
 
-  // ========== FIXED AUTHENTICATE WITH RETRY AND FALLBACK ==========
+  // ========== AUTHENTICATION ==========
   const authenticate = async (credentials: { email: string; password: string; remember?: boolean }) => {
     isLoading.value = true
     error.value = null
@@ -169,44 +129,14 @@ export const useAuthStore = defineStore('auth', () => {
       if (signInError || !data.user) throw new Error(signInError?.message || 'Invalid credentials')
       const userId = data.user.id
 
-      // Wait a moment for session to propagate
+      // Wait a moment for the session to be available (optional, keeps consistency)
       await new Promise(resolve => setTimeout(resolve, 500))
 
-      // Try to fetch admin/customer with retries (up to 3 attempts)
-      let adminData: AdminUser | null = null
-      let customerData: CustomerUser | null = null
-      for (let attempt = 1; attempt <= 3; attempt++) {
-        [adminData, customerData] = await Promise.all([
-          getAdminFromSupabase(userId),
-          getCustomerFromSupabase(userId)
-        ])
-        if (adminData || customerData) break
-        if (attempt < 3) await new Promise(r => setTimeout(r, 200))
-      }
-
-      // 🔥 FALLBACK: on main domain, if no profile exists, create a default admin
-      if (!adminData && !customerData && window.location.hostname === 'p-commerce-peach.vercel.app') {
-        console.log('No profile found on main domain – creating default admin')
-        const { error: insertError } = await supabase
-          .from('admins')
-          .insert({
-            id: userId,
-            tenant_id: 'main',
-            role: 'admin',
-            email: data.user.email,
-            display_name: data.user.user_metadata?.displayName || data.user.email,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-            is_active: true,
-            permissions: ['all']
-          })
-        if (!insertError) {
-          // Re‑fetch after insertion
-          adminData = await getAdminFromSupabase(userId)
-        } else {
-          console.error('Failed to create admin record:', insertError)
-        }
-      }
+      // Fetch admin and customer (RLS will filter appropriately)
+      const [adminData, customerData] = await Promise.all([
+        getAdminFromSupabase(userId),
+        getCustomerFromSupabase(userId)
+      ])
 
       if (adminData) {
         setAdminUser(adminData)
@@ -237,30 +167,21 @@ export const useAuthStore = defineStore('auth', () => {
       isLoading.value = false
     }
   }
-  // ========== END OF FIXED AUTHENTICATE ==========
 
   const login = async (email: string, password: string): Promise<AdminUser> => {
-    try {
-      const result = await authenticate({ email, password, remember: false })
-      if (result.role !== 'admin') {
-        throw new Error('Access denied: not an admin')
-      }
-      return result as AdminUser
-    } catch (err) {
-      throw err
+    const result = await authenticate({ email, password, remember: false })
+    if (result.role !== 'admin' && result.role !== 'super-admin') {
+      throw new Error('Access denied: not an admin')
     }
+    return result as AdminUser
   }
 
   const customerLogin = async (credentials: { email: string; password: string; remember?: boolean }): Promise<CustomerUser> => {
-    try {
-      const result = await authenticate(credentials)
-      if (result.role !== 'customer') {
-        throw new Error('Please use admin login portal')
-      }
-      return result as CustomerUser
-    } catch (err) {
-      throw err
+    const result = await authenticate(credentials)
+    if (result.role !== 'customer') {
+      throw new Error('Please use admin login portal')
     }
+    return result as CustomerUser
   }
 
   const customerRegister = async (userData: {
@@ -339,7 +260,6 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   // ========== CUSTOMER PROFILE UPDATE ACTIONS ==========
-
   const updateCustomerProfile = async (profileData: {
     displayName?: string
     phoneNumber?: string
@@ -420,7 +340,7 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  // Address management
+  // Address management (unchanged)
   const addCustomerAddress = async (address: any): Promise<void> => {
     if (!customer.value) throw new Error('No customer logged in')
     isLoading.value = true
@@ -583,7 +503,7 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  // ========== Register a company ==========
+  // ========== COMPANY REGISTRATION ==========
   const registerCompany = async (data: {
     email: string
     password: string
@@ -644,7 +564,7 @@ export const useAuthStore = defineStore('auth', () => {
       // Wait a moment for the transaction to commit
       await new Promise(resolve => setTimeout(resolve, 500));
 
-      // Retry fetching the admin with exponential backoff
+      // Retry fetching the admin (with a few attempts)
       let retries = 0;
       let admin: AdminUser | null = null;
       while (retries < 5 && !admin) {
@@ -657,23 +577,7 @@ export const useAuthStore = defineStore('auth', () => {
         retries++;
       }
 
-      // Fallback: if still not found, construct an admin object from sign-up data
-      if (!admin) {
-        console.warn('Admin record not found in database after retries; using fallback admin data.');
-        admin = {
-          uid: userId,
-          email: data.email,
-          displayName: data.displayName,
-          role: 'admin' as const,
-          tenantId: tenantId,
-          isActive: true,
-          permissions: ['all'],
-          createdAt: new Date(),
-          updatedAt: new Date(),
-          lastLogin: new Date()
-        };
-      }
-
+      if (!admin) throw new Error('Admin document not found after registration');
       setAdminUser(admin);
 
       console.log('✅ Company registered:', tenantId)
@@ -688,6 +592,7 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
+  // ========== LOGOUT ==========
   const logout = async () => {
     isLoading.value = true
     error.value = null
@@ -709,61 +614,23 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
+  // ========== PASSWORD RESET ==========
   const resetPassword = async (email: string) => {
-    try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/reset-password`
-      })
-      if (error) throw error
-    } catch (error) {
-      throw error
-    }
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/reset-password`
+    })
+    if (error) throw error
   }
 
   const confirmPasswordReset = async (_code: string, newPassword: string) => {
-    try {
-      const { error } = await supabase.auth.updateUser({ password: newPassword })
-      if (error) throw error
-    } catch (error) {
-      throw error
-    }
+    const { error } = await supabase.auth.updateUser({ password: newPassword })
+    if (error) throw error
   }
 
-  const checkAuth = async (force: boolean = false, ignoreSession: boolean = false) => {
-    if (!force && isPublicPath(window.location.pathname)) {
-      user.value = null
-      customer.value = null
-      sessionExpiry.value = null
-      return
-    }
-
+  // ========== CHECK AUTH (SIMPLIFIED) ==========
+  const checkAuth = async () => {
     isLoading.value = true
     try {
-      if (!ignoreSession) {
-        const adminSaved = localStorage.getItem('luxury_admin_session')
-        const customerSaved = localStorage.getItem('luxury_customer_session')
-        if (adminSaved) {
-          try {
-            const { user: savedUser, expiry } = JSON.parse(adminSaved)
-            if (new Date(expiry) > new Date()) {
-              user.value = savedUser
-              sessionExpiry.value = new Date(expiry)
-              return
-            } else localStorage.removeItem('luxury_admin_session')
-          } catch { localStorage.removeItem('luxury_admin_session') }
-        }
-        if (customerSaved) {
-          try {
-            const { user: savedUser, expiry } = JSON.parse(customerSaved)
-            if (new Date(expiry) > new Date()) {
-              customer.value = savedUser
-              sessionExpiry.value = new Date(expiry)
-              return
-            } else localStorage.removeItem('luxury_customer_session')
-          } catch { localStorage.removeItem('luxury_customer_session') }
-        }
-      }
-
       const { data: { user: authUser } } = await supabase.auth.getUser()
       if (!authUser) {
         user.value = null
@@ -777,23 +644,9 @@ export const useAuthStore = defineStore('auth', () => {
       ])
 
       if (adminData) {
-        user.value = adminData
-        customer.value = null
-        sessionExpiry.value = new Date(Date.now() + 24 * 60 * 60 * 1000)
-        localStorage.setItem('luxury_admin_session', JSON.stringify({
-          user: user.value,
-          expiry: sessionExpiry.value.getTime(),
-          timestamp: Date.now()
-        }))
+        setAdminUser(adminData)
       } else if (customerData) {
-        customer.value = customerData
-        user.value = null
-        sessionExpiry.value = new Date(Date.now() + 24 * 60 * 60 * 1000)
-        localStorage.setItem('luxury_customer_session', JSON.stringify({
-          user: customer.value,
-          expiry: sessionExpiry.value.getTime(),
-          timestamp: Date.now()
-        }))
+        setCustomerUser(customerData)
       } else {
         user.value = null
         customer.value = null
@@ -802,13 +655,12 @@ export const useAuthStore = defineStore('auth', () => {
       console.error('❌ Auth check failed:', err)
       user.value = null
       customer.value = null
-      localStorage.removeItem('luxury_admin_session')
-      localStorage.removeItem('luxury_customer_session')
     } finally {
       isLoading.value = false
     }
   }
 
+  // ========== CREATE SUPER ADMIN (for bootstrapping) ==========
   const createSuperAdmin = async (email: string, password: string, displayName: string) => {
     isLoading.value = true
     try {
@@ -862,6 +714,7 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
+  // ========== REFRESH SESSION ==========
   const refreshSession = () => {
     const current = user.value || customer.value
     if (!current) return
@@ -883,16 +736,12 @@ export const useAuthStore = defineStore('auth', () => {
 
   const clearError = () => { error.value = null }
 
+  // ========== INITIALIZE AUTH LISTENER ==========
   const init = () => {
-    if (isPublicPath(window.location.pathname)) {
-      console.log('🌍 Public page - skipping auth listener initialization')
-      return
-    }
     if (authListenerInitialized.value) return
     authListenerInitialized.value = true
 
     supabase.auth.onAuthStateChange(async (_event, session) => {
-      if (isPublicPath(window.location.pathname)) return
       if (session?.user) {
         const userId = session.user.id
         const [adminData, customerData] = await Promise.all([
@@ -917,11 +766,10 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   const resetAuthState = () => {
-    if (isPublicPath(window.location.pathname)) {
-      user.value = null
-      customer.value = null
-      sessionExpiry.value = null
-    }
+    // No public path filtering – just reset the state (called from main.ts for public pages)
+    user.value = null
+    customer.value = null
+    sessionExpiry.value = null
   }
 
   return {
