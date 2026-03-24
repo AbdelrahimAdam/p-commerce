@@ -190,7 +190,7 @@ const safeLang = computed(() => {
   return lang === 'en' || lang === 'ar' ? lang : 'en'
 })
 
-// Use constants directly (they are now used in the template)
+// Use constants directly
 const concentrations = LUXURY_CONCENTRATIONS
 const priceRanges = LUXURY_PRICE_RANGES
 const sortOptions = LUXURY_SORT_OPTIONS
