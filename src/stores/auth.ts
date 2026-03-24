@@ -1,4 +1,4 @@
-// src/stores/auth.ts – final version with metadata in sign-up
+// src/stores/auth.ts – final version with unique tenant IDs and existence check
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import type { AdminUser, CustomerUser } from '@/types'
@@ -508,7 +508,7 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  // ========== COMPANY REGISTRATION (with metadata and fallback insert) ==========
+  // ========== COMPANY REGISTRATION (with unique tenant IDs and existence check) ==========
   const registerCompany = async (data: {
     email: string
     password: string
@@ -520,15 +520,26 @@ export const useAuthStore = defineStore('auth', () => {
     error.value = null
 
     try {
-      // Compute tenant ID from company name
-      const tenantId = data.companyName
+      // Create a unique tenant ID (slugified company name + timestamp)
+      const baseSlug = data.companyName
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, '-')
         .replace(/^-|-$/g, '')
+      const tenantId = `${baseSlug}-${Date.now()}`
 
       const rootDomain = import.meta.env.VITE_ROOT_DOMAIN
       if (!rootDomain) throw new Error('VITE_ROOT_DOMAIN environment variable is not set')
       const fullDomain = `${data.domain}.${rootDomain}`
+
+      // Optional: check if a tenant with this ID already exists (extremely unlikely with timestamp, but safe)
+      const { data: existingTenant } = await supabase
+        .from('tenants')
+        .select('id')
+        .eq('id', tenantId)
+        .maybeSingle()
+      if (existingTenant) {
+        throw new Error(`Tenant "${tenantId}" already exists. Please try again.`)
+      }
 
       // Create the auth user with metadata (tenant_id, role, displayName)
       const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
