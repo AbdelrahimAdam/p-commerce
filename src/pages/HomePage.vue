@@ -239,8 +239,8 @@ import type { Brand } from '@/types'
 
 // ========== PROPS ==========
 // The isPreview prop is used to indicate when the homepage is rendered in the admin preview.
-// It is not used in the template to keep logic unchanged.
-const props = defineProps<{
+// It is not used in the template to keep logic unchanged, but is available for future use.
+defineProps<{
   isPreview?: boolean
 }>()
 
