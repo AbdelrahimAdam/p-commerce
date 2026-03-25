@@ -102,7 +102,10 @@
                     :title="isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'"
                   >
                     <svg v-if="isDarkMode" class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                      <path fill-rule="evenodd" d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z" clip-rule="evenodd"/>
+                      <path fill-rule="evenodd" d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 
+001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 
+0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 
+01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z" clip-rule="evenodd"/>
                     </svg>
                     <svg v-else class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
                       <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"/>
@@ -118,11 +121,13 @@
                     >
                       <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
-                              d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+                              d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 
+11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
                       </svg>
                       <span 
                         v-if="unreadNotifications > 0"
-                        class="absolute -top-1 -right-1 w-4 h-4 sm:w-5 sm:h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center text-[10px] sm:text-xs"
+                        class="absolute -top-1 -right-1 w-4 h-4 sm:w-5 sm:h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center 
+text-[10px] sm:text-xs"
                       >
                         {{ unreadNotifications > 9 ? '9+' : unreadNotifications }}
                       </span>
@@ -131,7 +136,8 @@
                     <!-- Notifications Dropdown - Mobile Optimized -->
                     <div 
                       v-if="showNotifications"
-                      class="fixed sm:absolute right-0 sm:right-auto left-0 sm:left-auto mt-0 sm:mt-2 w-full sm:w-80 max-w-[calc(100vw-2rem)] sm:max-w-none bg-white rounded-lg shadow-luxury-xl border border-gray-200 z-50 top-16 mx-4 sm:mx-0 max-h-[calc(100vh-8rem)] sm:max-h-96 overflow-hidden flex flex-col"
+                      class="fixed sm:absolute right-0 sm:right-auto left-0 sm:left-auto mt-0 sm:mt-2 w-full sm:w-80 max-w-[calc(100vw-2rem)] sm:max-w-none 
+bg-white rounded-lg shadow-luxury-xl border border-gray-200 z-50 top-16 mx-4 sm:mx-0 max-h-[calc(100vh-8rem)] sm:max-h-96 overflow-hidden flex flex-col"
                       v-click-outside="closeNotifications"
                     >
                       <div class="p-4 border-b border-gray-200 flex-shrink-0">
@@ -143,7 +149,8 @@
                         <div v-if="notifications.length === 0" class="p-8 text-center text-gray-500">
                           <svg class="w-12 h-12 mx-auto mb-2 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" 
-                                  d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+                                  d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 
+11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
                           </svg>
                           <p>{{ safeTranslate('No notifications') }}</p>
                         </div>
@@ -162,10 +169,18 @@
                               notification.type === 'warning' ? 'bg-yellow-100 text-yellow-600' : ''
                             ]">
                               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path v-if="notification.type === 'order'" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/>
-                                <path v-if="notification.type === 'product'" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"/>
-                                <path v-if="notification.type === 'system'" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
-                                <path v-if="notification.type === 'warning'" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.998-.833-2.732 0L4.346 16.5c-.77.833.192 2.5 1.732 2.5z"/>
+                                <path v-if="notification.type === 'order'" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 
+00-8 0v4M5 9h14l1 12H4L5 9z"/>
+                                <path v-if="notification.type === 'product'" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 
+00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 
+01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"/>
+                                <path v-if="notification.type === 'system'" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 
+4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 
+1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 
+00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 
+2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+                                <path v-if="notification.type === 'warning'" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 
+4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.998-.833-2.732 0L4.346 16.5c-.77.833.192 2.5 1.732 2.5z"/>
                               </svg>
                             </div>
                             <div class="flex-1 min-w-0">
@@ -219,7 +234,8 @@
                     <!-- User Menu Dropdown - Mobile Optimized -->
                     <div 
                       v-if="showUserMenu"
-                      class="fixed sm:absolute right-0 sm:right-auto left-0 sm:left-auto mt-0 sm:mt-2 w-full sm:w-48 max-w-[calc(100vw-2rem)] sm:max-w-none bg-white rounded-lg shadow-luxury-xl border border-gray-200 z-50 top-16 mx-4 sm:mx-0"
+                      class="fixed sm:absolute right-0 sm:right-auto left-0 sm:left-auto mt-0 sm:mt-2 w-full sm:w-48 max-w-[calc(100vw-2rem)] sm:max-w-none 
+bg-white rounded-lg shadow-luxury-xl border border-gray-200 z-50 top-16 mx-4 sm:mx-0"
                       v-click-outside="closeUserMenu"
                     >
                       <div class="p-4 border-b border-gray-200">
@@ -234,7 +250,8 @@
                         >
                           <svg class="w-4 h-4 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
-                                  d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
+                                  d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 
+1v4a1 1 0 001 1m-6 0h6"/>
                           </svg>
                           <span class="truncate">{{ safeTranslate('Dashboard') }}</span>
                         </router-link>
@@ -426,7 +443,7 @@ const tenantStore = useTenantStore()
 
 // Use storeToRefs for reactive state/computed
 const { currentLanguage, isRTL } = storeToRefs(languageStore)
-const { products, isLoading } = storeToRefs(productsStore)  // added products ref
+const { products, isLoading } = storeToRefs(productsStore)
 
 // State with safe defaults
 const scrollY = ref(0)
@@ -445,7 +462,8 @@ const notifications = ref([
   { id: 1, message: 'New order #ORD-1234 received', type: 'order', timestamp: new Date(Date.now() - 5 * 60 * 1000), read: false },
   { id: 2, message: 'Product "Tom Ford Noir Extreme" is running low', type: 'product', timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000), read: true },
   { id: 3, message: 'System maintenance scheduled for tonight', type: 'system', timestamp: new Date(Date.now() - 24 * 60 * 60 * 1000), read: true },
-  { id: 4, message: 'High traffic alert: Store visits increased by 150%', type: 'warning', timestamp: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000), read: true }
+  { id: 4, message: 'High traffic alert: Store visits increased by 150%', type: 'warning', timestamp: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000), read: 
+true }
 ])
 
 // Performance optimizations
@@ -540,7 +558,6 @@ const adminPageDescription = computed(() => {
   const description = route.meta?.description
   if (!description) return ''
   if (typeof description === 'string') return description
-  // Check if description is an object with en/ar properties
   if (typeof description === 'object' && description !== null && 'en' in description) {
     const descObj = description as { en: string; ar?: string }
     return descObj[safeLanguage.value] || descObj.en || ''
