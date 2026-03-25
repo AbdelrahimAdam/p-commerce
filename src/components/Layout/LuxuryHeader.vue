@@ -22,7 +22,7 @@
         <nav class="luxury-nav-desktop">
           <ul class="luxury-nav-list">
             <li class="luxury-nav-item">
-              <router-link to="/" class="luxury-nav-link" active-class="active" exact>
+              <router-link to="/" class="luxury-nav-link" active-class="active">
                 {{ languageStore.t('home') }}
               </router-link>
               <div class="nav-preview">
@@ -238,7 +238,7 @@
           <nav class="mobile-nav">
             <ul class="mobile-nav-list">
               <li class="mobile-nav-item">
-                <router-link to="/" class="mobile-nav-link" @click="closeMobileMenu" exact>
+                <router-link to="/" class="mobile-nav-link" @click="closeMobileMenu">
                   {{ languageStore.t('home') }}
                 </router-link>
               </li>
