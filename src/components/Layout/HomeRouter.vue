@@ -47,6 +47,11 @@ onMounted(async () => {
 })
 </script>
 
+<script lang="ts">
+// Named export for compatibility with any named imports
+export const HomeRouter = {}
+</script>
+
 <style scoped>
 .luxury-loading-spinner {
   width: 40px;
