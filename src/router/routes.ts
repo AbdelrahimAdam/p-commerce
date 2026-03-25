@@ -8,7 +8,7 @@ export const routes: Array<RouteRecordRaw> = [
     path: '/',
     name: 'home',
     // ✅ Dynamic import – no static import needed
-    component: () => import('@/components/Layout/HomeRouter.vue'),
+    component: () => import('@/components/Layout/RootRouter.vue'),
     meta: {
       title: {
         en: 'Luxury Perfumes | Premium Fragrances Collection',
