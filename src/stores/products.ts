@@ -4,12 +4,83 @@ import { useLocalStorage } from '@vueuse/core'
 import { supabase } from '@/supabase/client'
 import type { Product, FilterOptions, Brand } from '@/types'
 import { productNotification } from '@/utils/notifications'
-import { LUXURY_CATEGORIES } from '@/utils/luxuryConstants'
 import { useBrandsStore } from './brands'
 import { useAuthStore } from './auth'
 
-function debounce<F extends (...args: any[]) => any>(func: F, wait: number): (...args: Parameters<F>) => 
-void {
+// Remove this import to break circular dependency
+// import { LUXURY_CATEGORIES } from '@/utils/luxuryConstants'
+
+// Define categories locally or import from a separate file
+const LUXURY_CATEGORIES = [
+  {
+    id: 'arabic-oud',
+    en: 'Arabic Oud',
+    ar: 'عود عربي',
+    description: {
+      en: 'Exquisite Arabian oud fragrances with deep, woody notes',
+      ar: 'عطور العود العربي الفاخرة مع نوتات خشبية عميقة'
+    },
+    image: '/images/categories/arabic-oud.jpg',
+    featured: true
+  },
+  {
+    id: 'floral',
+    en: 'Floral Elegance',
+    ar: 'أناقة زهرية',
+    description: {
+      en: 'Delicate floral compositions for timeless elegance',
+      ar: 'تركيبات زهرية رقيقة للأناقة الخالدة'
+    },
+    image: '/images/categories/floral.jpg',
+    featured: true
+  },
+  {
+    id: 'woody',
+    en: 'Woody Mystique',
+    ar: 'غموض خشبي',
+    description: {
+      en: 'Rich woody scents with mysterious depth',
+      ar: 'عطور خشبية غنية بعمق غامض'
+    },
+    image: '/images/categories/woody.jpg',
+    featured: true
+  },
+  {
+    id: 'fresh',
+    en: 'Fresh & Citrus',
+    ar: 'عطور منعشة وحمضيات',
+    description: {
+      en: 'Revitalizing citrus and fresh notes',
+      ar: 'نوتات حمضيات ومنعشة منعشة'
+    },
+    image: '/images/categories/fresh.jpg',
+    featured: true
+  },
+  {
+    id: 'oriental',
+    en: 'Oriental Spice',
+    ar: 'توابل شرقية',
+    description: {
+      en: 'Warm oriental blends with exotic spices',
+      ar: 'مزيج شرقي دافئ مع توابل غريبة'
+    },
+    image: '/images/categories/oriental.jpg',
+    featured: true
+  },
+  {
+    id: 'gourmand',
+    en: 'Gourmand Delights',
+    ar: 'ملذات جورموند',
+    description: {
+      en: 'Sweet, edible-inspired luxury fragrances',
+      ar: 'عطور فاخرة مستوحاة من الأطعمة الحلوة'
+    },
+    image: '/images/categories/gourmand.jpg',
+    featured: false
+  }
+] as const
+
+function debounce<F extends (...args: any[]) => any>(func: F, wait: number): (...args: Parameters<F>) => void {
   let timeout: ReturnType<typeof setTimeout> | null = null
   return (...args: Parameters<F>) => {
     if (timeout) clearTimeout(timeout)
@@ -46,8 +117,7 @@ export const useProductsStore = defineStore('products', () => {
   const brandProductsCache = ref<Map<string, Product[]>>(new Map())
   const isInitialized = ref(false)
 
-  const debouncedFetchProducts = debounce(async (options: FilterOptions = {}, resetPagination: boolean = 
-true) => {
+  const debouncedFetchProducts = debounce(async (options: FilterOptions = {}, resetPagination: boolean = true) => {
     await fetchProducts(options, resetPagination)
   }, 300)
 
@@ -77,8 +147,7 @@ true) => {
     return { min: Math.min(...prices), max: Math.max(...prices) }
   })
 
-  const isFiltered = computed(() => Object.keys(filters.value).length > 0 || searchQuery.value.length > 
-0)
+  const isFiltered = computed(() => Object.keys(filters.value).length > 0 || searchQuery.value.length > 0)
 
   // Transform Supabase product row to Product object
   const transformProductRow = async (row: any, brand: Brand): Promise<Product> => {
@@ -96,7 +165,7 @@ true) => {
       imageUrl = images[0] || ''
     }
 
-    const categoryName = row.category // or from join
+    const categoryName = row.category
 
     const product: Product = {
       id: row.id,
@@ -123,10 +192,8 @@ true) => {
       inStock: row.in_stock !== false,
       stockQuantity: row.stock_quantity || 0,
       tenantId: row.tenant_id,
-      createdAt: row.created_at ? { seconds: Math.floor(new Date(row.created_at).getTime() / 1000), 
-nanoseconds: 0 } : null,
-      updatedAt: row.updated_at ? { seconds: Math.floor(new Date(row.updated_at).getTime() / 1000), 
-nanoseconds: 0 } : null,
+      createdAt: row.created_at ? { seconds: Math.floor(new Date(row.created_at).getTime() / 1000), nanoseconds: 0 } : null,
+      updatedAt: row.updated_at ? { seconds: Math.floor(new Date(row.updated_at).getTime() / 1000), nanoseconds: 0 } : null,
       meta: row.meta || { weight: '250g', dimensions: '8x4x12 cm', origin: brand.name }
     }
 
@@ -449,16 +516,12 @@ nanoseconds: 0 } : null,
       )
     }
     if (options.category) filtered = filtered.filter(p => p.category === options.category)
-    if (options.brand) filtered = filtered.filter(p => p.brand === options.brand || p.brandSlug === 
-options.brand)
+    if (options.brand) filtered = filtered.filter(p => p.brand === options.brand || p.brandSlug === options.brand)
     if (options.minPrice !== undefined) filtered = filtered.filter(p => p.price >= options.minPrice!)
     if (options.maxPrice !== undefined) filtered = filtered.filter(p => p.price <= options.maxPrice!)
-    if (options.minRating !== undefined) filtered = filtered.filter(p => (p.rating ?? 0) >= 
-options.minRating!)
-    if (options.bestseller !== undefined) filtered = filtered.filter(p => p.isBestSeller === 
-options.bestseller)
-    if (options.isFeatured !== undefined) filtered = filtered.filter(p => p.isFeatured === 
-options.isFeatured)
+    if (options.minRating !== undefined) filtered = filtered.filter(p => (p.rating ?? 0) >= options.minRating!)
+    if (options.bestseller !== undefined) filtered = filtered.filter(p => p.isBestSeller === options.bestseller)
+    if (options.isFeatured !== undefined) filtered = filtered.filter(p => p.isFeatured === options.isFeatured)
     if (options.newArrival !== undefined) {
       const oneMonthAgo = Math.floor(Date.now() / 1000) - 30 * 24 * 60 * 60
       filtered = filtered.filter(p => (p.createdAt?.seconds || 0) > oneMonthAgo)
@@ -490,8 +553,7 @@ options.isFeatured)
   const getRelatedProducts = async (product: Product, limitNum: number = 4): Promise<Product[]> => {
     try {
       let related = products.value
-        .filter(p => p.id !== product.id && (p.category === product.category || p.brand === 
-product.brand))
+        .filter(p => p.id !== product.id && (p.category === product.category || p.brand === product.brand))
         .slice(0, limitNum)
       if (related.length < limitNum && product.brandId) {
         const brandProducts = await getProductsByBrand(product.brandSlug!)
@@ -533,8 +595,7 @@ product.brand))
       case 'price-high': sorted.sort((a, b) => b.price - a.price); break
       case 'rating': sorted.sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0)); break
       case 'popular': sorted.sort((a, b) => (b.reviewCount || 0) - (a.reviewCount || 0)); break
-      case 'best-selling': sorted.sort((a, b) => (b.isBestSeller ? 1 : 0) - (a.isBestSeller ? 1 : 0)); 
-break
+      case 'best-selling': sorted.sort((a, b) => (b.isBestSeller ? 1 : 0) - (a.isBestSeller ? 1 : 0)); break
       case 'name-asc': sorted.sort((a, b) => a.name.en.localeCompare(b.name.en)); break
       case 'name-desc': sorted.sort((a, b) => b.name.en.localeCompare(a.name.en)); break
       default: sorted.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0))
