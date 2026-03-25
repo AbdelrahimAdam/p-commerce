@@ -978,6 +978,19 @@ const saveBrandAndProducts = async () => {
 
 const close = () => { if (!loading.value) emit('close') }
 
+// ========== WATCHERS ==========
+watch(() => formData.image, (newUrl) => {
+  if (newUrl && isValidUrl(newUrl)) {
+    imagePreview.value = newUrl
+    brandImageFile.value = null
+    brandImageBase64.value = ''
+  } else if (brandImageBase64.value) {
+    imagePreview.value = brandImageBase64.value
+  } else if (!newUrl) {
+    imagePreview.value = ''
+  }
+})
+
 // ========== LIFECYCLE ==========
 onMounted(() => {
   if (props.brand) {
@@ -989,7 +1002,9 @@ onMounted(() => {
     })
     if (formData.image) imagePreview.value = formData.image
     if (props.brand.slug) loadExistingProducts(props.brand.slug)
-  } else addNewProduct()
+  } else {
+    addNewProduct()
+  }
 
   const handleKey = (e: KeyboardEvent) => { if (e.key === 'Escape') close() }
   document.addEventListener('keydown', handleKey)
