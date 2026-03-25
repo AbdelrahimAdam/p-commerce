@@ -26,7 +26,7 @@
                   </span>
                 </div>
               </div>
-              
+
               <!-- Step Navigation -->
               <div class="mb-6">
                 <div class="flex items-center">
@@ -91,7 +91,7 @@
               <label class="block text-sm font-medium text-gray-700 mb-1">
                 {{ t('Brand Logo/Image') }} *
               </label>
-              
+
               <!-- URL Input -->
               <div class="mb-3">
                 <label class="block text-xs text-gray-600 mb-1">{{ t('Image URL (optional)') }}</label>
@@ -112,7 +112,7 @@
                   </button>
                 </div>
               </div>
-              
+
               <!-- File Upload -->
               <div class="mb-3">
                 <label class="block text-xs text-gray-600 mb-1">{{ t('Or Upload Image') }}</label>
@@ -137,9 +137,9 @@
                   {{ t('Max 100KB for base64. JPG, PNG, GIF. Small images recommended.') }}
                 </p>
               </div>
-              
+
               <p v-if="errors.image" class="mt-1 text-sm text-red-600">{{ errors.image }}</p>
-              
+
               <!-- Image Preview -->
               <div v-if="imagePreview" class="mt-3">
                 <p class="text-sm text-gray-600 mb-1">{{ t('Image Preview') }}:</p>
@@ -378,8 +378,8 @@
                       </div>
                       <input
                         type="file"
-                        :ref="el => setProductFileInputRef(el, index)"
-                        @change="event => handleProductImageUpload(event, index)"
+                        :ref="(el: HTMLInputElement | null) => setProductFileInputRef(el, index)"
+                        @change="(event: Event) => handleProductImageUpload(event, index)"
                         accept="image/*"
                         class="hidden"
                       />
@@ -419,7 +419,7 @@
                         </button>
                       </div>
 
-                      <!-- NEW: Gender Classification Field -->
+                      <!-- Gender Classification Field -->
                       <div class="mb-3">
                         <label class="block text-xs font-medium text-gray-700 mb-1">
                           {{ t('Classification') }} <span class="text-red-500">*</span>
@@ -575,7 +575,7 @@
             >
               {{ t('Cancel') }}
             </button>
-            
+
             <!-- Navigation Buttons -->
             <div class="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
               <!-- Back Button -->
@@ -591,7 +591,7 @@
                 </svg>
                 {{ t('Back') }}
               </button>
-              
+
               <!-- Next/Save Button -->
               <button
                 v-if="currentStep === 1"
@@ -605,7 +605,7 @@
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
                 </svg>
               </button>
-              
+
               <button
                 v-else-if="currentStep === 2"
                 type="button"
@@ -634,9 +634,10 @@
     </div>
   </div>
 </template>
+
 <script setup lang="ts">
-import { ref, reactive, watch, computed, onMounted } from 'vue'
-import type { ComponentPublicInstance } from 'vue' // ✅ Import for ref typing
+import { ref, reactive, watch, computed, onMounted, onUnmounted } from 'vue'
+import type { ComponentPublicInstance } from 'vue'
 import { useLanguageStore } from '@/stores/language'
 import { useProductsStore } from '@/stores/products'
 import { useBrandsStore } from '@/stores/brands'
@@ -661,7 +662,7 @@ const emit = defineEmits<{
   save: [data: { brand: Partial<Brand>, products: Partial<Product>[] }]
 }>()
 
-// ========== STRICT BRAND ABBREVIATION MAPPING (copied from product form) ==========
+// ========== STRICT BRAND ABBREVIATION MAPPING ==========
 const BRAND_CODES: Record<string, string> = {
   "Baccarat": "BC",
   "Burberry Her": "BH",
@@ -691,14 +692,12 @@ const BRAND_CODES: Record<string, string> = {
   "Yves Saint Laurent": "YL"
 }
 
-// Helper: get official abbreviation or fallback to dynamic (first two letters)
 const getBrandAbbreviation = (brandName: string): { code: string, isFallback: boolean } => {
   const normalized = brandName.trim()
   const official = BRAND_CODES[normalized]
   if (official) {
     return { code: official, isFallback: false }
   }
-  // Fallback: take first two uppercase letters (remove spaces, take first two chars)
   const fallback = normalized.replace(/\s+/g, '').substring(0, 2).toUpperCase()
   return { code: fallback, isFallback: true }
 }
@@ -710,7 +709,7 @@ const currentStep = ref(1)
 const formData = reactive({
   id: '',
   name: '',
-  image: '', // This will store either URL or base64
+  image: '',
   signature: '',
   slug: '',
   category: '',
@@ -722,10 +721,9 @@ const formData = reactive({
 const brandImageBase64 = ref<string>('')
 const brandImageFile = ref<File | null>(null)
 
-// Products array with base64 images and classification (gender)
 type ProductWithTemp = Partial<Product> & {
   imageBase64?: string;
-  classification?: string; // 'M' | 'F' | 'U'
+  classification?: string;
 }
 
 const products = ref<ProductWithTemp[]>([])
@@ -744,7 +742,6 @@ const imagePreview = ref('')
 const productFileInputs = ref<(HTMLInputElement | null)[]>([])
 const editing = computed(() => !!props.brand?.id)
 
-// Product templates (updated to include classification)
 const productTemplates: Record<string, ProductWithTemp> = {
   noirExtreme: {
     name: { en: 'Noir Extreme', ar: 'نوار إكستريم' },
@@ -755,7 +752,7 @@ const productTemplates: Record<string, ProductWithTemp> = {
     price: 450,
     size: '100ml',
     concentration: 'Eau de Parfum',
-    classification: 'M', // Male
+    classification: 'M',
     inStock: true
   },
   ombreLeather: {
@@ -779,7 +776,7 @@ const productTemplates: Record<string, ProductWithTemp> = {
     price: 580,
     size: '100ml',
     concentration: 'Eau de Parfum',
-    classification: 'U', // Unisex
+    classification: 'U',
     inStock: true
   },
   oudWood: {
@@ -796,14 +793,12 @@ const productTemplates: Record<string, ProductWithTemp> = {
   }
 }
 
-// Check if can proceed to products step
 const canProceedToProducts = computed(() => {
   return formData.name.trim() && 
          formData.slug.trim() && 
          formData.category.trim()
 })
 
-// Initialize form with brand data if editing
 onMounted(() => {
   if (props.brand) {
     Object.assign(formData, {
@@ -821,20 +816,16 @@ onMounted(() => {
       imagePreview.value = formData.image
     }
     
-    // Load existing products for this brand if editing
     if (props.brand.slug) {
       loadExistingProducts(props.brand.slug)
     }
   } else {
-    // Add one empty product by default for new brands
     addNewProduct()
   }
 })
 
-// Load existing products for this brand
 const loadExistingProducts = async (brandSlug: string) => {
   try {
-    // Await the async function
     const brandProducts = await productsStore.getProductsByBrand(brandSlug)
     if (brandProducts && brandProducts.length > 0) {
       products.value = brandProducts.map(product => ({
@@ -844,7 +835,7 @@ const loadExistingProducts = async (brandSlug: string) => {
         price: product.price,
         size: product.size || '100ml',
         concentration: product.concentration || 'Eau de Parfum',
-        classification: product.classification || '', // preserve existing if any
+        classification: product.classification || '',
         imageUrl: product.imageUrl || '',
         images: product.images || [],
         inStock: product.inStock !== false,
@@ -854,7 +845,7 @@ const loadExistingProducts = async (brandSlug: string) => {
         brand: product.brand || brandSlug,
         brandId: product.brandId || '',
         category: product.category || '',
-        sku: product.sku || '' // preserve existing SKU
+        sku: product.sku || ''
       }))
     }
   } catch (error) {
@@ -862,7 +853,6 @@ const loadExistingProducts = async (brandSlug: string) => {
   }
 }
 
-// Watch image URL for preview
 watch(() => formData.image, (newUrl) => {
   if (newUrl && isValidUrl(newUrl)) {
     imagePreview.value = newUrl
@@ -874,8 +864,6 @@ watch(() => formData.image, (newUrl) => {
     imagePreview.value = ''
   }
 })
-
-// ========== HELPER METHODS ==========
 
 const formatBytes = (bytes: number): string => {
   if (bytes === 0) return '0 Bytes'
@@ -905,8 +893,6 @@ const compressBase64Image = (base64: string, maxSizeKB = 100): string => {
   console.warn(`Image is too large: ${formatBytes(base64.length)}. Please use a smaller image.`)
   return base64
 }
-
-// ========== IMAGE HANDLING METHODS ==========
 
 const handleBrandImageUpload = (event: Event) => {
   const input = event.target as HTMLInputElement
@@ -965,8 +951,6 @@ const handleImageError = () => {
   formData.image = ''
 }
 
-// ========== CORE METHODS ==========
-
 const generateSlug = () => {
   if (!formData.name) return
   
@@ -981,7 +965,6 @@ const generateSlug = () => {
 }
 
 const validateForm = () => {
-  console.log('🔍 Validating form...')
   let isValid = true
   
   Object.keys(errors).forEach(key => {
@@ -991,68 +974,54 @@ const validateForm = () => {
   productErrors.value = []
   
   if (!formData.name.trim()) {
-    console.log('❌ Brand name is required')
     errors.name = t('Brand name is required')
     isValid = false
   }
   
   if (!formData.image.trim() && !brandImageBase64.value) {
-    console.log('❌ Brand image is required')
     errors.image = t('Brand image is required (URL or upload)')
     isValid = false
   } else if (formData.image.trim() && !isValidUrl(formData.image)) {
-    console.log('❌ Invalid image:', formData.image)
     errors.image = t('Please enter a valid image URL or upload an image')
     isValid = false
   } else if (brandImageBase64.value && brandImageBase64.value.length > 100 * 1024) {
-    console.log('❌ Image too large:', formatBytes(brandImageBase64.value.length))
     errors.image = t('Image too large. Must be less than 100KB')
     isValid = false
   }
   
   if (!formData.slug.trim()) {
-    console.log('❌ Slug is required')
     errors.slug = t('URL slug is required')
     isValid = false
   } else if (!/^[a-z0-9-]+$/.test(formData.slug)) {
-    console.log('❌ Invalid slug format:', formData.slug)
     errors.slug = t('Slug can only contain lowercase letters, numbers, and hyphens')
     isValid = false
   }
   
   if (!formData.category.trim()) {
-    console.log('❌ Category is required')
     errors.category = t('Category is required')
     isValid = false
   }
   
-  // Validate products
   products.value.forEach((product, index) => {
     const productError: any = {}
     
-    // Ensure name object exists and has en/ar
     const name = product.name || { en: '', ar: '' }
     if (!name.en?.trim()) {
-      console.log(`❌ Product ${index} English name is required`)
       productError.nameEn = t('Product name (English) is required')
       isValid = false
     }
     
     if (!product.price || product.price <= 0) {
-      console.log(`❌ Product ${index} price is invalid:`, product.price)
       productError.price = t('Price must be greater than 0')
       isValid = false
     }
     
-    // Validate classification (gender)
     if (!product.classification) {
-      console.log(`❌ Product ${index} classification is required`)
       productError.classification = t('Classification is required')
       isValid = false
     }
     
     if (product.imageBase64 && product.imageBase64.length > 100 * 1024) {
-      console.log(`❌ Product ${index} image too large:`, formatBytes(product.imageBase64.length))
       productError.image = t('Product image too large. Must be less than 100KB')
       isValid = false
     }
@@ -1062,14 +1031,10 @@ const validateForm = () => {
     }
   })
   
-  console.log('📋 Validation result:', isValid ? 'VALID' : 'INVALID')
   return isValid
 }
 
-// ========== PRODUCT MANAGEMENT METHODS ==========
-
 const addNewProduct = () => {
-  console.log('➕ Adding new product')
   const newProduct: ProductWithTemp = {
     id: `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
     name: { en: '', ar: '' },
@@ -1077,7 +1042,7 @@ const addNewProduct = () => {
     price: 0,
     size: '100ml',
     concentration: 'Eau de Parfum',
-    classification: '', // Gender field
+    classification: '',
     imageUrl: '',
     imageBase64: '',
     images: [],
@@ -1091,14 +1056,11 @@ const addNewProduct = () => {
   
   products.value.push(newProduct)
   productFileInputs.value.push(null)
-  console.log('📊 Total products:', products.value.length)
 }
 
 const addProductTemplate = (templateName: keyof typeof productTemplates) => {
-  console.log('📋 Adding product template:', templateName)
   const template = productTemplates[templateName]
   
-  // ✅ Ensure name and description have required en/ar strings (not undefined)
   const name: Translation = {
     en: template.name?.en ?? '',
     ar: template.name?.ar ?? ''
@@ -1115,7 +1077,7 @@ const addProductTemplate = (templateName: keyof typeof productTemplates) => {
     price: template.price,
     size: template.size,
     concentration: template.concentration,
-    classification: template.classification, // Gender from template
+    classification: template.classification,
     imageUrl: '',
     imageBase64: '',
     images: [],
@@ -1129,7 +1091,6 @@ const addProductTemplate = (templateName: keyof typeof productTemplates) => {
   
   products.value.push(newProduct)
   productFileInputs.value.push(null)
-  console.log('📊 Total products after template:', products.value.length)
 }
 
 const removeProduct = (index: number) => {
@@ -1140,29 +1101,19 @@ const removeProduct = (index: number) => {
   
   if (!confirm(t('Are you sure you want to remove this product?'))) return
   
-  console.log('🗑️ Removing product at index:', index)
-  
   products.value.splice(index, 1)
   productFileInputs.value.splice(index, 1)
   productErrors.value.splice(index, 1)
-  
-  console.log('📊 Remaining products:', products.value.length)
 }
 
 const removeProductImage = (index: number) => {
-  console.log('🗑️ Removing product image at index:', index)
   products.value[index].imageUrl = ''
   products.value[index].imageBase64 = ''
   products.value[index].images = []
 }
 
-const setProductFileInputRef = (el: Element | ComponentPublicInstance | null, index: number) => {
-  // Cast to HTMLInputElement | null safely
-  if (el instanceof HTMLInputElement) {
-    productFileInputs.value[index] = el
-  } else {
-    productFileInputs.value[index] = null
-  }
+const setProductFileInputRef = (el: HTMLInputElement | null, index: number) => {
+  productFileInputs.value[index] = el
 }
 
 const uploadProductImage = (index: number) => {
@@ -1172,7 +1123,7 @@ const uploadProductImage = (index: number) => {
   }
 }
 
-const handleProductImageUpload = async (event: Event, index: number) => {
+const handleProductImageUpload = (event: Event, index: number) => {
   const input = event.target as HTMLInputElement
   if (!input.files || !input.files[0]) return
 
@@ -1184,42 +1135,26 @@ const handleProductImageUpload = async (event: Event, index: number) => {
     return
   }
   
-  console.log(`📸 Product ${index} image file:`, file.name, formatBytes(file.size))
-  
-  try {
-    const reader = new FileReader()
-    reader.onload = (e) => {
-      const base64 = e.target?.result as string
-      products.value[index].imageBase64 = compressBase64Image(base64, 100)
-      products.value[index].imageUrl = products.value[index].imageBase64
-      products.value[index].images = [products.value[index].imageBase64!]
-      console.log(`✅ Product ${index} image converted to base64:`, formatBytes(base64.length))
-    }
-    reader.readAsDataURL(file)
-    input.value = ''
-  } catch (error: any) {
-    console.error('Error loading product image:', error)
-    alert(t('Failed to load image: ') + (error.message || 'Unknown error'))
+  const reader = new FileReader()
+  reader.onload = (e) => {
+    const base64 = e.target?.result as string
+    products.value[index].imageBase64 = compressBase64Image(base64, 100)
+    products.value[index].imageUrl = products.value[index].imageBase64
+    products.value[index].images = [products.value[index].imageBase64!]
   }
+  reader.readAsDataURL(file)
+  input.value = ''
 }
 
 const handleProductImageError = (index: number) => {
-  console.log(`❌ Product ${index} image failed to load`)
   products.value[index].imageUrl = ''
   products.value[index].imageBase64 = ''
   products.value[index].images = []
 }
 
-// ========== SKU GENERATION FOR BATCH ==========
-/**
- * Generates SKUs for all products in the current batch.
- * SKU format: P.N + brand abbreviation + gender + 3-digit zero-padded package number (001, 002, ...)
- * Package numbers are assigned per gender, starting from 001.
- */
 const generateSkuBatch = (brandName: string): void => {
   const { code: brandAbbr, isFallback } = getBrandAbbreviation(brandName)
   
-  // Group products by gender
   const genderGroups: Record<string, ProductWithTemp[]> = { M: [], F: [], U: [] }
   products.value.forEach(product => {
     if (product.classification) {
@@ -1227,7 +1162,6 @@ const generateSkuBatch = (brandName: string): void => {
     }
   })
   
-  // For each gender, assign package numbers sequentially
   Object.entries(genderGroups).forEach(([gender, group]) => {
     group.forEach((product, idx) => {
       const packageNumber = (idx + 1).toString().padStart(3, '0')
@@ -1237,76 +1171,44 @@ const generateSkuBatch = (brandName: string): void => {
   
   if (isFallback) {
     console.warn(`Brand "${brandName}" not in official mapping, using fallback code: ${brandAbbr}`)
-    // Optionally show a warning to user, but we'll skip for now to keep it simple
   }
 }
 
-// ========== NAVIGATION METHODS ==========
-
 const goToStep = (step: number) => {
-  console.log('🔀 Navigating to step:', step)
   if (step === 2 && !canProceedToProducts.value) {
-    console.log('❌ Cannot proceed to step 2 - validation failed')
     alert(t('Please complete all required brand information first'))
     return
   }
   currentStep.value = step
-  console.log('✅ Current step:', currentStep.value)
 }
 
-// ========== SAVE METHODS ==========
-
 const saveBrandAndProducts = async () => {
-  console.log('💾 Save button clicked')
-  
   if (!authStore.isAuthenticated) {
-    console.log('❌ Not authenticated')
     alert(t('You must be logged in to perform this action'))
     return
   }
   
-  // 🔁 REPLACED SUPER-ADMIN CHECK WITH ADMIN CHECK
   if (!authStore.isAdmin) {
-    console.log('❌ Not admin')
     alert(t('You must be logged in as an admin to perform this action'))
     return
   }
   
-  console.log('🔐 User authenticated as admin')
-  
   if (!validateForm()) {
-    console.log('❌ Form validation failed')
     return
   }
   
-  console.log('✅ Form validation passed')
-  
   if (products.value.length === 0) {
-    console.log('❌ No products added')
     alert(t('Please add at least one product'))
     return
   }
   
-  console.log(`✅ Products count: ${products.value.length}`)
-  
-  // Generate SKUs for all products before saving
   if (!editing.value) {
-    // For new brand, generate SKUs for all products
     generateSkuBatch(formData.name)
-  } else {
-    // For editing, we assume existing products already have SKUs; new ones might not
-    // We could generate for new products here, but for simplicity we'll skip and rely on product form later.
-    // However, if we added new products while editing, we should generate SKUs for them too.
-    // But to keep it simple and avoid duplicate logic, we'll leave SKU generation for existing brand to the product form.
-    // The product form will correctly handle adding new products to existing brand.
   }
   
   loading.value = true
-  console.log('⏳ Loading started...')
   
   try {
-    // ========== PREPARE BRAND DATA ==========
-    
     let brandImage = formData.image
     if (brandImageBase64.value) {
       brandImage = brandImageBase64.value
@@ -1322,14 +1224,7 @@ const saveBrandAndProducts = async () => {
       isActive: formData.isActive !== false
     }
     
-    console.log('📦 Prepared brand data:', {
-      ...brandData,
-      image: brandImage?.substring(0, 50) + '...'
-    })
-    
-    // ========== PREPARE PRODUCTS DATA ==========
-    
-    const productsData: Partial<Product>[] = products.value.map((product, index) => {
+    const productsData: Partial<Product>[] = products.value.map((product) => {
       const imageUrl = product.imageBase64 || product.imageUrl || ''
       
       const productSlug = product.slug || (product.name?.en || '')
@@ -1339,17 +1234,16 @@ const saveBrandAndProducts = async () => {
         .replace(/--+/g, '-')
         .trim()
       
-      // Ensure name and description have default objects
       const name = product.name || { en: '', ar: '' }
       const description = product.description || { en: '', ar: '' }
       
-      const preparedProduct: Partial<Product> = {
+      return {
         name: name,
         description: description,
         price: Number(product.price) || 0,
         size: product.size || '100ml',
         concentration: product.concentration || 'Eau de Parfum',
-        classification: product.classification || '', // NEW: save gender
+        classification: product.classification || '',
         imageUrl: imageUrl,
         images: imageUrl ? [imageUrl] : [],
         inStock: product.inStock !== false,
@@ -1357,55 +1251,25 @@ const saveBrandAndProducts = async () => {
         isFeatured: product.isFeatured || false,
         slug: productSlug,
         brand: formData.slug,
-        brandId: '', // Will be set by store function
+        brandId: '',
         category: product.category || formData.category,
-        sku: product.sku || '' // Include generated SKU
+        sku: product.sku || ''
       }
-      
-      console.log(`📦 Prepared product ${index}:`, {
-        name: preparedProduct.name?.en,
-        price: preparedProduct.price,
-        classification: preparedProduct.classification,
-        sku: preparedProduct.sku,
-        imageUrl: preparedProduct.imageUrl ? `${preparedProduct.imageUrl.substring(0, 30)}...` : 'No image'
-      })
-      
-      return preparedProduct
     })
     
-    console.log('📦 Total products to save:', productsData.length)
-    
-    // ========== SAVE TO FIRESTORE ==========
-    
-    console.log('🚀 Saving to Firestore...')
     let result: string | null = null
     
     if (editing.value && formData.id) {
-      console.log('✏️ Updating existing brand:', formData.id)
       const success = await brandsStore.updateBrand(formData.id, brandData)
       if (success) {
         result = formData.id
-        console.log('✅ Brand updated successfully')
         alert('Brand updated successfully! Product updates are not yet implemented.')
-      } else {
-        console.error('❌ Failed to update brand')
       }
     } else {
-      console.log('🆕 Creating new brand with products...')
-      const totalSize = JSON.stringify(productsData).length
-      console.log('📊 Total data size:', formatBytes(totalSize))
-      
-      if (totalSize > 1 * 1024 * 1024) {
-        throw new Error('Total data exceeds Firestore 1MB limit. Please reduce image sizes or number of products.')
-      }
-      
       result = await brandsStore.addBrandWithProducts(brandData, productsData)
-      console.log('🔥 Store response:', result)
     }
     
     if (result) {
-      console.log('✅ Brand saved successfully with ID:', result)
-      
       await homepageStore.loadHomepageData()
       await productsStore.fetchProducts()
       
@@ -1418,12 +1282,11 @@ const saveBrandAndProducts = async () => {
       
       emit('close')
     } else {
-      console.error('❌ Failed to save brand - store returned null')
       throw new Error('Failed to save brand - store operation returned null')
     }
     
   } catch (error: any) {
-    console.error('❌ Error saving brand and products:', error)
+    console.error('Error saving brand and products:', error)
     
     if (error.message?.includes('permission') || error.message?.includes('Missing or insufficient')) {
       alert(t('Permission denied. Please check if you have admin privileges.'))
@@ -1438,32 +1301,42 @@ const saveBrandAndProducts = async () => {
     }
   } finally {
     loading.value = false
-    console.log('🏁 Loading finished')
   }
 }
 
 const close = () => {
-  if (loading.value) {
-    console.log('⚠️ Cannot close while loading')
-    return
-  }
-  console.log('❌ Closing modal')
+  if (loading.value) return
   emit('close')
 }
 
-// Keyboard event listener
 onMounted(() => {
   const handleKeydown = (e: KeyboardEvent) => {
     if (e.key === 'Escape') {
       close()
     }
   }
-  
   document.addEventListener('keydown', handleKeydown)
   
-  return () => {
+  onUnmounted(() => {
     document.removeEventListener('keydown', handleKeydown)
+  })
+})
+
+// Ensure onUnmounted is called properly
+let cleanup: (() => void) | undefined
+
+onMounted(() => {
+  const handleKeydown = (e: KeyboardEvent) => {
+    if (e.key === 'Escape') {
+      close()
+    }
   }
+  document.addEventListener('keydown', handleKeydown)
+  cleanup = () => document.removeEventListener('keydown', handleKeydown)
+})
+
+onUnmounted(() => {
+  if (cleanup) cleanup()
 })
 </script>
 
