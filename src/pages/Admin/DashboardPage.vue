@@ -1,4 +1,4 @@
-<!-- src/components/Admin/AdminDashboard.vue -->
+<!-- src/pages/Admin/DashboardPage.vue -->
 <template>
   <div class="admin-dashboard">
     <!-- Loading State -->
@@ -265,7 +265,7 @@
     <!-- Modals -->
     <AddOfferModal
       v-if="showAddOfferModal"
-      :offer="editingOfferData"
+      :offerData="editingOfferData"
       @close="closeAddOfferModal"
       @save="handleOfferSave"
     />
