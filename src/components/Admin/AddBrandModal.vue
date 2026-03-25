@@ -637,7 +637,6 @@
 
 <script setup lang="ts">
 import { ref, reactive, watch, computed, onMounted, onUnmounted } from 'vue'
-import type { ComponentPublicInstance } from 'vue'
 import { useLanguageStore } from '@/stores/language'
 import { useProductsStore } from '@/stores/products'
 import { useBrandsStore } from '@/stores/brands'
@@ -645,97 +644,54 @@ import { useHomepageStore } from '@/stores/homepage'
 import { useAuthStore } from '@/stores/auth'
 import type { Brand, Product, Translation } from '@/types'
 
-const languageStore = useLanguageStore()
-const productsStore = useProductsStore()
-const brandsStore = useBrandsStore()
-const homepageStore = useHomepageStore()
-const authStore = useAuthStore()
-
-const { t } = languageStore
-
-const props = defineProps<{
-  brand?: Brand
-}>()
-
-const emit = defineEmits<{
-  close: []
-  save: [data: { brand: Partial<Brand>, products: Partial<Product>[] }]
-}>()
-
-// ========== STRICT BRAND ABBREVIATION MAPPING ==========
+// ========== BRAND ABBREVIATION MAPPING ==========
 const BRAND_CODES: Record<string, string> = {
-  "Baccarat": "BC",
-  "Burberry Her": "BH",
-  "Calvin Klein": "CK",
-  "Dior": "DI",
-  "Dolcy & Gabana": "DG",
-  "Escada": "EE",
-  "Giorgio Armani": "GA",
-  "Good Girl": "GG",
-  "Gucci": "GU",
-  "Jean Paul Gaultier": "JP",
-  "Kayali": "KA",
-  "La costa": "LC",
-  "Lancome": "LN",
-  "Latafa": "LF",
-  "laverne": "LA",
-  "Moscino": "MS",
-  "Nishan": "NI",
-  "Louis Vuitton": "LV",
-  "Paco Rabanne": "PR",
-  "Parfums de Maely": "PM",
-  "Scandal": "SC",
-  "TOM FORD": "TF",
-  "Valantino": "VA",
-  "Versace": "VR",
-  "Victoria's Secret": "VS",
-  "Yves Saint Laurent": "YL"
+  "Baccarat": "BC", "Burberry Her": "BH", "Calvin Klein": "CK", "Dior": "DI",
+  "Dolcy & Gabana": "DG", "Escada": "EE", "Giorgio Armani": "GA", "Good Girl": "GG",
+  "Gucci": "GU", "Jean Paul Gaultier": "JP", "Kayali": "KA", "La costa": "LC",
+  "Lancome": "LN", "Latafa": "LF", "laverne": "LA", "Moscino": "MS",
+  "Nishan": "NI", "Louis Vuitton": "LV", "Paco Rabanne": "PR", "Parfums de Maely": "PM",
+  "Scandal": "SC", "TOM FORD": "TF", "Valantino": "VA", "Versace": "VR",
+  "Victoria's Secret": "VS", "Yves Saint Laurent": "YL"
 }
 
 const getBrandAbbreviation = (brandName: string): { code: string, isFallback: boolean } => {
   const normalized = brandName.trim()
   const official = BRAND_CODES[normalized]
-  if (official) {
-    return { code: official, isFallback: false }
-  }
+  if (official) return { code: official, isFallback: false }
   const fallback = normalized.replace(/\s+/g, '').substring(0, 2).toUpperCase()
   return { code: fallback, isFallback: true }
 }
 
-// Step management
+// ========== STORES & PROPS ==========
+const languageStore = useLanguageStore()
+const productsStore = useProductsStore()
+const brandsStore = useBrandsStore()
+const homepageStore = useHomepageStore()
+const authStore = useAuthStore()
+const { t } = languageStore
+
+const props = defineProps<{ brand?: Brand }>()
+const emit = defineEmits<{
+  close: []
+  save: [data: { brand: Partial<Brand>, products: Partial<Product>[] }]
+}>()
+
+// ========== STATE ==========
 const currentStep = ref(1)
-
-// Form data
 const formData = reactive({
-  id: '',
-  name: '',
-  image: '',
-  signature: '',
-  slug: '',
-  category: '',
-  description: '',
-  isActive: true
+  id: '', name: '', image: '', signature: '', slug: '', category: '', description: '', isActive: true
 })
-
-// Track base64 image for brand
-const brandImageBase64 = ref<string>('')
+const brandImageBase64 = ref('')
 const brandImageFile = ref<File | null>(null)
 
 type ProductWithTemp = Partial<Product> & {
   imageBase64?: string;
   classification?: string;
 }
-
 const products = ref<ProductWithTemp[]>([])
 
-// Form state
-const errors = reactive({
-  name: '',
-  image: '',
-  slug: '',
-  category: ''
-})
-
+const errors = reactive({ name: '', image: '', slug: '', category: '' })
 const productErrors = ref<any[]>([])
 const loading = ref(false)
 const imagePreview = ref('')
@@ -745,126 +701,29 @@ const editing = computed(() => !!props.brand?.id)
 const productTemplates: Record<string, ProductWithTemp> = {
   noirExtreme: {
     name: { en: 'Noir Extreme', ar: 'نوار إكستريم' },
-    description: { 
-      en: 'A luxurious oriental fragrance with notes of vanilla, amber, and spices.', 
-      ar: 'عطر شرقي فاخر بنغمات الفانيليا والعنبر والتوابل.' 
-    },
-    price: 450,
-    size: '100ml',
-    concentration: 'Eau de Parfum',
-    classification: 'M',
-    inStock: true
+    description: { en: 'A luxurious oriental fragrance with notes of vanilla, amber, and spices.', ar: 'عطر شرقي فاخر بنغمات الفانيليا والعنبر والتوابل.' },
+    price: 450, size: '100ml', concentration: 'Eau de Parfum', classification: 'M', inStock: true
   },
   ombreLeather: {
     name: { en: 'Ombré Leather', ar: 'أومبير ليزر' },
-    description: { 
-      en: 'A sophisticated leather fragrance with floral and woody notes.', 
-      ar: 'عطر جلد متطور بنغمات زهرية وخشبية.' 
-    },
-    price: 520,
-    size: '100ml',
-    concentration: 'Eau de Parfum',
-    classification: 'M',
-    inStock: true
+    description: { en: 'A sophisticated leather fragrance with floral and woody notes.', ar: 'عطر جلد متطور بنغمات زهرية وخشبية.' },
+    price: 520, size: '100ml', concentration: 'Eau de Parfum', classification: 'M', inStock: true
   },
   tobaccoVanille: {
     name: { en: 'Tobacco Vanille', ar: 'تباكو فانيليا' },
-    description: { 
-      en: 'A warm, spicy fragrance with tobacco leaf and vanilla bean.', 
-      ar: 'عطر دافئ وحار بأوراق التبغ وحبوب الفانيليا.' 
-    },
-    price: 580,
-    size: '100ml',
-    concentration: 'Eau de Parfum',
-    classification: 'U',
-    inStock: true
+    description: { en: 'A warm, spicy fragrance with tobacco leaf and vanilla bean.', ar: 'عطر دافئ وحار بأوراق التبغ وحبوب الفانيليا.' },
+    price: 580, size: '100ml', concentration: 'Eau de Parfum', classification: 'U', inStock: true
   },
   oudWood: {
     name: { en: 'Oud Wood', ar: 'عود وود' },
-    description: { 
-      en: 'A rich, woody fragrance with rare oud and exotic spices.', 
-      ar: 'عطر خشبي غني بالعود النادر والتوابل الغريبة.' 
-    },
-    price: 650,
-    size: '100ml',
-    concentration: 'Eau de Parfum',
-    classification: 'U',
-    inStock: true
+    description: { en: 'A rich, woody fragrance with rare oud and exotic spices.', ar: 'عطر خشبي غني بالعود النادر والتوابل الغريبة.' },
+    price: 650, size: '100ml', concentration: 'Eau de Parfum', classification: 'U', inStock: true
   }
 }
 
-const canProceedToProducts = computed(() => {
-  return formData.name.trim() && 
-         formData.slug.trim() && 
-         formData.category.trim()
-})
+const canProceedToProducts = computed(() => formData.name.trim() && formData.slug.trim() && formData.category.trim())
 
-onMounted(() => {
-  if (props.brand) {
-    Object.assign(formData, {
-      id: props.brand.id || '',
-      name: props.brand.name || '',
-      image: props.brand.image || '',
-      signature: props.brand.signature || '',
-      slug: props.brand.slug || '',
-      category: props.brand.category || '',
-      description: props.brand.description || '',
-      isActive: props.brand.isActive !== undefined ? props.brand.isActive : true
-    })
-    
-    if (formData.image) {
-      imagePreview.value = formData.image
-    }
-    
-    if (props.brand.slug) {
-      loadExistingProducts(props.brand.slug)
-    }
-  } else {
-    addNewProduct()
-  }
-})
-
-const loadExistingProducts = async (brandSlug: string) => {
-  try {
-    const brandProducts = await productsStore.getProductsByBrand(brandSlug)
-    if (brandProducts && brandProducts.length > 0) {
-      products.value = brandProducts.map(product => ({
-        id: product.id,
-        name: product.name || { en: '', ar: '' },
-        description: product.description || { en: '', ar: '' },
-        price: product.price,
-        size: product.size || '100ml',
-        concentration: product.concentration || 'Eau de Parfum',
-        classification: product.classification || '',
-        imageUrl: product.imageUrl || '',
-        images: product.images || [],
-        inStock: product.inStock !== false,
-        isBestSeller: product.isBestSeller || false,
-        isFeatured: product.isFeatured || false,
-        slug: product.slug || '',
-        brand: product.brand || brandSlug,
-        brandId: product.brandId || '',
-        category: product.category || '',
-        sku: product.sku || ''
-      }))
-    }
-  } catch (error) {
-    console.error('Error loading existing products:', error)
-  }
-}
-
-watch(() => formData.image, (newUrl) => {
-  if (newUrl && isValidUrl(newUrl)) {
-    imagePreview.value = newUrl
-    brandImageFile.value = null
-    brandImageBase64.value = ''
-  } else if (brandImageBase64.value) {
-    imagePreview.value = brandImageBase64.value
-  } else if (!newUrl) {
-    imagePreview.value = ''
-  }
-})
-
+// ========== HELPER FUNCTIONS ==========
 const formatBytes = (bytes: number): string => {
   if (bytes === 0) return '0 Bytes'
   const k = 1024
@@ -876,38 +735,30 @@ const formatBytes = (bytes: number): string => {
 const isValidUrl = (url: string): boolean => {
   if (!url) return false
   try {
-    if (url.startsWith('data:')) {
-      return url.startsWith('data:image/')
-    }
+    if (url.startsWith('data:')) return url.startsWith('data:image/')
     new URL(url)
     return true
-  } catch {
-    return false
-  }
+  } catch { return false }
 }
 
 const compressBase64Image = (base64: string, maxSizeKB = 100): string => {
-  if (base64.length <= maxSizeKB * 1024) {
-    return base64
-  }
-  console.warn(`Image is too large: ${formatBytes(base64.length)}. Please use a smaller image.`)
+  if (base64.length <= maxSizeKB * 1024) return base64
+  console.warn(`Image too large: ${formatBytes(base64.length)}`)
   return base64
 }
 
+// ========== IMAGE HANDLING ==========
 const handleBrandImageUpload = (event: Event) => {
   const input = event.target as HTMLInputElement
-  if (!input.files || !input.files[0]) return
-  
+  if (!input.files?.length) return
   const file = input.files[0]
   brandImageFile.value = file
-  
   if (file.size > 100 * 1024) {
-    alert(t('Image must be less than 100KB for base64 storage. Please use a smaller image.'))
+    alert(t('Image must be less than 100KB'))
     input.value = ''
     brandImageFile.value = null
     return
   }
-  
   const reader = new FileReader()
   reader.onload = (e) => {
     const base64 = e.target?.result as string
@@ -916,7 +767,6 @@ const handleBrandImageUpload = (event: Event) => {
     formData.image = brandImageBase64.value
   }
   reader.readAsDataURL(file)
-  
   errors.image = ''
 }
 
@@ -941,402 +791,209 @@ const previewImage = (url: string) => {
     brandImageBase64.value = ''
     errors.image = ''
   } else {
-    alert(t('Please enter a valid image URL or upload an image'))
+    alert(t('Enter a valid image URL or upload an image'))
   }
 }
 
 const handleImageError = () => {
-  alert(t('Failed to load image. Please check the URL or upload a new image.'))
+  alert(t('Failed to load image.'))
   imagePreview.value = ''
   formData.image = ''
 }
 
+// ========== CORE METHODS ==========
 const generateSlug = () => {
   if (!formData.name) return
-  
-  const slug = formData.name
-    .toLowerCase()
-    .replace(/[^\w\s-]/g, '')
-    .replace(/\s+/g, '-')
-    .replace(/--+/g, '-')
-    .trim()
-  
-  formData.slug = slug
+  formData.slug = formData.name.toLowerCase().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-').replace(/--+/g, '-').trim()
 }
 
 const validateForm = () => {
   let isValid = true
-  
-  Object.keys(errors).forEach(key => {
-    errors[key as keyof typeof errors] = ''
-  })
-  
+  Object.keys(errors).forEach(k => errors[k as keyof typeof errors] = '')
   productErrors.value = []
-  
-  if (!formData.name.trim()) {
-    errors.name = t('Brand name is required')
-    isValid = false
-  }
-  
-  if (!formData.image.trim() && !brandImageBase64.value) {
-    errors.image = t('Brand image is required (URL or upload)')
-    isValid = false
-  } else if (formData.image.trim() && !isValidUrl(formData.image)) {
-    errors.image = t('Please enter a valid image URL or upload an image')
-    isValid = false
-  } else if (brandImageBase64.value && brandImageBase64.value.length > 100 * 1024) {
-    errors.image = t('Image too large. Must be less than 100KB')
-    isValid = false
-  }
-  
-  if (!formData.slug.trim()) {
-    errors.slug = t('URL slug is required')
-    isValid = false
-  } else if (!/^[a-z0-9-]+$/.test(formData.slug)) {
-    errors.slug = t('Slug can only contain lowercase letters, numbers, and hyphens')
-    isValid = false
-  }
-  
-  if (!formData.category.trim()) {
-    errors.category = t('Category is required')
-    isValid = false
-  }
-  
-  products.value.forEach((product, index) => {
-    const productError: any = {}
-    
-    const name = product.name || { en: '', ar: '' }
-    if (!name.en?.trim()) {
-      productError.nameEn = t('Product name (English) is required')
-      isValid = false
-    }
-    
-    if (!product.price || product.price <= 0) {
-      productError.price = t('Price must be greater than 0')
-      isValid = false
-    }
-    
-    if (!product.classification) {
-      productError.classification = t('Classification is required')
-      isValid = false
-    }
-    
-    if (product.imageBase64 && product.imageBase64.length > 100 * 1024) {
-      productError.image = t('Product image too large. Must be less than 100KB')
-      isValid = false
-    }
-    
-    if (Object.keys(productError).length > 0) {
-      productErrors.value[index] = productError
-    }
+
+  if (!formData.name.trim()) { errors.name = t('Brand name required'); isValid = false }
+  if (!formData.image.trim() && !brandImageBase64.value) { errors.image = t('Brand image required'); isValid = false }
+  else if (formData.image.trim() && !isValidUrl(formData.image)) { errors.image = t('Invalid image URL'); isValid = false }
+  else if (brandImageBase64.value && brandImageBase64.value.length > 100*1024) { errors.image = t('Image too large (>100KB)'); isValid = false }
+  if (!formData.slug.trim()) { errors.slug = t('Slug required'); isValid = false }
+  else if (!/^[a-z0-9-]+$/.test(formData.slug)) { errors.slug = t('Slug can only contain lowercase letters, numbers, hyphens'); isValid = false }
+  if (!formData.category.trim()) { errors.category = t('Category required'); isValid = false }
+
+  products.value.forEach((p, i) => {
+    const err: any = {}
+    if (!p.name?.en?.trim()) { err.nameEn = t('Product name required'); isValid = false }
+    if (!p.price || p.price <= 0) { err.price = t('Price > 0 required'); isValid = false }
+    if (!p.classification) { err.classification = t('Classification required'); isValid = false }
+    if (p.imageBase64 && p.imageBase64.length > 100*1024) { err.image = t('Image >100KB'); isValid = false }
+    if (Object.keys(err).length) productErrors.value[i] = err
   })
-  
   return isValid
 }
 
+// ========== PRODUCT MANAGEMENT ==========
 const addNewProduct = () => {
-  const newProduct: ProductWithTemp = {
+  products.value.push({
     id: `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-    name: { en: '', ar: '' },
-    description: { en: '', ar: '' },
-    price: 0,
-    size: '100ml',
-    concentration: 'Eau de Parfum',
-    classification: '',
-    imageUrl: '',
-    imageBase64: '',
-    images: [],
-    inStock: true,
-    isBestSeller: false,
-    isFeatured: false,
-    brand: formData.slug || '',
-    brandId: '',
-    category: formData.category || ''
-  }
-  
-  products.value.push(newProduct)
+    name: { en: '', ar: '' }, description: { en: '', ar: '' },
+    price: 0, size: '100ml', concentration: 'Eau de Parfum', classification: '',
+    imageUrl: '', imageBase64: '', images: [], inStock: true,
+    isBestSeller: false, isFeatured: false, brand: formData.slug || '', brandId: '', category: formData.category || ''
+  })
   productFileInputs.value.push(null)
 }
 
 const addProductTemplate = (templateName: keyof typeof productTemplates) => {
-  const template = productTemplates[templateName]
-  
-  const name: Translation = {
-    en: template.name?.en ?? '',
-    ar: template.name?.ar ?? ''
-  }
-  const description: Translation = {
-    en: template.description?.en ?? '',
-    ar: template.description?.ar ?? ''
-  }
-  
-  const newProduct: ProductWithTemp = {
+  const tpl = productTemplates[templateName]
+  const name: Translation = { en: tpl.name?.en ?? '', ar: tpl.name?.ar ?? '' }
+  const desc: Translation = { en: tpl.description?.en ?? '', ar: tpl.description?.ar ?? '' }
+  products.value.push({
     id: `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-    name,
-    description,
-    price: template.price,
-    size: template.size,
-    concentration: template.concentration,
-    classification: template.classification,
-    imageUrl: '',
-    imageBase64: '',
-    images: [],
-    inStock: template.inStock,
-    isBestSeller: false,
-    isFeatured: false,
-    brand: formData.slug || '',
-    brandId: '',
-    category: formData.category || ''
-  }
-  
-  products.value.push(newProduct)
+    name, description: desc, price: tpl.price, size: tpl.size, concentration: tpl.concentration,
+    classification: tpl.classification, imageUrl: '', imageBase64: '', images: [], inStock: tpl.inStock,
+    isBestSeller: false, isFeatured: false, brand: formData.slug || '', brandId: '', category: formData.category || ''
+  })
   productFileInputs.value.push(null)
 }
 
-const removeProduct = (index: number) => {
-  if (products.value.length <= 1) {
-    alert(t('At least one product is required'))
-    return
-  }
-  
-  if (!confirm(t('Are you sure you want to remove this product?'))) return
-  
-  products.value.splice(index, 1)
-  productFileInputs.value.splice(index, 1)
-  productErrors.value.splice(index, 1)
+const removeProduct = (idx: number) => {
+  if (products.value.length <= 1) { alert(t('At least one product required')); return }
+  if (!confirm(t('Remove product?'))) return
+  products.value.splice(idx, 1); productFileInputs.value.splice(idx, 1); productErrors.value.splice(idx, 1)
 }
 
-const removeProductImage = (index: number) => {
-  products.value[index].imageUrl = ''
-  products.value[index].imageBase64 = ''
-  products.value[index].images = []
+const removeProductImage = (idx: number) => {
+  products.value[idx].imageUrl = ''
+  products.value[idx].imageBase64 = ''
+  products.value[idx].images = []
 }
 
-const setProductFileInputRef = (el: HTMLInputElement | null, index: number) => {
-  productFileInputs.value[index] = el
-}
+const setProductFileInputRef = (el: HTMLInputElement | null, idx: number) => { productFileInputs.value[idx] = el }
+const uploadProductImage = (idx: number) => productFileInputs.value[idx]?.click()
 
-const uploadProductImage = (index: number) => {
-  const input = productFileInputs.value[index]
-  if (input) {
-    input.click()
-  }
-}
-
-const handleProductImageUpload = (event: Event, index: number) => {
+const handleProductImageUpload = (event: Event, idx: number) => {
   const input = event.target as HTMLInputElement
-  if (!input.files || !input.files[0]) return
-
+  if (!input.files?.length) return
   const file = input.files[0]
-  
-  if (file.size > 100 * 1024) {
-    alert(t('Product image must be less than 100KB for base64 storage. Please use a smaller image.'))
+  if (file.size > 100*1024) {
+    alert(t('Product image must be <100KB'))
     input.value = ''
     return
   }
-  
   const reader = new FileReader()
   reader.onload = (e) => {
     const base64 = e.target?.result as string
-    products.value[index].imageBase64 = compressBase64Image(base64, 100)
-    products.value[index].imageUrl = products.value[index].imageBase64
-    products.value[index].images = [products.value[index].imageBase64!]
+    products.value[idx].imageBase64 = compressBase64Image(base64, 100)
+    products.value[idx].imageUrl = products.value[idx].imageBase64
+    products.value[idx].images = [products.value[idx].imageBase64!]
   }
   reader.readAsDataURL(file)
   input.value = ''
 }
 
-const handleProductImageError = (index: number) => {
-  products.value[index].imageUrl = ''
-  products.value[index].imageBase64 = ''
-  products.value[index].images = []
+const handleProductImageError = (idx: number) => {
+  products.value[idx].imageUrl = ''
+  products.value[idx].imageBase64 = ''
+  products.value[idx].images = []
 }
 
-const generateSkuBatch = (brandName: string): void => {
+const generateSkuBatch = (brandName: string) => {
   const { code: brandAbbr, isFallback } = getBrandAbbreviation(brandName)
-  
-  const genderGroups: Record<string, ProductWithTemp[]> = { M: [], F: [], U: [] }
-  products.value.forEach(product => {
-    if (product.classification) {
-      genderGroups[product.classification].push(product)
-    }
+  const groups: Record<string, ProductWithTemp[]> = { M: [], F: [], U: [] }
+  products.value.forEach(p => { if (p.classification) groups[p.classification].push(p) })
+  Object.entries(groups).forEach(([gender, group]) => {
+    group.forEach((p, idx) => p.sku = `P.N${brandAbbr}${gender}${(idx+1).toString().padStart(3,'0')}`)
   })
-  
-  Object.entries(genderGroups).forEach(([gender, group]) => {
-    group.forEach((product, idx) => {
-      const packageNumber = (idx + 1).toString().padStart(3, '0')
-      product.sku = `P.N${brandAbbr}${gender}${packageNumber}`
-    })
-  })
-  
-  if (isFallback) {
-    console.warn(`Brand "${brandName}" not in official mapping, using fallback code: ${brandAbbr}`)
-  }
+  if (isFallback) console.warn(`Brand "${brandName}" not in mapping, using fallback code: ${brandAbbr}`)
 }
 
+// ========== NAVIGATION ==========
 const goToStep = (step: number) => {
-  if (step === 2 && !canProceedToProducts.value) {
-    alert(t('Please complete all required brand information first'))
-    return
-  }
+  if (step === 2 && !canProceedToProducts.value) { alert(t('Complete brand info first')); return }
   currentStep.value = step
 }
 
-const saveBrandAndProducts = async () => {
-  if (!authStore.isAuthenticated) {
-    alert(t('You must be logged in to perform this action'))
-    return
-  }
-  
-  if (!authStore.isAdmin) {
-    alert(t('You must be logged in as an admin to perform this action'))
-    return
-  }
-  
-  if (!validateForm()) {
-    return
-  }
-  
-  if (products.value.length === 0) {
-    alert(t('Please add at least one product'))
-    return
-  }
-  
-  if (!editing.value) {
-    generateSkuBatch(formData.name)
-  }
-  
-  loading.value = true
-  
+// ========== LOAD EXISTING PRODUCTS ==========
+const loadExistingProducts = async (brandSlug: string) => {
   try {
-    let brandImage = formData.image
-    if (brandImageBase64.value) {
-      brandImage = brandImageBase64.value
+    const brandProducts = await productsStore.getProductsByBrand(brandSlug)
+    if (brandProducts?.length) {
+      products.value = brandProducts.map(p => ({
+        id: p.id, name: p.name || { en: '', ar: '' }, description: p.description || { en: '', ar: '' },
+        price: p.price, size: p.size || '100ml', concentration: p.concentration || 'Eau de Parfum',
+        classification: p.classification || '', imageUrl: p.imageUrl || '', images: p.images || [],
+        inStock: p.inStock !== false, isBestSeller: p.isBestSeller || false, isFeatured: p.isFeatured || false,
+        slug: p.slug || '', brand: p.brand || brandSlug, brandId: p.brandId || '', category: p.category || '', sku: p.sku || ''
+      }))
     }
-    
+  } catch (e) { console.error(e) }
+}
+
+// ========== SAVE ==========
+const saveBrandAndProducts = async () => {
+  if (!authStore.isAuthenticated || !authStore.isAdmin) { alert(t('Admin login required')); return }
+  if (!validateForm()) return
+  if (!products.value.length) { alert(t('Add at least one product')); return }
+  if (!editing.value) generateSkuBatch(formData.name)
+
+  loading.value = true
+  try {
     const brandData: Partial<Brand> = {
-      name: formData.name,
-      slug: formData.slug,
-      image: brandImage,
-      signature: formData.signature || '',
-      category: formData.category,
-      description: formData.description || '',
-      isActive: formData.isActive !== false
+      name: formData.name, slug: formData.slug,
+      image: brandImageBase64.value || formData.image,
+      signature: formData.signature || '', category: formData.category,
+      description: formData.description || '', isActive: formData.isActive !== false
     }
-    
-    const productsData: Partial<Product>[] = products.value.map((product) => {
-      const imageUrl = product.imageBase64 || product.imageUrl || ''
-      
-      const productSlug = product.slug || (product.name?.en || '')
-        .toLowerCase()
-        .replace(/[^\w\s-]/g, '')
-        .replace(/\s+/g, '-')
-        .replace(/--+/g, '-')
-        .trim()
-      
-      const name = product.name || { en: '', ar: '' }
-      const description = product.description || { en: '', ar: '' }
-      
-      return {
-        name: name,
-        description: description,
-        price: Number(product.price) || 0,
-        size: product.size || '100ml',
-        concentration: product.concentration || 'Eau de Parfum',
-        classification: product.classification || '',
-        imageUrl: imageUrl,
-        images: imageUrl ? [imageUrl] : [],
-        inStock: product.inStock !== false,
-        isBestSeller: product.isBestSeller || false,
-        isFeatured: product.isFeatured || false,
-        slug: productSlug,
-        brand: formData.slug,
-        brandId: '',
-        category: product.category || formData.category,
-        sku: product.sku || ''
-      }
-    })
-    
+    const productsData = products.value.map(p => ({
+      name: p.name || { en: '', ar: '' }, description: p.description || { en: '', ar: '' },
+      price: Number(p.price) || 0, size: p.size || '100ml', concentration: p.concentration || 'Eau de Parfum',
+      classification: p.classification || '', imageUrl: p.imageBase64 || p.imageUrl || '',
+      images: p.imageBase64 ? [p.imageBase64] : (p.imageUrl ? [p.imageUrl] : []),
+      inStock: p.inStock !== false, isBestSeller: p.isBestSeller || false, isFeatured: p.isFeatured || false,
+      slug: p.slug || (p.name?.en || '').toLowerCase().replace(/[^\w\s-]/g,'').replace(/\s+/g,'-'),
+      brand: formData.slug, brandId: '', category: p.category || formData.category, sku: p.sku || ''
+    }))
+
     let result: string | null = null
-    
     if (editing.value && formData.id) {
       const success = await brandsStore.updateBrand(formData.id, brandData)
-      if (success) {
-        result = formData.id
-        alert('Brand updated successfully! Product updates are not yet implemented.')
-      }
+      if (success) result = formData.id
     } else {
       result = await brandsStore.addBrandWithProducts(brandData, productsData)
     }
-    
     if (result) {
       await homepageStore.loadHomepageData()
       await productsStore.fetchProducts()
-      
-      alert(t('Brand and products saved successfully!'))
-      
-      emit('save', {
-        brand: brandData,
-        products: productsData
-      })
-      
+      alert(t('Brand saved successfully'))
+      emit('save', { brand: brandData, products: productsData })
       emit('close')
-    } else {
-      throw new Error('Failed to save brand - store operation returned null')
-    }
-    
-  } catch (error: any) {
-    console.error('Error saving brand and products:', error)
-    
-    if (error.message?.includes('permission') || error.message?.includes('Missing or insufficient')) {
-      alert(t('Permission denied. Please check if you have admin privileges.'))
-    } else if (error.message?.includes('longer than 1048487 bytes')) {
-      alert(t('Image file is too large. Please use smaller images (under 100KB each).'))
-    } else if (error.message?.includes('already exists')) {
-      alert(t('Brand slug already exists. Please choose a different slug.'))
-    } else if (error.message?.includes('exceeds Firestore 1MB limit')) {
-      alert(t('Total data too large. Reduce image sizes or number of products.'))
-    } else {
-      alert(t('Failed to save: ') + (error.message || t('Unknown error')))
-    }
-  } finally {
-    loading.value = false
-  }
+    } else throw new Error('Save failed')
+  } catch (err: any) {
+    console.error(err)
+    if (err.message?.includes('permission')) alert(t('Permission denied'))
+    else if (err.message?.includes('already exists')) alert(t('Slug already exists'))
+    else alert(t('Error: ') + err.message)
+  } finally { loading.value = false }
 }
 
-const close = () => {
-  if (loading.value) return
-  emit('close')
-}
+const close = () => { if (!loading.value) emit('close') }
 
+// ========== LIFECYCLE ==========
 onMounted(() => {
-  const handleKeydown = (e: KeyboardEvent) => {
-    if (e.key === 'Escape') {
-      close()
-    }
-  }
-  document.addEventListener('keydown', handleKeydown)
-  
-  onUnmounted(() => {
-    document.removeEventListener('keydown', handleKeydown)
-  })
-})
+  if (props.brand) {
+    Object.assign(formData, {
+      id: props.brand.id || '', name: props.brand.name || '', image: props.brand.image || '',
+      signature: props.brand.signature || '', slug: props.brand.slug || '',
+      category: props.brand.category || '', description: props.brand.description || '',
+      isActive: props.brand.isActive !== undefined ? props.brand.isActive : true
+    })
+    if (formData.image) imagePreview.value = formData.image
+    if (props.brand.slug) loadExistingProducts(props.brand.slug)
+  } else addNewProduct()
 
-// Ensure onUnmounted is called properly
-let cleanup: (() => void) | undefined
-
-onMounted(() => {
-  const handleKeydown = (e: KeyboardEvent) => {
-    if (e.key === 'Escape') {
-      close()
-    }
-  }
-  document.addEventListener('keydown', handleKeydown)
-  cleanup = () => document.removeEventListener('keydown', handleKeydown)
-})
-
-onUnmounted(() => {
-  if (cleanup) cleanup()
+  const handleKey = (e: KeyboardEvent) => { if (e.key === 'Escape') close() }
+  document.addEventListener('keydown', handleKey)
+  onUnmounted(() => document.removeEventListener('keydown', handleKey))
 })
 </script>
 
