@@ -390,7 +390,6 @@
           :products="filteredProducts"
           @view-product="viewProduct"
           @add-to-cart="addToCart"
-          :show-admin-actions="false"
         />
 
         <!-- No Results Message - Compact -->
