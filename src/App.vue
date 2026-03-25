@@ -411,7 +411,7 @@ import LuxuryCartSidebar from '@/components/Cart/LuxuryCartSidebar.vue'
 import LuxurySearchModal from '@/components/search/SearchModal.vue'
 import LuxuryNotificationCenter from '@/components/UI/LuxuryNotificationCenter.vue'
 import AdminSidebar from '@/components/Admin/AdminSidebar.vue'
-import MarketingLayout.vue from '@/components/Layout/MarketingLayout.vue'
+import MarketingLayout from '@/components/Layout/MarketingLayout.vue'
 
 // Router
 const router = useRouter()
