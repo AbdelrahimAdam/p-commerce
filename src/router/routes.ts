@@ -1,15 +1,14 @@
+// src/router/routes.ts
 import type { RouteRecordRaw } from 'vue-router'
 import type { Language } from '@/types'
-
-// Import HomeRouter for dynamic root routing
-import HomeRouter from '@/components/Layout/HomeRouter.vue'
 
 export const routes: Array<RouteRecordRaw> = [
   // ========== PUBLIC ROUTES (NO LOGIN REQUIRED) ==========
   {
     path: '/',
     name: 'home',
-    component: HomeRouter,
+    // ✅ Dynamic import – no static import needed
+    component: () => import('@/components/Layout/HomeRouter.vue'),
     meta: {
       title: {
         en: 'Luxury Perfumes | Premium Fragrances Collection',
