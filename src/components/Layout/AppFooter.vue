@@ -742,5 +742,5 @@ onUnmounted(() => {
 </style>
 
 <script lang="ts">
-export const Footer = {}
+export const AppFooter = {}
 </script>
