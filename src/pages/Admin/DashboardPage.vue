@@ -265,7 +265,7 @@
     <!-- Modals -->
     <AddOfferModal
       v-if="showAddOfferModal"
-      :offerData="editingOfferData"
+      :initialOffer="editingOfferData"
       @close="closeAddOfferModal"
       @save="handleOfferSave"
     />
