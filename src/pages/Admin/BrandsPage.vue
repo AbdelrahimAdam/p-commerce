@@ -365,7 +365,6 @@
     <BrandFormModal
       v-if="showAddModal || editingBrand"
       :brand="editingBrand || undefined"
-      :mode="editingBrand ? 'edit' : 'add'"
       @close="closeModal"
       @saved="handleBrandSaved"
     />
@@ -436,7 +435,7 @@
             </button>
           </div>
         </div>
-        
+
         <div class="p-6">
           <div class="grid md:grid-cols-2 gap-8 mb-8">
             <!-- Brand Information -->
@@ -458,7 +457,7 @@
                   </span>
                 </div>
               </div>
-              
+
               <div class="space-y-4">
                 <div>
                   <p class="text-sm text-gray-600">{{ t('Category') }}</p>
@@ -488,7 +487,7 @@
               <h4 class="text-sm font-semibold text-gray-900 uppercase tracking-wider mb-4">
                 {{ t('Products') }} ({{ viewingBrand.productIds?.length || 0 }})
               </h4>
-              
+
               <div v-if="viewingBrand.productIds?.length" class="space-y-3">
                 <div 
                   v-for="productId in viewingBrand.productIds.slice(0, 10)" 
@@ -511,14 +510,14 @@
                     </button>
                   </div>
                 </div>
-                
+
                 <div v-if="viewingBrand.productIds.length > 10" class="text-center pt-2">
                   <p class="text-sm text-gray-500">
                     +{{ viewingBrand.productIds.length - 10 }} {{ t('more products') }}
                   </p>
                 </div>
               </div>
-              
+
               <div v-else class="text-center py-8 text-gray-500">
                 {{ t('No products assigned to this brand yet') }}
               </div>
