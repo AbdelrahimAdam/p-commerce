@@ -7,7 +7,7 @@
         <h1 class="text-2xl font-bold text-gray-800 mb-2">{{ t('Homepage Management') }}</h1>
         <p class="text-gray-600">{{ t('Manage all homepage sections and content') }}</p>
       </div>
-      
+
       <div class="flex items-center gap-3">
         <!-- Preview Button -->
         <router-link
@@ -20,7 +20,7 @@
           </svg>
           {{ t('Preview') }}
         </router-link>
-        
+
         <!-- Refresh Store Data -->
         <button 
           @click="refreshStoreData"
@@ -36,7 +36,7 @@
           </svg>
           {{ t('Refresh Data') }}
         </button>
-        
+
         <!-- Save Button -->
         <button 
           @click="saveAllChanges"
@@ -77,7 +77,7 @@
           </svg>
           {{ t('Last updated:') }} {{ formatDateTime(lastUpdated) }}
         </p>
-        
+
         <!-- Sync Status -->
         <div class="text-sm flex items-center gap-2" :class="homepageStore.isListening ? 'text-green-600' : 'text-yellow-600'">
           <div class="w-2 h-2 rounded-full" :class="homepageStore.isListening ? 'bg-green-500 animate-pulse' : 'bg-yellow-500'"></div>
@@ -87,7 +87,7 @@
     </div>
 
     <!-- Data Overview Cards -->
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
       <div class="bg-white p-4 rounded-lg shadow border">
         <div class="flex items-center justify-between">
           <div>
@@ -101,7 +101,7 @@
           </div>
         </div>
       </div>
-      
+
       <div class="bg-white p-4 rounded-lg shadow border">
         <div class="flex items-center justify-between">
           <div>
@@ -115,21 +115,7 @@
           </div>
         </div>
       </div>
-      
-      <div class="bg-white p-4 rounded-lg shadow border">
-        <div class="flex items-center justify-between">
-          <div>
-            <p class="text-sm text-gray-500">{{ t('Marquee Brands') }}</p>
-            <p class="text-2xl font-bold text-gray-800">{{ homepageData.marqueeBrands?.length || 0 }}</p>
-          </div>
-          <div class="p-2 bg-blue-50 rounded-lg">
-            <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
-            </svg>
-          </div>
-        </div>
-      </div>
-      
+
       <div class="bg-white p-4 rounded-lg shadow border">
         <div class="flex items-center justify-between">
           <div>
@@ -192,15 +178,6 @@
         <OffersEditor
           :offers="offersForEditor"
           @update="handleActiveOffersUpdate"
-          @change-detected="handleChangeDetected"
-        />
-      </div>
-
-      <!-- Marquee Brands Tab -->
-      <div v-if="activeTab === 'marquee'" class="space-y-6">
-        <MarqueeBrandsEditor
-          :brands="homepageData.marqueeBrands || []"
-          @update="handleMarqueeBrandsUpdate"
           @change-detected="handleChangeDetected"
         />
       </div>
@@ -339,12 +316,11 @@ import FeaturedBrandsEditor from './FeaturedBrandsEditor.vue'
 import OffersEditor from './OffersEditor.vue'
 import SettingsEditor from './SettingsEditor.vue'
 
-// Heroicons v2 imports (using aliases to preserve original naming)
+// Heroicons v2 imports
 import {
   PhotoIcon as PhotographIcon,
   Squares2X2Icon as CollectionIcon,
   TagIcon,
-  ArrowRightCircleIcon as ArrowCircleRightIcon,
   Cog6ToothIcon as CogIcon,
   ExclamationTriangleIcon as ExclamationCircleIcon
 } from '@heroicons/vue/24/outline'
@@ -382,12 +358,11 @@ const homepageData = computed<ExtendedHomepageData>(() => homepageStore.homepage
 
 const isLoading = computed(() => homepageStore.isLoading)
 
-// Tabs configuration
+// Tabs configuration (Marquee tab removed)
 const tabs = [
   { id: 'hero', label: t('Hero Banner'), icon: PhotographIcon },
   { id: 'brands', label: t('Featured Brands'), icon: CollectionIcon },
   { id: 'offers', label: t('Special Offers'), icon: TagIcon },
-  { id: 'marquee', label: t('Marquee Brands'), icon: ArrowCircleRightIcon },
   { id: 'settings', label: t('Settings'), icon: CogIcon },
   { id: 'danger', label: t('Danger Zone'), icon: ExclamationCircleIcon }
 ]
@@ -426,7 +401,6 @@ onMounted(async () => {
     console.log('📊 Homepage data loaded:', {
       brands: homepageData.value.featuredBrands?.length || 0,
       offers: homepageData.value.activeOffers?.length || 0,
-      marquee: homepageData.value.marqueeBrands?.length || 0,
       lastUpdated: homepageData.value.lastUpdated || 'Never'
     })
     
@@ -511,23 +485,6 @@ const handleActiveOffersUpdate = (offers: any[]) => {
   homepageStore.homepageData.activeOffers = offers
   
   statusMessage.value = t('Offers updated locally. Click Save to apply.')
-  statusType.value = 'success'
-  
-  setTimeout(() => {
-    if (statusMessage.value.includes('locally')) {
-      statusMessage.value = ''
-    }
-  }, 3000)
-}
-
-const handleMarqueeBrandsUpdate = (brands: any[]) => {
-  hasChanges.value = true
-  console.log('🔄 Marquee brands update received:', brands.length, 'brands')
-  
-  // Update store directly
-  homepageStore.homepageData.marqueeBrands = brands
-  
-  statusMessage.value = t('Marquee brands updated locally. Click Save to apply.')
   statusType.value = 'success'
   
   setTimeout(() => {
@@ -635,9 +592,6 @@ const saveAllChanges = async () => {
     }
     if (homepageStore.homepageData?.activeOffers) {
       updates.activeOffers = homepageStore.homepageData.activeOffers
-    }
-    if (homepageStore.homepageData?.marqueeBrands) {
-      updates.marqueeBrands = homepageStore.homepageData.marqueeBrands
     }
     if (homepageStore.homepageData?.settings) {
       updates.settings = homepageStore.homepageData.settings
@@ -815,13 +769,6 @@ const clearAllImages = async () => {
       homepageStore.homepageData.activeOffers = homepageStore.homepageData.activeOffers.map((offer: any) => ({
         ...offer,
         imageUrl: '/images/placeholder-offer.jpg'
-      }))
-    }
-    
-    if (homepageStore.homepageData.marqueeBrands) {
-      homepageStore.homepageData.marqueeBrands = homepageStore.homepageData.marqueeBrands.map((brand: any) => ({
-        ...brand,
-        logo: '/images/placeholder-logo.png'
       }))
     }
     
