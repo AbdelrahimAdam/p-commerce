@@ -69,8 +69,8 @@
           </button>
           <input
             type="file"
-            :ref="(el) => setFileInputRef(el, index)"
-            @change="(event) => handleBrandImageUpload(event, index)"
+            :ref="(el: HTMLInputElement | null) => setFileInputRef(el, index)"
+            @change="(event: Event) => handleBrandImageUpload(event, index)"
             accept="image/*"
             class="hidden"
           />
@@ -226,13 +226,9 @@ const fileInputs = ref<(HTMLInputElement | null)[]>([])
 const showDebug = ref(false)
 const uploadStatus = ref<UploadStatus | null>(null)
 
-// Helper: set file input ref – accept any to avoid type mismatch
-const setFileInputRef = (el: any, index: number) => {
-  if (el instanceof HTMLInputElement) {
-    fileInputs.value[index] = el
-  } else {
-    fileInputs.value[index] = null
-  }
+// Helper: set file input ref – now with proper type
+const setFileInputRef = (el: HTMLInputElement | null, index: number) => {
+  fileInputs.value[index] = el
 }
 
 // Show status message
