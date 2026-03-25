@@ -5,19 +5,27 @@
     "lib": ["ES2020", "DOM", "DOM.Iterable"],
     "module": "ESNext",
     "skipLibCheck": true,
-
+    
+    // Module resolution
     "moduleResolution": "bundler",
     "allowImportingTsExtensions": true,
     "resolveJsonModule": true,
     "isolatedModules": true,
     "noEmit": true,
-
+    
+    // JSX support for Vue
     "jsx": "preserve",
+    
+    // Strict type checking
     "strict": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
-
+    "noImplicitReturns": true,
+    "noImplicitOverride": true,
+    "noPropertyAccessFromIndexSignature": false,
+    
+    // Path aliases
     "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"],
@@ -25,14 +33,56 @@
       "@pages/*": ["./src/pages/*"],
       "@stores/*": ["./src/stores/*"],
       "@utils/*": ["./src/utils/*"],
-      "@types/*": ["./src/types/*"]
-    }
+      "@types/*": ["./src/types/*"],
+      "@assets/*": ["./src/assets/*"],
+      "@layouts/*": ["./src/layouts/*"],
+      "@constants/*": ["./src/constants/*"]
+    },
+    
+    // Type checking improvements
+    "allowJs": false,
+    "checkJs": false,
+    
+    // Module features
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "forceConsistentCasingInFileNames": true,
+    
+    // Experimental features
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    
+    // Advanced
+    "incremental": false,
+    "declaration": false,
+    "sourceMap": false
   },
-
+  
   "include": [
     "src/**/*.ts",
     "src/**/*.d.ts",
     "src/**/*.tsx",
-    "src/**/*.vue"
+    "src/**/*.vue",
+    "src/**/*.js",
+    "src/**/*.jsx"
+  ],
+  
+  "exclude": [
+    "node_modules",
+    "dist",
+    "build",
+    "**/*.spec.ts",
+    "**/*.test.ts"
+  ],
+  
+  "vueCompilerOptions": {
+    "target": 3,
+    "strictTemplates": true,
+    "experimentalCompatMode": 3,
+    "skipTemplateCodegen": false
+  },
+  
+  "references": [
+    { "path": "./tsconfig.node.json" }
   ]
 }
