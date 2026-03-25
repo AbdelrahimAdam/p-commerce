@@ -33,7 +33,6 @@
   "devDependencies": {
     "@playwright/test": "^1.40.0",
     "@testing-library/vue": "^8.0.0",
-    "@types/html2pdf.js": "^0.10.3",
     "@types/lodash": "^4.17.24",
     "@types/node": "^20.10.0",
     "@typescript-eslint/eslint-plugin": "^7.0.0",
