@@ -21,7 +21,7 @@
         />
         <div class="gradient-overlay"></div>
       </div>
-      
+
       <div class="banner-container">
         <router-link :to="heroBanner.linkUrl || '/shop'" class="shop-now-link">
           <span class="link-icon">↗</span>
@@ -44,7 +44,7 @@
               </router-link>
             </div>
           </div>
-          
+
           <div class="main-content-layout">
             <div class="featured-brands-section">
               <div v-if="displayBrands.length > 0" class="brands-grid">
@@ -85,7 +85,7 @@
             <aside class="offer-sidebar">
               <div v-if="activeOffers.length > 0" class="offer-card offer-card-slider">
                 <div class="offer-badge">{{ t('offer') }}</div>
-                
+
                 <Transition name="fade" mode="out-in">
                   <div
                     v-if="activeOffers.length > 0"
@@ -115,7 +115,7 @@
                     </div>
                   </div>
                 </Transition>
-                
+
                 <div v-if="activeOffers.length > 1" class="slide-indicators">
                   <span
                     v-for="(_, index) in activeOffers"
@@ -143,7 +143,7 @@
                 <span class="explore-icon">↗</span>
               </router-link>
             </div>
-            
+
             <div v-if="displayBrands.length > 0" class="brands-grid">
               <router-link
                 v-for="brand in displayBrands"
@@ -178,7 +178,7 @@
           <aside class="offer-sidebar">
             <div v-if="activeOffers.length > 0" class="offer-card offer-card-slider">
               <div class="offer-badge">{{ t('exclusive') }}</div>
-              
+
               <Transition name="fade" mode="out-in">
                 <div
                   v-if="activeOffers.length > 0"
@@ -208,7 +208,7 @@
                   </div>
                 </div>
               </Transition>
-              
+
               <div v-if="activeOffers.length > 1" class="slide-indicators">
                 <span
                   v-for="(_, index) in activeOffers"
@@ -236,6 +236,13 @@ import { useLanguageStore } from '@/stores/language'
 import { useHomepageStore } from '@/stores/homepage'
 import { useBrandsStore } from '@/stores/brands'
 import type { Brand } from '@/types'
+
+// ========== PROPS ==========
+// The isPreview prop is used to indicate when the homepage is rendered in the admin preview.
+// It is not used in the template to keep logic unchanged.
+const props = defineProps<{
+  isPreview?: boolean
+}>()
 
 // Transparent 1x1 GIF placeholder (data URI) – no network request
 const PLACEHOLDER_IMAGE = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///y5BAEAAAAALAAAAAABAAEAAAIBRAA7'
