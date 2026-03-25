@@ -105,8 +105,8 @@
                   </label>
                   <input
                     type="file"
-                    :ref="(el) => setFileInputRef(el, index)"
-                    @change="(event) => handleImageUpload(event, index)"
+                    :ref="(el: HTMLInputElement | null) => setFileInputRef(el, index)"
+                    @change="(event: Event) => handleImageUpload(event, index)"
                     accept="image/jpeg,image/png,image/webp"
                     class="hidden"
                   />
@@ -384,13 +384,9 @@ const offersData = ref<Offer[]>(props.offers.map(offer => ({
 
 const fileInputs = ref<(HTMLInputElement | null)[]>([])
 
-// Helper to set file input refs (accepts Vue component instance or element)
-const setFileInputRef = (el: any, index: number) => {
-  if (el instanceof HTMLInputElement) {
-    fileInputs.value[index] = el
-  } else {
-    fileInputs.value[index] = null
-  }
+// Helper to set file input refs – now properly typed
+const setFileInputRef = (el: HTMLInputElement | null, index: number) => {
+  fileInputs.value[index] = el
 }
 
 // Methods
