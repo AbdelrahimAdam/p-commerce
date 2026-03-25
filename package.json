@@ -22,6 +22,7 @@
     "@supabase/supabase-js": "^2.99.3",
     "@vueuse/core": "^10.7.0",
     "date-fns": "^4.1.0",
+    "html2pdf.js": "^0.10.1",
     "pinia": "^2.1.0",
     "uuid": "^9.0.0",
     "vue": "^3.4.0",
@@ -32,6 +33,7 @@
   "devDependencies": {
     "@playwright/test": "^1.40.0",
     "@testing-library/vue": "^8.0.0",
+    "@types/html2pdf.js": "^0.10.3",
     "@types/lodash": "^4.17.24",
     "@types/node": "^20.10.0",
     "@typescript-eslint/eslint-plugin": "^7.0.0",
