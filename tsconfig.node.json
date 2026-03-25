@@ -6,7 +6,30 @@
     "moduleResolution": "bundler",
     "allowSyntheticDefaultImports": true,
     "strict": true,
-    "noEmit": true
+    "noEmit": true,
+    "target": "ES2020",
+    "lib": ["ES2020"],
+    "types": ["node", "vite/client"],
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "forceConsistentCasingInFileNames": true
   },
-  "include": ["vite.config.ts"]
+  "include": [
+    "vite.config.ts",
+    "vite.config.*.ts",
+    "vitest.config.ts",
+    "vitest.config.*.ts",
+    "cypress.config.ts",
+    "playwright.config.ts",
+    "vercel.config.ts",
+    "netlify.config.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "build",
+    "**/*.spec.ts",
+    "**/*.test.ts"
+  ]
 }
