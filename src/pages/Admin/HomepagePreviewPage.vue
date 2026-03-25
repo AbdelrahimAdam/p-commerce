@@ -23,7 +23,7 @@
         </div>
       </div>
     </div>
-    
+
     <!-- Preview Container -->
     <div class="preview-container">
       <HomePage :isPreview="true" />
@@ -60,3 +60,22 @@ const saveChanges = async () => {
   }
 }
 </script>
+
+<style scoped>
+.homepage-preview-page {
+  min-height: 100vh;
+  background-color: #f9fafb;
+}
+
+.preview-header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background-color: white;
+}
+
+.preview-container {
+  padding: 20px;
+  background-color: #f9fafb;
+}
+</style>
