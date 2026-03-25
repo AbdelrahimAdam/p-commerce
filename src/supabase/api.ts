@@ -1,13 +1,20 @@
-import type { NextApiRequest, NextApiResponse } from 'next'
+// /api/register-company.ts
+import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { createClient } from '@supabase/supabase-js'
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+export default async function handler(req: VercelRequest, res: VercelResponse) {
+  // Only allow POST requests
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' })
   }
 
   try {
     const { email, password, displayName, companyName, domain } = req.body
+
+    // Validate required fields
+    if (!email || !password || !displayName || !companyName || !domain) {
+      return res.status(400).json({ error: 'Missing required fields' })
+    }
 
     // Use service role client (bypasses RLS)
     const supabaseAdmin = createClient(
@@ -29,6 +36,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const tenantId = `${baseSlug}-${Date.now()}`
 
     const rootDomain = process.env.VITE_ROOT_DOMAIN
+    if (!rootDomain) {
+      throw new Error('VITE_ROOT_DOMAIN environment variable is not set')
+    }
     const fullDomain = `${domain}.${rootDomain}`
 
     // 1. Create the user (using service role)
@@ -44,6 +54,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     })
 
     if (userError) throw userError
+    if (!userData.user) throw new Error('Failed to create user')
     const userId = userData.user.id
 
     // 2. Create the tenant
