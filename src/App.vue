@@ -364,7 +364,7 @@
       </main>
 
       <!-- Footer -->
-      <LuxuryFooter />
+      <Footer />
 
       <!-- Global Components -->
       <LuxuryCartSidebar />
@@ -406,7 +406,7 @@ import { getLocalizedTitle } from '@/router/routes'
 // Luxury Components
 import SEOHead from '@/components/UI/SEOHead.vue'
 import LuxuryHeader from '@/components/Layout/LuxuryHeader.vue'
-import LuxuryFooter from '@/components/Layout/LuxuryFooter.vue'
+import Footer from '@/components/Layout/Footer.vue'
 import LuxuryCartSidebar from '@/components/Cart/LuxuryCartSidebar.vue'
 import LuxurySearchModal from '@/components/search/SearchModal.vue'
 import LuxuryNotificationCenter from '@/components/UI/LuxuryNotificationCenter.vue'
