@@ -331,9 +331,9 @@
 
     <!-- LANDING LAYOUT (Marketing) -->
     <template v-else-if="routeLayout === 'landing'">
-      <LandingLayout>
+      <MarketingLayout>
         <router-view />
-      </LandingLayout>
+      </MarketingLayout>
     </template>
 
     <!-- DEFAULT LAYOUT (Main Store) - OPTIMIZED SPACING -->
@@ -411,7 +411,7 @@ import LuxuryCartSidebar from '@/components/Cart/LuxuryCartSidebar.vue'
 import LuxurySearchModal from '@/components/search/SearchModal.vue'
 import LuxuryNotificationCenter from '@/components/UI/LuxuryNotificationCenter.vue'
 import AdminSidebar from '@/components/Admin/AdminSidebar.vue'
-import LandingLayout from '@/components/Layout/LandingLayout.vue'
+import MarketingLayout.vue from '@/components/Layout/MarketingLayout.vue'
 
 // Router
 const router = useRouter()
