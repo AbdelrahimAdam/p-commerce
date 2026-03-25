@@ -1,9 +1,13 @@
+// scripts/generate-sitemap.ts
 import { writeFileSync, readdirSync, existsSync, mkdirSync } from 'fs'
-import { collection, getDocs, query, where, orderBy } from 'firebase/firestore'
-import { db } from './src/firebase/config.js'
+import { createClient } from '@supabase/supabase-js'
+import dotenv from 'dotenv'
+
+// Load environment variables
+dotenv.config({ path: '.env.local' })
 
 // Configuration
-const BASE_URL = process.env.VITE_APP_URL || 'https://luxury-perfume-store.com'
+const BASE_URL = process.env.VITE_APP_URL || 'https://p-commerce-peach.vercel.app'
 const OUTPUT_DIR = './public'
 const OUTPUT_FILE = 'sitemap.xml'
 
@@ -17,7 +21,8 @@ const PRIORITY = {
   home: '1.0',
   category: '0.9',
   product: '0.8',
-  static: '0.7'
+  static: '0.7',
+  brand: '0.8'
 }
 
 // Frequency mapping
@@ -25,23 +30,63 @@ const FREQUENCY = {
   home: 'daily',
   category: 'weekly',
   product: 'monthly',
-  static: 'monthly'
+  static: 'monthly',
+  brand: 'weekly'
+}
+
+// Initialize Supabase client (using service role for admin access)
+const supabase = createClient(
+  process.env.VITE_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false
+    }
+  }
+)
+
+interface Product {
+  id: string
+  slug: string
+  updated_at: string
+  is_active: boolean
+}
+
+interface Brand {
+  id: string
+  slug: string
+  updated_at: string
+  is_active: boolean
+}
+
+interface Category {
+  id: string
+  name: string
+  slug: string
 }
 
 async function generateSitemap() {
   console.log('🔍 Generating sitemap...')
-  
+  console.log(`📍 Base URL: ${BASE_URL}`)
+
   let xml = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
         xsi:schemaLocation="http://www.sitemaps.org/schemas/sitemap/0.9
         http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd">`
 
-  // Static pages
+  // Static pages (always included)
   const staticPages = [
     { loc: '/', priority: PRIORITY.home, changefreq: FREQUENCY.home },
+    { loc: '/shop', priority: PRIORITY.static, changefreq: FREQUENCY.static },
+    { loc: '/brands', priority: PRIORITY.static, changefreq: FREQUENCY.static },
+    { loc: '/offers', priority: PRIORITY.static, changefreq: FREQUENCY.static },
+    { loc: '/collections', priority: PRIORITY.static, changefreq: FREQUENCY.static },
     { loc: '/contact', priority: PRIORITY.static, changefreq: FREQUENCY.static },
-    { loc: '/cart', priority: PRIORITY.static, changefreq: FREQUENCY.static }
+    { loc: '/about', priority: PRIORITY.static, changefreq: FREQUENCY.static },
+    { loc: '/cart', priority: PRIORITY.static, changefreq: FREQUENCY.static },
+    { loc: '/wishlist', priority: PRIORITY.static, changefreq: FREQUENCY.static }
   ]
 
   staticPages.forEach(page => {
@@ -55,40 +100,75 @@ async function generateSitemap() {
   })
 
   try {
-    // Get categories
-    const categories = [
-      'mens', 'womens', 'unisex', 'arabic-oud', 
-      'french', 'niche', 'best-sellers', 'new-arrivals'
-    ]
+    // ==================== CATEGORIES ====================
+    console.log('📁 Fetching categories from Supabase...')
+    const { data: categories, error: categoriesError } = await supabase
+      .from('categories')
+      .select('id, name')
+      .limit(100)
 
-    categories.forEach(category => {
-      xml += `
+    if (categoriesError) throw categoriesError
+
+    if (categories && categories.length > 0) {
+      console.log(`✅ Found ${categories.length} categories`)
+      categories.forEach(category => {
+        // Create slug from category name
+        const slug = category.name?.toLowerCase().replace(/[^a-z0-9]+/g, '-') || category.id
+        
+        xml += `
+  <url>
+    <loc>${BASE_URL}/category/${slug}</loc>
+    <lastmod>${new Date().toISOString().split('T')[0]}</lastmod>
+    <changefreq>${FREQUENCY.category}</changefreq>
+    <priority>${PRIORITY.category}</priority>
+  </url>`
+      })
+    } else {
+      // Fallback to static categories
+      const fallbackCategories = [
+        'mens', 'womens', 'unisex', 'luxury', 'niche', 'best-sellers', 'new-arrivals'
+      ]
+      fallbackCategories.forEach(category => {
+        xml += `
   <url>
     <loc>${BASE_URL}/category/${category}</loc>
     <lastmod>${new Date().toISOString().split('T')[0]}</lastmod>
     <changefreq>${FREQUENCY.category}</changefreq>
     <priority>${PRIORITY.category}</priority>
   </url>`
-    })
+      })
+    }
 
-    // Get products from Firebase
-    console.log('📦 Fetching products from Firestore...')
-    
-    const productsQuery = query(
-      collection(db, 'products'),
-      orderBy('updatedAt', 'desc')
-    )
-    
-    const productsSnapshot = await getDocs(productsQuery)
-    
-    console.log(`✅ Found ${productsSnapshot.size} products`)
-    
-    productsSnapshot.forEach(doc => {
-      const product = doc.data()
-      const lastmod = product.updatedAt 
-        ? new Date(product.updatedAt.toDate()).toISOString().split('T')[0]
+    // ==================== PRODUCTS ====================
+    console.log('📦 Fetching products from Supabase...')
+    let allProducts: Product[] = []
+    let page = 0
+    const pageSize = 1000
+
+    while (true) {
+      const { data, error } = await supabase
+        .from('products')
+        .select('id, slug, updated_at, is_active')
+        .eq('is_active', true)
+        .order('updated_at', { ascending: false })
+        .range(page * pageSize, (page + 1) * pageSize - 1)
+
+      if (error) throw error
+      if (!data || data.length === 0) break
+
+      allProducts = [...allProducts, ...data]
+      page++
+
+      if (data.length < pageSize) break
+    }
+
+    console.log(`✅ Found ${allProducts.length} active products`)
+
+    allProducts.forEach(product => {
+      const lastmod = product.updated_at 
+        ? new Date(product.updated_at).toISOString().split('T')[0]
         : new Date().toISOString().split('T')[0]
-      
+
       xml += `
   <url>
     <loc>${BASE_URL}/product/${product.slug}</loc>
@@ -98,44 +178,90 @@ async function generateSitemap() {
   </url>`
     })
 
+    // ==================== BRANDS ====================
+    console.log('🏷️ Fetching brands from Supabase...')
+    const { data: brands, error: brandsError } = await supabase
+      .from('brands')
+      .select('id, slug, updated_at, is_active')
+      .eq('is_active', true)
+      .order('name', { ascending: true })
+
+    if (brandsError) throw brandsError
+
+    console.log(`✅ Found ${brands?.length || 0} active brands`)
+
+    brands?.forEach(brand => {
+      const lastmod = brand.updated_at 
+        ? new Date(brand.updated_at).toISOString().split('T')[0]
+        : new Date().toISOString().split('T')[0]
+
+      xml += `
+  <url>
+    <loc>${BASE_URL}/brand/${brand.slug}</loc>
+    <lastmod>${lastmod}</lastmod>
+    <changefreq>${FREQUENCY.brand}</changefreq>
+    <priority>${PRIORITY.brand}</priority>
+  </url>`
+    })
+
   } catch (error) {
     console.error('❌ Error fetching data:', error)
-    // Continue with static pages only
+    console.log('⚠️ Continuing with static pages only')
   }
 
   xml += '\n</urlset>'
 
-  // Write to file
-  writeFileSync(`${OUTPUT_DIR}/${OUTPUT_FILE}`, xml)
-  
-  console.log(`✅ Sitemap generated: ${OUTPUT_DIR}/${OUTPUT_FILE}`)
-  console.log(`🌐 Total URLs: ${xml.split('<url>').length - 1}`)
-  
+  // Write sitemap file
+  const outputPath = `${OUTPUT_DIR}/${OUTPUT_FILE}`
+  writeFileSync(outputPath, xml)
+
+  const urlCount = (xml.match(/<url>/g) || []).length
+  console.log(`✅ Sitemap generated: ${outputPath}`)
+  console.log(`🌐 Total URLs: ${urlCount}`)
+
   // Generate robots.txt if not exists
-  if (!existsSync(`${OUTPUT_DIR}/robots.txt`)) {
-    const robotsTxt = `User-agent: *
+  const robotsPath = `${OUTPUT_DIR}/robots.txt`
+  if (!existsSync(robotsPath)) {
+    const robotsTxt = `# P.COMMERCE robots.txt
+User-agent: *
 Allow: /
 Disallow: /admin/
 Disallow: /admin/*
 Disallow: /cart
+Disallow: /checkout
+Disallow: /account/
 
+# Sitemap
 Sitemap: ${BASE_URL}/sitemap.xml
 
+# Crawl delay (optional - adjust based on your server)
+Crawl-delay: 1
+
 # Security
-User-agent: *
 Disallow: /.env
 Disallow: /.git/
-Disallow: /wp-admin/
+Disallow: /node_modules/
+Disallow: /src/
+Disallow: /public/*.html
+Disallow: /*.json$
+Disallow: /*.xml$
+Allow: /sitemap.xml
 
-# Development
+# Development/Staging
 User-agent: *
 Disallow: /staging/
-Disallow: /test/`
+Disallow: /test/
+Disallow: /dev/`
 
-    writeFileSync(`${OUTPUT_DIR}/robots.txt`, robotsTxt)
+    writeFileSync(robotsPath, robotsTxt)
     console.log('✅ robots.txt generated')
+  } else {
+    console.log('📄 robots.txt already exists, skipping...')
   }
 }
 
-// Run the generator
-generateSitemap().catch(console.error)
+// Run the generator with error handling
+generateSitemap().catch((error) => {
+  console.error('❌ Sitemap generation failed:', error)
+  process.exit(1)
+})
