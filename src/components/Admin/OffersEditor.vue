@@ -7,7 +7,7 @@
         <h2 class="text-xl font-semibold text-gray-800">{{ t('Special Offers') }}</h2>
         <p class="text-gray-600">{{ t('Manage today\'s exclusive offers') }}</p>
       </div>
-      
+
       <div class="flex items-center gap-3">
         <span class="text-sm text-gray-500">
           {{ t('Offers:') }} {{ offersData.length }}
@@ -44,7 +44,7 @@
               {{ t('Inactive') }}
             </span>
           </div>
-          
+
           <div class="flex items-center gap-2">
             <!-- Toggle Active Status -->
             <button
@@ -62,7 +62,7 @@
                 ]"
               />
             </button>
-            
+
             <!-- Remove Button -->
             <button
               @click="removeOffer(index)"
@@ -83,7 +83,7 @@
             <div class="space-y-4">
               <div class="bg-gray-50 rounded-lg p-4">
                 <h3 class="font-medium text-gray-800 mb-3">{{ t('Product Image') }}</h3>
-                
+
                 <!-- Current Image -->
                 <div class="aspect-square rounded-lg overflow-hidden bg-gradient-to-br from-red-50 to-pink-50 mb-4">
                   <img
@@ -97,7 +97,7 @@
                     Base64
                   </div>
                 </div>
-                
+
                 <!-- Image Upload -->
                 <div>
                   <label class="block text-sm font-medium text-gray-700 mb-2">
@@ -128,7 +128,7 @@
             <div class="space-y-4">
               <div class="bg-gray-50 rounded-lg p-4">
                 <h3 class="font-medium text-gray-800 mb-3">{{ t('Offer Details') }}</h3>
-                
+
                 <div class="space-y-4">
                   <!-- Title -->
                   <div>
@@ -193,7 +193,7 @@
               <!-- Pricing -->
               <div class="bg-gray-50 rounded-lg p-4">
                 <h3 class="font-medium text-gray-800 mb-3">{{ t('Pricing') }}</h3>
-                
+
                 <div class="space-y-4">
                   <!-- Original Price -->
                   <div>
@@ -254,19 +254,19 @@
               <!-- Preview -->
               <div class="bg-red-50 rounded-lg p-4 border border-red-100">
                 <h3 class="font-medium text-gray-800 mb-3">{{ t('Preview') }}</h3>
-                
+
                 <div class="space-y-3">
                   <!-- Badge -->
                   <div class="px-3 py-1 bg-gradient-to-r from-red-500 to-pink-500 text-white rounded-full text-sm font-medium w-fit">
                     {{ t('Today\'s Exclusive Offer') }}
                   </div>
-                  
+
                   <!-- Title & Subtitle -->
                   <div>
                     <h4 class="font-semibold text-gray-800">{{ offer.title || t('Offer Title') }}</h4>
                     <p class="text-sm text-gray-600 mt-1">{{ offer.subtitle || t('Offer subtitle') }}</p>
                   </div>
-                  
+
                   <!-- Pricing -->
                   <div class="flex items-baseline gap-3">
                     <span class="text-2xl font-bold text-red-600">
@@ -276,7 +276,7 @@
                       {{ formatCurrency(offer.oldPrice) }} EGP
                     </span>
                   </div>
-                  
+
                   <!-- Buy Now Button -->
                   <button class="w-full px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 font-medium">
                     {{ t('Buy Now') }}
