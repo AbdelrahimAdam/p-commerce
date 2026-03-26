@@ -1,4 +1,3 @@
-<!-- src/components/Layout/HomeRouter.vue -->
 <template>
   <div v-if="isLoading" class="min-h-screen flex items-center justify-center">
     <div class="luxury-loading-spinner"></div>
@@ -6,49 +5,50 @@
   <component v-else :is="activeComponent" />
 </template>
 
-<script setup lang="ts">
-import { ref, computed, onMounted, shallowRef, type Component } from 'vue'
+<script lang="ts">
+import { defineComponent, ref, computed, onMounted, shallowRef } from 'vue'
 import { useTenantStore } from '@/stores/tenant'
 
-const tenantStore = useTenantStore()
-const isLoading = ref(true)
-const activeComponent = shallowRef<Component | null>(null)
+export default defineComponent({
+  name: 'HomeRouter',
+  setup() {
+    const tenantStore = useTenantStore()
+    const isLoading = ref(true)
+    const activeComponent = shallowRef<any>(null)
 
-// Determine if current tenant is the main domain (not a subdomain)
-const isMainDomain = computed(() => {
-  const hostname = window.location.hostname
-  const rootDomain = import.meta.env.VITE_ROOT_DOMAIN || 'p-commerce-peach.vercel.app'
-  
-  // Check if current hostname equals the root domain (no subdomain)
-  return hostname === rootDomain
+    const isMainDomain = computed(() => {
+      const hostname = window.location.hostname
+      const rootDomain = import.meta.env.VITE_ROOT_DOMAIN || 'p-commerce-peach.vercel.app'
+      return hostname === rootDomain
+    })
+
+    onMounted(async () => {
+      try {
+        await tenantStore.whenReady(5000)
+        console.log('✅ Tenant resolved:', tenantStore.tenantId)
+      } catch (err) {
+        console.warn('Tenant resolution timed out or failed, falling back to store home')
+      }
+
+      if (isMainDomain.value) {
+        const module = await import('@/pages/LandingPage.vue')
+        activeComponent.value = module.default
+      } else {
+        const module = await import('@/pages/HomePage.vue')
+        activeComponent.value = module.default
+      }
+
+      isLoading.value = false
+    })
+
+    return {
+      isLoading,
+      activeComponent
+    }
+  }
 })
 
-onMounted(async () => {
-  // Wait for tenant resolution with a 5-second timeout
-  try {
-    await tenantStore.whenReady(5000)
-    console.log('✅ Tenant resolved:', tenantStore.tenantId)
-  } catch (err) {
-    console.warn('Tenant resolution timed out or failed, falling back to store home')
-  }
-  
-  // Dynamically load the appropriate component based on domain
-  if (isMainDomain.value) {
-    // Load LandingPage dynamically
-    const module = await import('@/pages/LandingPage.vue')
-    activeComponent.value = module.default
-  } else {
-    // Load HomePage dynamically
-    const module = await import('@/pages/HomePage.vue')
-    activeComponent.value = module.default
-  }
-  
-  isLoading.value = false
-})
-</script>
-
-<script lang="ts">
-// Named export for compatibility with any named imports
+// Named export for any code that still expects it
 export const HomeRouter = {}
 </script>
 
