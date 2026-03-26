@@ -184,7 +184,7 @@ import { useAuthStore } from '@/stores/auth';
 
 const authStore = useAuthStore();
 
-// Get root domain from environment
+// Get root domain from environment (or default for localhost)
 const rootDomain = import.meta.env.VITE_ROOT_DOMAIN || 'localhost:5173';
 
 const form = ref({
@@ -223,7 +223,8 @@ const handleSubmit = async () => {
   error.value = null;
 
   try {
-    await authStore.registerCompany({
+    // Call the store method which should call the API
+    const result = await authStore.registerCompany({
       email: form.value.email,
       password: form.value.password,
       displayName: form.value.displayName,
@@ -231,14 +232,18 @@ const handleSubmit = async () => {
       domain: form.value.subdomain
     });
 
-    // Redirect to the new tenant's subdomain admin dashboard
-    const protocol = window.location.protocol; // "http:" or "https:"
-    const subdomain = form.value.subdomain;
-    const baseDomain = rootDomain; // e.g., "localhost:5173" or "perfume-commerce-rust.vercel.app"
-    const newUrl = `${protocol}//${subdomain}.${baseDomain}/admin/dashboard`;
-
-    // Full page redirect to the subdomain (cross‑domain navigation)
-    window.location.href = newUrl;
+    // The result should contain the full domain and tenantId
+    if (result && result.domain) {
+      // Redirect to the new tenant's subdomain admin dashboard
+      const protocol = window.location.protocol; // "http:" or "https:"
+      const newUrl = `${protocol}//${result.domain}/admin/dashboard`;
+      window.location.href = newUrl;
+    } else {
+      // Fallback: construct using the entered subdomain
+      const protocol = window.location.protocol;
+      const newUrl = `${protocol}//${form.value.subdomain}.${rootDomain}/admin/dashboard`;
+      window.location.href = newUrl;
+    }
   } catch (err: any) {
     error.value = err.message || 'Registration failed. Please try again.';
   } finally {
