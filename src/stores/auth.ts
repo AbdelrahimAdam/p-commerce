@@ -184,10 +184,8 @@ export const useAuthStore = defineStore('auth', () => {
 
       if (adminData) {
         setAdminUser(adminData)
-        const supabaseClient = supabaseSafe.client
         const updateData = { last_login: new Date().toISOString() }
-        const { error: updateError } = await supabaseClient
-          .from('admins')
+        const { error: updateError } = await getTable('admins')
           .update(updateData)
           .eq('id', userId)
         if (updateError) console.warn('Failed to update admin last_login:', updateError)
@@ -198,13 +196,11 @@ export const useAuthStore = defineStore('auth', () => {
 
       if (customerData) {
         setCustomerUser(customerData, credentials.remember)
-        const supabaseClient = supabaseSafe.client
         const updateData = {
           last_login: new Date().toISOString(),
           updated_at: new Date().toISOString()
         }
-        const { error: updateError } = await supabaseClient
-          .from('customers')
+        const { error: updateError } = await getTable('customers')
           .update(updateData)
           .eq('id', userId)
         if (updateError) console.warn('Failed to update customer last_login:', updateError)
