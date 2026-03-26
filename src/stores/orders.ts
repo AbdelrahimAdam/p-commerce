@@ -416,6 +416,7 @@ export const useOrdersStore = defineStore('orders', () => {
       const shippingAddressString = `${shippingAddress.address}, ${shippingAddress.city}, ${shippingAddress.country || 'Egypt'}`
 
       const client = getClient()
+      // Use `as any` to bypass strict type checking for RPC parameters
       const { data: orderData, error: rpcError } = await client.rpc('create_order', {
         _tenant_id: tenantId,
         _order_number: orderNumber,
@@ -444,7 +445,7 @@ export const useOrdersStore = defineStore('orders', () => {
         _user_id: currentUserId,
         _guest_id: guestId,
         _user_email: currentUserEmail
-      })
+      } as any)
 
       if (rpcError) throw rpcError
 
@@ -541,11 +542,12 @@ export const useOrdersStore = defineStore('orders', () => {
 
     try {
       const client = getClient()
+      // Use `as any` to avoid TypeScript inferring `never` for the result
       const { data: currentOrderData, error: fetchError } = await client
         .from('orders')
         .select('*')
         .eq('id', orderId)
-        .single()
+        .single() as any
 
       if (fetchError || !currentOrderData) throw new Error('Order not found')
       if (currentOrderData.tenant_id !== authStore.currentTenant) throw new Error('Order does not belong to this tenant')
@@ -589,10 +591,11 @@ export const useOrdersStore = defineStore('orders', () => {
 
         const items = currentOrderData.items as OrderItem[]
         for (const item of items) {
+          // Use `as any` for the RPC call
           const { error: stockError } = await client.rpc('adjust_product_stock', {
             _product_id: item.productId,
             _quantity: item.quantity
-          })
+          } as any)
           if (stockError) console.warn(`Failed to restore stock for product ${item.productId}:`, stockError)
         }
       }
@@ -640,7 +643,7 @@ export const useOrdersStore = defineStore('orders', () => {
       const updatePayload = { payment_status: paymentStatus, updated_at: new Date().toISOString() }
       const { error: updateError } = await client
         .from('orders')
-        .update(updatePayload)
+        .update(updatePayload as any)
         .eq('id', orderId)
 
       if (updateError) throw updateError
@@ -657,7 +660,7 @@ export const useOrdersStore = defineStore('orders', () => {
     }
   }
 
-  // Stubs
+  // Stubs (unchanged)
   const updateOrder = async (_orderId: string, _updateData: Partial<Order>) => false
   const cancelOrder = async (_orderId: string, _reason?: string) => false
   const deleteOrder = async (_orderId: string) => false
