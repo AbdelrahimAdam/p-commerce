@@ -966,7 +966,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { useLanguageStore } from '@/stores/language'
 import { useProductsStore } from '@/stores/products'
 import { useBrandsStore } from '@/stores/brands'
@@ -999,6 +999,51 @@ const emit = defineEmits<{
   saved: []
 }>()
 
+// ========== IMAGE COMPRESSION HELPER ==========
+const compressImage = async (file: File, maxWidth: number = 1200, quality: number = 0.8): Promise<File> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.readAsDataURL(file)
+    reader.onload = (e) => {
+      const img = new Image()
+      img.src = e.target?.result as string
+      img.onload = () => {
+        const canvas = document.createElement('canvas')
+        let width = img.width
+        let height = img.height
+        
+        if (width > maxWidth) {
+          height = (height * maxWidth) / width
+          width = maxWidth
+        }
+        
+        canvas.width = width
+        canvas.height = height
+        const ctx = canvas.getContext('2d')
+        ctx?.drawImage(img, 0, 0, width, height)
+        
+        canvas.toBlob(
+          (blob) => {
+            if (blob) {
+              const compressedFile = new File([blob], file.name, {
+                type: 'image/jpeg',
+                lastModified: Date.now(),
+              })
+              resolve(compressedFile)
+            } else {
+              reject(new Error('Compression failed'))
+            }
+          },
+          'image/jpeg',
+          quality
+        )
+      }
+      img.onerror = reject
+    }
+    reader.onerror = reject
+  })
+}
+
 // ========== HELPER: Clean object for Supabase ==========
 const cleanForSupabase = (obj: any): any => {
   if (obj === null || typeof obj !== 'object') return obj
@@ -1014,16 +1059,22 @@ const cleanForSupabase = (obj: any): any => {
   return cleaned
 }
 
-// ========== STORAGE HELPERS ==========
-// Upload product image
+// ========== STORAGE HELPERS WITH COMPRESSION ==========
+// Upload product image with compression
 const uploadProductImage = async (file: File, productId: string): Promise<string> => {
-  const fileExt = file.name.split('.').pop()
+  // Compress image before upload
+  const compressedFile = await compressImage(file, 1200, 0.8)
+  
+  const fileExt = 'jpg'
   const fileName = `${productId}-${Date.now()}.${fileExt}`
   const filePath = `products/${fileName}`
   
   const { error: uploadError } = await supabaseSafe.storage
     .from('images')
-    .upload(filePath, file, { upsert: true })
+    .upload(filePath, compressedFile, { 
+      upsert: true,
+      contentType: 'image/jpeg'
+    })
   
   if (uploadError) throw uploadError
   
@@ -1049,15 +1100,21 @@ const deleteProductImageFromStorage = async (imageUrl: string) => {
   }
 }
 
-// Upload brand image
+// Upload brand image with compression
 const uploadBrandImage = async (file: File, brandId: string): Promise<string> => {
-  const fileExt = file.name.split('.').pop()
+  // Compress image before upload
+  const compressedFile = await compressImage(file, 500, 0.8)
+  
+  const fileExt = 'jpg'
   const fileName = `${brandId}-${Date.now()}.${fileExt}`
   const filePath = `brands/${fileName}`
   
   const { error: uploadError } = await supabaseSafe.storage
     .from('images')
-    .upload(filePath, file, { upsert: true })
+    .upload(filePath, compressedFile, { 
+      upsert: true,
+      contentType: 'image/jpeg'
+    })
   
   if (uploadError) throw uploadError
   
@@ -1233,12 +1290,13 @@ const previewBrandImage = (url: string) => {
   }
 }
 
-const handleBrandImageUpload = (event: Event) => {
+const handleBrandImageUpload = async (event: Event) => {
   const input = event.target as HTMLInputElement
   if (!input.files || !input.files[0]) return
   const file = input.files[0]
+  
+  // Show preview with compression preview
   brandImageFile.value = file
-  brandImagePreview.value = ''
   const reader = new FileReader()
   reader.onload = (e) => {
     brandImagePreview.value = e.target?.result as string
@@ -1279,13 +1337,12 @@ const previewProductImage = (url: string) => {
   }
 }
 
-const handleProductImageUpload = (event: Event) => {
+const handleProductImageUpload = async (event: Event) => {
   const input = event.target as HTMLInputElement
   if (!input.files || !input.files[0]) return
   const file = input.files[0]
   
   productImageFile.value = file
-  productImagePreview.value = ''
   const reader = new FileReader()
   reader.onload = (e) => {
     productImagePreview.value = e.target?.result as string
@@ -1749,11 +1806,7 @@ const saveProduct = async () => {
 
     const cleanPayload = cleanForSupabase(productPayload)
 
-    if (editing.value) {
-      if (!props.product?.brandId) {
-        throw new Error('Product brand ID missing')
-      }
-
+    if (editing.value && props.product) {
       const changedFields = getChangedFields()
       if (Object.keys(changedFields).length === 0) {
         emit('close')
@@ -1833,7 +1886,7 @@ const saveProduct = async () => {
 
       if (insertError) throw insertError
 
-      const newProductId = newProduct.id
+      const newProductId = (newProduct as any).id
 
       let finalImageUrl = ''
       if (productImageFile.value) {
@@ -1896,41 +1949,43 @@ const saveProduct = async () => {
 
       let brandImageUrl = ''
       if (brandImageFile.value) {
-        brandImageUrl = await uploadBrandImage(brandImageFile.value, brandId)
+        brandImageUrl = await uploadBrandImage(brandImageFile.value, brandId as string)
         await supabaseSafe
           .from('brands')
           .update({ image: brandImageUrl, updated_at: now })
-          .eq('id', brandId)
+          .eq('id', brandId as string)
       } else if (newBrand.imageUrl) {
         brandImageUrl = newBrand.imageUrl
         await supabaseSafe
           .from('brands')
           .update({ image: brandImageUrl, updated_at: now })
-          .eq('id', brandId)
+          .eq('id', brandId as string)
       }
 
       let productImageUrl = ''
       const { data: newProduct, error: fetchError } = await supabaseSafe
         .from('products')
         .select('id')
-        .eq('brand_id', brandId)
+        .eq('brand_id', brandId as string)
         .eq('slug', cleanPayload.slug)
         .single()
 
       if (fetchError) throw new Error('Product not found after brand creation')
 
+      const productId = (newProduct as any).id
+
       if (productImageFile.value) {
-        productImageUrl = await uploadProductImage(productImageFile.value, newProduct.id)
+        productImageUrl = await uploadProductImage(productImageFile.value, productId)
         await supabaseSafe
           .from('products')
           .update({ image_url: productImageUrl, updated_at: now })
-          .eq('id', newProduct.id)
+          .eq('id', productId)
       } else if (cleanPayload.imageUrl) {
         productImageUrl = cleanPayload.imageUrl
         await supabaseSafe
           .from('products')
           .update({ image_url: productImageUrl, updated_at: now })
-          .eq('id', newProduct.id)
+          .eq('id', productId)
       }
 
       cleanPayload.imageUrl = productImageUrl
