@@ -920,10 +920,21 @@ const handleEscapeKey = (event: KeyboardEvent) => {
 
 // Lifecycle
 onMounted(async () => {
-  // ✅ Start tenant resolution immediately (it will cache and be fast)
-  tenantStore.resolveTenantFromDomain().catch(err => {
-    console.warn('Tenant resolution failed, will retry later:', err)
-  })
+  // ✅ ONLY resolve tenant for subdomains (not the main domain)
+  const hostname = window.location.hostname
+  const rootDomain = import.meta.env.VITE_ROOT_DOMAIN || 'localhost:5173'
+  const isRootDomain = hostname === rootDomain || hostname === 'localhost'
+  
+  // Only resolve tenant for subdomains
+  if (!isRootDomain) {
+    tenantStore.resolveTenantFromDomain().catch(err => {
+      console.warn('Tenant resolution failed, will retry later:', err)
+    })
+  } else {
+    console.log('🏠 Root domain detected - skipping tenant resolution')
+    // Mark tenant as initialized to prevent loading states
+    tenantStore.isInitialized = true
+  }
 
   // Set initial header height with known values
   headerHeight.value = window.innerWidth < 768 ? 53 : 69
