@@ -1,10 +1,40 @@
 // src/stores/auth.ts – final version with serverless API registration
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import type { AdminUser, CustomerUser } from '@/types'
-import { supabase } from '@/supabase/client'
+import type { AdminUser, CustomerUser, Address } from '@/types'
+import { supabaseSafe } from '@/supabase/client'
 import { useTenantStore } from './tenant'
 import { authNotification, showInfo } from '@/utils/notifications'
+
+// Define the customer data structure from Supabase
+interface SupabaseCustomer {
+  id: string
+  email: string
+  name: string | null
+  tenant_id: string
+  photo_url: string | null
+  phone_number: string | null
+  addresses: Address[]
+  newsletter: boolean
+  created_at: string
+  updated_at: string
+}
+
+// Define the admin data structure from Supabase
+interface SupabaseAdmin {
+  id: string
+  email: string
+  display_name: string | null
+  role: string
+  tenant_id: string
+  is_active: boolean
+  permissions: string[]
+  photo_url: string | null
+  phone_number: string | null
+  created_at: string
+  updated_at: string
+  last_login: string | null
+}
 
 export const useAuthStore = defineStore('auth', () => {
   const tenantStore = useTenantStore()
@@ -45,47 +75,55 @@ export const useAuthStore = defineStore('auth', () => {
 
   // ========== HELPERS ==========
   const getAdminFromSupabase = async (userId: string): Promise<AdminUser | null> => {
-    const { data, error } = await supabase
+    const supabase = supabaseSafe.client
+    const { data, error: fetchError } = await supabase
       .from('admins')
       .select('*')
       .eq('id', userId)
       .single()
-    if (error || !data) return null
+    
+    if (fetchError || !data) return null
+    
+    const adminData = data as SupabaseAdmin
     return {
-      uid: data.id,
-      email: data.email,
-      displayName: data.display_name || data.email,
-      role: data.role,
-      tenantId: data.tenant_id,
-      isActive: data.is_active !== false,
-      permissions: data.permissions || ['all'],
-      photoURL: data.photo_url,
-      phoneNumber: data.phone_number,
-      createdAt: new Date(data.created_at),
-      updatedAt: new Date(data.updated_at),
-      lastLogin: data.last_login ? new Date(data.last_login) : new Date()
+      uid: adminData.id,
+      email: adminData.email,
+      displayName: adminData.display_name || adminData.email,
+      role: adminData.role as 'admin' | 'super-admin',
+      tenantId: adminData.tenant_id,
+      isActive: adminData.is_active !== false,
+      permissions: adminData.permissions || ['all'],
+      photoURL: adminData.photo_url || undefined,
+      phoneNumber: adminData.phone_number || undefined,
+      createdAt: new Date(adminData.created_at),
+      updatedAt: new Date(adminData.updated_at),
+      lastLogin: adminData.last_login ? new Date(adminData.last_login) : new Date()
     }
   }
 
   const getCustomerFromSupabase = async (userId: string): Promise<CustomerUser | null> => {
-    const { data, error } = await supabase
+    const supabase = supabaseSafe.client
+    const { data, error: fetchError } = await supabase
       .from('customers')
       .select('*')
       .eq('id', userId)
       .single()
-    if (error || !data) return null
+    
+    if (fetchError || !data) return null
+    
+    const customerData = data as SupabaseCustomer
     return {
-      uid: data.id,
-      email: data.email,
-      displayName: data.name || data.email,
-      tenantId: data.tenant_id,
-      photoURL: data.photo_url,
-      phoneNumber: data.phone_number,
-      addresses: data.addresses || [],
+      uid: customerData.id,
+      email: customerData.email,
+      displayName: customerData.name || customerData.email,
+      tenantId: customerData.tenant_id,
+      photoURL: customerData.photo_url || undefined,
+      phoneNumber: customerData.phone_number || undefined,
+      addresses: customerData.addresses || [],
       wishlist: [],
-      newsletter: data.newsletter || false,
-      createdAt: new Date(data.created_at),
-      updatedAt: new Date(data.updated_at),
+      newsletter: customerData.newsletter || false,
+      createdAt: new Date(customerData.created_at),
+      updatedAt: new Date(customerData.updated_at),
       lastLogin: new Date()
     }
   }
@@ -123,6 +161,7 @@ export const useAuthStore = defineStore('auth', () => {
 
     try {
       console.log('🔐 Authenticating user:', credentials.email)
+      const supabase = supabaseSafe.client
       const { data, error: signInError } = await supabase.auth.signInWithPassword({
         email: credentials.email,
         password: credentials.password
@@ -141,7 +180,11 @@ export const useAuthStore = defineStore('auth', () => {
 
       if (adminData) {
         setAdminUser(adminData)
-        await supabase.from('admins').update({ last_login: new Date().toISOString() }).eq('id', userId)
+        const supabaseClient = supabaseSafe.client
+        await supabaseClient
+          .from('admins')
+          .update({ last_login: new Date().toISOString() })
+          .eq('id', userId)
         authNotification.loggedIn(adminData.displayName ?? 'Admin')
         console.log('✅ Admin authenticated:', adminData.email)
         return { ...adminData, role: 'admin' }
@@ -149,10 +192,14 @@ export const useAuthStore = defineStore('auth', () => {
 
       if (customerData) {
         setCustomerUser(customerData, credentials.remember)
-        await supabase.from('customers').update({
-          last_login: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        }).eq('id', userId)
+        const supabaseClient = supabaseSafe.client
+        await supabaseClient
+          .from('customers')
+          .update({
+            last_login: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', userId)
         authNotification.loggedIn(customerData.displayName ?? 'Customer')
         console.log('✅ Customer authenticated:', customerData.email)
         return { ...customerData, role: 'customer' }
@@ -195,6 +242,7 @@ export const useAuthStore = defineStore('auth', () => {
     error.value = null
     try {
       console.log('📝 Creating customer account:', userData.email)
+      const supabase = supabaseSafe.client
       const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
         email: userData.email,
         password: userData.password,
@@ -275,10 +323,11 @@ export const useAuthStore = defineStore('auth', () => {
     error.value = null
 
     try {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) throw new Error('No authenticated user')
+      const supabase = supabaseSafe.client
+      const { data: { user: authUser } } = await supabase.auth.getUser()
+      if (!authUser) throw new Error('No authenticated user')
 
-      if (profileData.displayName && user.user_metadata?.displayName !== profileData.displayName) {
+      if (profileData.displayName && authUser.user_metadata?.displayName !== profileData.displayName) {
         const { error: updateAuthError } = await supabase.auth.updateUser({
           data: { displayName: profileData.displayName }
         })
@@ -317,6 +366,7 @@ export const useAuthStore = defineStore('auth', () => {
     error.value = null
 
     try {
+      const supabase = supabaseSafe.client
       const { error: signInError } = await supabase.auth.signInWithPassword({
         email: customer.value.email,
         password: currentPassword
@@ -345,13 +395,14 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  // Address management (unchanged)
-  const addCustomerAddress = async (address: any): Promise<void> => {
+  // Address management
+  const addCustomerAddress = async (address: Address): Promise<void> => {
     if (!customer.value) throw new Error('No customer logged in')
     isLoading.value = true
     error.value = null
 
     try {
+      const supabase = supabaseSafe.client
       const { data, error: fetchError } = await supabase
         .from('customers')
         .select('addresses')
@@ -359,7 +410,7 @@ export const useAuthStore = defineStore('auth', () => {
         .single()
       if (fetchError) throw fetchError
 
-      const current = data?.addresses || []
+      const current = (data as any)?.addresses || []
       const addressWithId = {
         ...address,
         id: `addr_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
@@ -384,12 +435,13 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  const updateCustomerAddress = async (addressId: string, updatedAddress: any): Promise<void> => {
+  const updateCustomerAddress = async (addressId: string, updatedAddress: Partial<Address>): Promise<void> => {
     if (!customer.value) throw new Error('No customer logged in')
     isLoading.value = true
     error.value = null
 
     try {
+      const supabase = supabaseSafe.client
       const { data, error: fetchError } = await supabase
         .from('customers')
         .select('addresses')
@@ -397,8 +449,8 @@ export const useAuthStore = defineStore('auth', () => {
         .single()
       if (fetchError) throw fetchError
 
-      const current = data?.addresses || []
-      const newAddresses = current.map((addr: any) =>
+      const current = (data as any)?.addresses || []
+      const newAddresses = current.map((addr: Address) =>
         addr.id === addressId ? { ...addr, ...updatedAddress, id: addressId } : addr
       )
 
@@ -426,6 +478,7 @@ export const useAuthStore = defineStore('auth', () => {
     error.value = null
 
     try {
+      const supabase = supabaseSafe.client
       const { data, error: fetchError } = await supabase
         .from('customers')
         .select('addresses')
@@ -433,8 +486,8 @@ export const useAuthStore = defineStore('auth', () => {
         .single()
       if (fetchError) throw fetchError
 
-      const current = data?.addresses || []
-      const newAddresses = current.filter((addr: any) => addr.id !== addressId)
+      const current = (data as any)?.addresses || []
+      const newAddresses = current.filter((addr: Address) => addr.id !== addressId)
 
       const { error: updateError } = await supabase
         .from('customers')
@@ -460,6 +513,7 @@ export const useAuthStore = defineStore('auth', () => {
     error.value = null
 
     try {
+      const supabase = supabaseSafe.client
       const { data, error: fetchError } = await supabase
         .from('customers')
         .select('addresses')
@@ -467,8 +521,8 @@ export const useAuthStore = defineStore('auth', () => {
         .single()
       if (fetchError) throw fetchError
 
-      const current = data?.addresses || []
-      const newAddresses = current.map((addr: any) => ({
+      const current = (data as any)?.addresses || []
+      const newAddresses = current.map((addr: Address) => ({
         ...addr,
         isDefault: addr.id === addressId
       }))
@@ -537,6 +591,7 @@ export const useAuthStore = defineStore('auth', () => {
 
       // Now log in with the created user
       console.log('🔐 Logging in...')
+      const supabase = supabaseSafe.client
       const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
         email: data.email,
         password: data.password
@@ -570,6 +625,7 @@ export const useAuthStore = defineStore('auth', () => {
     isLoading.value = true
     error.value = null
     try {
+      const supabase = supabaseSafe.client
       const { error: signOutError } = await supabase.auth.signOut()
       if (signOutError) throw signOutError
       user.value = null
@@ -589,21 +645,24 @@ export const useAuthStore = defineStore('auth', () => {
 
   // ========== PASSWORD RESET ==========
   const resetPassword = async (email: string) => {
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    const supabase = supabaseSafe.client
+    const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: `${window.location.origin}/reset-password`
     })
-    if (error) throw error
+    if (resetError) throw resetError
   }
 
   const confirmPasswordReset = async (_code: string, newPassword: string) => {
-    const { error } = await supabase.auth.updateUser({ password: newPassword })
-    if (error) throw error
+    const supabase = supabaseSafe.client
+    const { error: updateError } = await supabase.auth.updateUser({ password: newPassword })
+    if (updateError) throw updateError
   }
 
   // ========== CHECK AUTH ==========
   const checkAuth = async () => {
     isLoading.value = true
     try {
+      const supabase = supabaseSafe.client
       const { data: { user: authUser } } = await supabase.auth.getUser()
       if (!authUser) {
         user.value = null
@@ -637,6 +696,7 @@ export const useAuthStore = defineStore('auth', () => {
   const createSuperAdmin = async (email: string, password: string, displayName: string) => {
     isLoading.value = true
     try {
+      const supabase = supabaseSafe.client
       const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
         email,
         password,
@@ -718,6 +778,7 @@ export const useAuthStore = defineStore('auth', () => {
     if (authListenerInitialized.value) return
     authListenerInitialized.value = true
 
+    const supabase = supabaseSafe.client
     supabase.auth.onAuthStateChange(async (_event, session) => {
       if (session?.user) {
         const userId = session.user.id
