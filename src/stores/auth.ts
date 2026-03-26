@@ -1,5 +1,5 @@
 // src/stores/auth.ts – final version with serverless API registration
-import { defineStore } from 'pinia'
+import { defineStore } from 'pinia
 import { ref, computed } from 'vue'
 import type { AdminUser, CustomerUser, Address } from '@/types'
 import { supabaseSafe } from '@/supabase/client'
@@ -74,6 +74,9 @@ export const useAuthStore = defineStore('auth', () => {
     user.value?.tenantId || customer.value?.tenantId || tenantStore.tenantId
   )
 
+  // Helper to cast table access (bypass TypeScript strict typing)
+  const getTable = (table: string) => supabaseSafe.client.from(table) as any
+
   // ========== HELPERS ==========
   const getAdminFromSupabase = async (userId: string): Promise<AdminUser | null> => {
     const supabase = supabaseSafe.client
@@ -82,9 +85,9 @@ export const useAuthStore = defineStore('auth', () => {
       .select('*')
       .eq('id', userId)
       .single()
-    
+
     if (fetchError || !data) return null
-    
+
     const adminData = data as unknown as SupabaseAdmin
     return {
       uid: adminData.id,
@@ -109,9 +112,9 @@ export const useAuthStore = defineStore('auth', () => {
       .select('*')
       .eq('id', userId)
       .single()
-    
+
     if (fetchError || !data) return null
-    
+
     const customerData = data as unknown as SupabaseCustomer
     return {
       uid: customerData.id,
@@ -296,8 +299,7 @@ export const useAuthStore = defineStore('auth', () => {
       }
       if (newCustomer.phoneNumber) dbData.phone_number = newCustomer.phoneNumber
 
-      const { error: insertError } = await supabase
-        .from('customers')
+      const { error: insertError } = await getTable('customers')
         .insert(dbData)
       if (insertError) throw insertError
 
@@ -344,8 +346,7 @@ export const useAuthStore = defineStore('auth', () => {
       if (profileData.phoneNumber !== undefined) updateData.phone_number = profileData.phoneNumber
       if (profileData.newsletter !== undefined) updateData.newsletter = profileData.newsletter
 
-      const { error: updateError } = await supabase
-        .from('customers')
+      const { error: updateError } = await getTable('customers')
         .update(updateData)
         .eq('id', customer.value.uid)
       if (updateError) throw updateError
@@ -423,8 +424,7 @@ export const useAuthStore = defineStore('auth', () => {
       const newAddresses = [...current, addressWithId]
 
       const updatePayload = { addresses: newAddresses, updated_at: new Date().toISOString() }
-      const { error: updateError } = await supabase
-        .from('customers')
+      const { error: updateError } = await getTable('customers')
         .update(updatePayload)
         .eq('id', customer.value.uid)
       if (updateError) throw updateError
@@ -461,8 +461,7 @@ export const useAuthStore = defineStore('auth', () => {
       )
 
       const updatePayload = { addresses: newAddresses, updated_at: new Date().toISOString() }
-      const { error: updateError } = await supabase
-        .from('customers')
+      const { error: updateError } = await getTable('customers')
         .update(updatePayload)
         .eq('id', customer.value.uid)
       if (updateError) throw updateError
@@ -497,8 +496,7 @@ export const useAuthStore = defineStore('auth', () => {
       const newAddresses = current.filter((addr: Address) => addr.id !== addressId)
 
       const updatePayload = { addresses: newAddresses, updated_at: new Date().toISOString() }
-      const { error: updateError } = await supabase
-        .from('customers')
+      const { error: updateError } = await getTable('customers')
         .update(updatePayload)
         .eq('id', customer.value.uid)
       if (updateError) throw updateError
@@ -536,8 +534,7 @@ export const useAuthStore = defineStore('auth', () => {
       }))
 
       const updatePayload = { addresses: newAddresses, updated_at: new Date().toISOString() }
-      const { error: updateError } = await supabase
-        .from('customers')
+      const { error: updateError } = await getTable('customers')
         .update(updatePayload)
         .eq('id', customer.value.uid)
       if (updateError) throw updateError
@@ -614,7 +611,7 @@ export const useAuthStore = defineStore('auth', () => {
       // Fetch the admin (now exists)
       const admin = await getAdminFromSupabase(uid)
       if (!admin) throw new Error('Admin document not found after registration')
-      
+
       setAdminUser(admin)
 
       console.log('✅ Company registered successfully:', tenantId)
@@ -748,7 +745,7 @@ export const useAuthStore = defineStore('auth', () => {
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       }
-      const { error: insertError } = await supabase.from('admins').insert(dbData)
+      const { error: insertError } = await getTable('admins').insert(dbData)
       if (insertError) throw insertError
 
       console.log('✅ Super-admin created:', adminData.email)
