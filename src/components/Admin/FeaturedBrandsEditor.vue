@@ -195,7 +195,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { supabase } from '@/supabase/client'
+import { supabaseSafe } from '@/supabase/client'
 
 interface Brand {
   id: string
@@ -299,11 +299,11 @@ const uploadImageToSupabase = async (file: File, brandId: string): Promise<strin
   const timestamp = Date.now()
   const safeName = file.name.replace(/[^a-zA-Z0-9.]/g, '_')
   const path = `brands/${brandId}/${timestamp}_${safeName}`
-  const { error } = await supabase.storage
+  const { error } = await supabaseSafe.storage
     .from('images')
     .upload(path, file, { upsert: true })
   if (error) throw error
-  const { data: urlData } = supabase.storage.from('images').getPublicUrl(path)
+  const { data: urlData } = supabaseSafe.storage.from('images').getPublicUrl(path)
   return urlData.publicUrl
 }
 
