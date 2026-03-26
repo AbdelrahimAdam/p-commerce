@@ -1,6 +1,7 @@
 // api/register-company.ts
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { createClient } from '@supabase/supabase-js'
+import { randomUUID } from 'crypto'
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // CORS
@@ -25,7 +26,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     console.log('📝 Registration request:', { email, companyName, domain })
 
+    // =========================
     // Validation
+    // =========================
     if (!email || !password || !displayName || !companyName || !domain) {
       return res.status(400).json({
         error: 'Missing required fields',
@@ -49,7 +52,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       })
     }
 
-    // Environment variables (VITE_ prefixed)
+    // =========================
+    // Environment variables
+    // =========================
     const supabaseUrl = process.env.VITE_SUPABASE_URL
     const serviceRoleKey = process.env.VITE_SUPABASE_SERVICE_ROLE_KEY
     const rootDomain = process.env.VITE_ROOT_DOMAIN
@@ -71,7 +76,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       auth: { autoRefreshToken: false, persistSession: false }
     })
 
-    // Domain availability check
+    // =========================
+    // Domain availability
+    // =========================
     const fullDomain = `${domain}.${rootDomain}`
 
     const { data: existingTenant } = await supabaseAdmin
@@ -87,17 +94,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       })
     }
 
-    // Generate tenant ID (text)
+    // =========================
+    // Generate tenant ID (use UUID to guarantee uniqueness)
+    // =========================
+    const tenantId = randomUUID()
+    // Also keep a slug for reference if needed
     const baseSlug = companyName
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/^-|-$/g, '')
-    const tenantId = `${baseSlug}-${Date.now()}`
+    const slug = `${baseSlug}-${Date.now()}`
 
-    console.log('📦 Tenant ID:', tenantId)
+    console.log('📦 Tenant ID (UUID):', tenantId)
     console.log('🌐 Domain:', fullDomain)
 
-    // 1. Create auth user
+    // =========================
+    // 1. CREATE AUTH USER
+    // =========================
     const { data: userData, error: userError } =
       await supabaseAdmin.auth.admin.createUser({
         email,
@@ -124,17 +137,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
     console.log('✅ User created:', userId)
 
-    // 2. Create tenant with owner_id = NULL (temporary)
+    // =========================
+    // 2. CREATE TENANT (with owner_id = NULL)
+    // =========================
+    const now = new Date().toISOString()
+    const tenantData = {
+      id: tenantId,
+      name: companyName,
+      domain: fullDomain,
+      owner_id: null,
+      created_at: now,
+      updated_at: now
+    }
+    console.log('📝 Inserting tenant:', tenantData)
+
     const { error: tenantError } = await supabaseAdmin
       .from('tenants')
-      .insert({
-        id: tenantId,
-        name: companyName,
-        domain: fullDomain,
-        owner_id: null,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      })
+      .insert(tenantData)
 
     if (tenantError) {
       console.error('Tenant error:', tenantError)
@@ -142,25 +161,31 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       await supabaseAdmin.auth.admin.deleteUser(userId)
       return res.status(400).json({
         error: 'Failed to create tenant',
-        details: tenantError.message
+        details: tenantError.message,
+        code: tenantError.code
       })
     }
     console.log('✅ Tenant created (owner_id = null)')
 
-    // 3. Create admin record (tenant now exists, so foreign key admins.tenant_id -> tenants.id is satisfied)
+    // =========================
+    // 3. CREATE ADMIN RECORD
+    // =========================
+    const adminData = {
+      id: userId,
+      tenant_id: tenantId,
+      role: 'admin',
+      email,
+      display_name: displayName,
+      created_at: now,
+      updated_at: now,
+      is_active: true,
+      permissions: ['all']
+    }
+    console.log('📝 Inserting admin:', adminData)
+
     const { error: adminError } = await supabaseAdmin
       .from('admins')
-      .insert({
-        id: userId,
-        tenant_id: tenantId,
-        role: 'admin',
-        email,
-        display_name: displayName,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        is_active: true,
-        permissions: ['all']
-      })
+      .insert(adminData)
 
     if (adminError) {
       console.error('Admin error:', adminError)
@@ -169,31 +194,37 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       await supabaseAdmin.auth.admin.deleteUser(userId)
       return res.status(400).json({
         error: 'Failed to create admin',
-        details: adminError.message
+        details: adminError.message,
+        code: adminError.code
       })
     }
     console.log('✅ Admin created')
 
-    // 4. Update tenant to set owner_id = userId (now admins record exists)
+    // =========================
+    // 4. UPDATE TENANT WITH OWNER_ID
+    // =========================
     const { error: updateError } = await supabaseAdmin
       .from('tenants')
-      .update({ owner_id: userId, updated_at: new Date().toISOString() })
+      .update({ owner_id: userId, updated_at: now })
       .eq('id', tenantId)
 
     if (updateError) {
       console.error('Update tenant error:', updateError)
-      // Rollback: delete admin, tenant, and auth user
+      // Rollback: delete admin, tenant, auth user
       await supabaseAdmin.from('admins').delete().eq('id', userId)
       await supabaseAdmin.from('tenants').delete().eq('id', tenantId)
       await supabaseAdmin.auth.admin.deleteUser(userId)
       return res.status(400).json({
         error: 'Failed to update tenant with owner',
-        details: updateError.message
+        details: updateError.message,
+        code: updateError.code
       })
     }
     console.log('✅ Tenant owner updated')
 
-    // Success
+    // =========================
+    // SUCCESS
+    // =========================
     return res.status(200).json({
       success: true,
       tenantId,
@@ -203,7 +234,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   } catch (error: any) {
     console.error('❌ FATAL ERROR:', error)
-
     return res.status(500).json({
       error: 'Internal server error',
       details: error.message
