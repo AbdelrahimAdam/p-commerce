@@ -44,7 +44,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(400).json({ error: 'Password must be at least 6 characters' })
     }
 
-    // ✅ FIXED: allow subdomains (.)
+    // allow subdomains (.)
     const domainRegex = /^[a-z0-9.-]+$/
     if (!domainRegex.test(domain)) {
       return res.status(400).json({
@@ -53,24 +53,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     // =========================
-    // ✅ ENV VARIABLES (FIXED)
+    // ✅ ENV VARIABLES (UPDATED)
     // =========================
-    const supabaseUrl = process.env.SUPABASE_URL
-    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-    const rootDomain = process.env.ROOT_DOMAIN
+    const supabaseUrl = process.env.VITE_SUPABASE_URL
+    const serviceRoleKey = process.env.VITE_SUPABASE_SERVICE_ROLE_KEY
+    const rootDomain = process.env.VITE_ROOT_DOMAIN
 
     if (!supabaseUrl) {
-      console.error('Missing SUPABASE_URL')
-      return res.status(500).json({ error: 'Missing SUPABASE_URL' })
+      console.error('Missing VITE_SUPABASE_URL')
+      return res.status(500).json({ error: 'Missing VITE_SUPABASE_URL' })
     }
 
     if (!serviceRoleKey) {
-      console.error('Missing SUPABASE_SERVICE_ROLE_KEY')
+      console.error('Missing VITE_SUPABASE_SERVICE_ROLE_KEY')
       return res.status(500).json({ error: 'Missing service role key' })
     }
 
     if (!rootDomain) {
-      console.error('Missing ROOT_DOMAIN')
+      console.error('Missing VITE_ROOT_DOMAIN')
       return res.status(500).json({ error: 'Missing root domain' })
     }
 
