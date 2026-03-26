@@ -87,7 +87,7 @@ export const useBrandsStore = defineStore('brands', () => {
 
       if (fetchError) throw fetchError
 
-      brands.value = (data || []).map(row => transformBrandData(row))
+      brands.value = ((data as any[]) || []).map(row => transformBrandData(row))
       isInitialized.value = true
     } catch (err: any) {
       brands.value = []
@@ -126,7 +126,7 @@ export const useBrandsStore = defineStore('brands', () => {
 
       if (productsError) throw productsError
 
-      const products: Product[] = await Promise.all((productsData || []).map(async (row: any) => {
+      const products: Product[] = await Promise.all(((productsData as any[]) || []).map(async (row: any) => {
         let imageUrl = ''
         let images: string[] = []
         if (row.images && Array.isArray(row.images)) {
@@ -144,7 +144,7 @@ export const useBrandsStore = defineStore('brands', () => {
             .select('name')
             .eq('id', row.category_id)
             .single()
-          if (catRow) categoryName = catRow.name
+          if (catRow) categoryName = (catRow as any).name
         }
 
         return {
@@ -235,7 +235,7 @@ export const useBrandsStore = defineStore('brands', () => {
           stock_quantity: p.stockQuantity || 0,
           meta: p.meta || {}
         }))
-      })
+      } as any)
 
       if (rpcError) throw rpcError
       if (!brandId) throw new Error('Failed to create brand')
@@ -282,8 +282,8 @@ export const useBrandsStore = defineStore('brands', () => {
             .select('image')
             .eq('id', brandId)
             .single()
-          if (!fetchError && oldBrand?.image) {
-            await deleteBrandImageFromStorage(oldBrand.image)
+          if (!fetchError && oldBrand && (oldBrand as any).image) {
+            await deleteBrandImageFromStorage((oldBrand as any).image)
           }
           const newImageUrl = await uploadBrandImage(updates.image, brandId)
           updatePayload.image = newImageUrl
@@ -327,6 +327,7 @@ export const useBrandsStore = defineStore('brands', () => {
         .select('image')
         .eq('id', brandId)
         .single()
+
       if (fetchError && fetchError.code !== 'PGRST116') throw fetchError
 
       const { error: deleteError } = await client
@@ -336,8 +337,8 @@ export const useBrandsStore = defineStore('brands', () => {
 
       if (deleteError) throw deleteError
 
-      if (brandRow?.image) {
-        await deleteBrandImageFromStorage(brandRow.image)
+      if (brandRow && (brandRow as any).image) {
+        await deleteBrandImageFromStorage((brandRow as any).image)
       }
 
       await loadBrands()
