@@ -1,6 +1,7 @@
+// src/stores/brands.ts
 import { defineStore } from 'pinia'
 import { ref, computed, watchEffect } from 'vue'
-import { supabase } from '@/supabase/client'
+import { supabaseSafe } from '@/supabase/client'
 import type { Brand, BrandWithProducts, Product } from '@/types'
 import { useProductsStore } from '@/stores/products'
 import { useAuthStore } from './auth'
@@ -35,24 +36,29 @@ export const useBrandsStore = defineStore('brands', () => {
     updatedAt: new Date(row.updated_at)
   })
 
+  // Helper to get supabase client (throws if null)
+  const getClient = () => supabaseSafe.client
+
   const uploadBrandImage = async (file: File, brandId: string): Promise<string> => {
+    const client = getClient()
     const path = `brands/${brandId}/logo.jpg`
-    const { error: uploadError } = await supabase.storage
+    const { error: uploadError } = await client.storage
       .from('images')
       .upload(path, file, { upsert: true })
     if (uploadError) throw uploadError
-    const { data: urlData } = supabase.storage.from('images').getPublicUrl(path)
+    const { data: urlData } = client.storage.from('images').getPublicUrl(path)
     return urlData.publicUrl
   }
 
   const deleteBrandImageFromStorage = async (imageUrl: string) => {
     if (!imageUrl) return
     try {
+      const client = getClient()
       const url = new URL(imageUrl)
       const pathMatch = url.pathname.match(/\/storage\/v1\/object\/public\/images\/(.+)$/)
       if (pathMatch && pathMatch[1]) {
         const path = decodeURIComponent(pathMatch[1])
-        await supabase.storage.from('images').remove([path])
+        await client.storage.from('images').remove([path])
       }
     } catch (err) {
       console.warn('Failed to delete brand image from Storage:', err)
@@ -72,7 +78,8 @@ export const useBrandsStore = defineStore('brands', () => {
         return
       }
 
-      const { data, error: fetchError } = await supabase
+      const client = getClient()
+      const { data, error: fetchError } = await client
         .from('brands')
         .select('*')
         .eq('tenant_id', tenantId)
@@ -99,7 +106,8 @@ export const useBrandsStore = defineStore('brands', () => {
       const tenantId = authStore.currentTenant
       if (!tenantId) return null
 
-      const { data: brandRow, error: brandError } = await supabase
+      const client = getClient()
+      const { data: brandRow, error: brandError } = await client
         .from('brands')
         .select('*')
         .eq('slug', slug)
@@ -110,7 +118,7 @@ export const useBrandsStore = defineStore('brands', () => {
 
       const brand = transformBrandData(brandRow)
 
-      const { data: productsData, error: productsError } = await supabase
+      const { data: productsData, error: productsError } = await client
         .from('products')
         .select('*')
         .eq('brand_id', brand.id)
@@ -123,7 +131,7 @@ export const useBrandsStore = defineStore('brands', () => {
         let images: string[] = []
         if (row.images && Array.isArray(row.images)) {
           images = await Promise.all(row.images.map(async (path: string) => {
-            const { data: urlData } = supabase.storage.from('images').getPublicUrl(path)
+            const { data: urlData } = client.storage.from('images').getPublicUrl(path)
             return urlData.publicUrl
           }))
           imageUrl = images[0] || ''
@@ -131,7 +139,7 @@ export const useBrandsStore = defineStore('brands', () => {
 
         let categoryName = row.category
         if (!categoryName && row.category_id) {
-          const { data: catRow } = await supabase
+          const { data: catRow } = await client
             .from('categories')
             .select('name')
             .eq('id', row.category_id)
@@ -164,10 +172,8 @@ export const useBrandsStore = defineStore('brands', () => {
           inStock: row.in_stock !== false,
           stockQuantity: row.stock_quantity || 0,
           tenantId: row.tenant_id,
-          createdAt: row.created_at ? { seconds: Math.floor(new Date(row.created_at).getTime() / 1000), nanoseconds: 
-0 } : null,
-          updatedAt: row.updated_at ? { seconds: Math.floor(new Date(row.updated_at).getTime() / 1000), nanoseconds: 
-0 } : null,
+          createdAt: row.created_at ? { seconds: Math.floor(new Date(row.created_at).getTime() / 1000), nanoseconds: 0 } : null,
+          updatedAt: row.updated_at ? { seconds: Math.floor(new Date(row.updated_at).getTime() / 1000), nanoseconds: 0 } : null,
           meta: row.meta || { weight: '250g', dimensions: '8x4x12 cm', origin: brand.name }
         } as Product
       }))
@@ -198,7 +204,8 @@ export const useBrandsStore = defineStore('brands', () => {
         imageUrl = brandData.image
       }
 
-      const { data: brandId, error: rpcError } = await supabase.rpc('create_brand_with_products', {
+      const client = getClient()
+      const { data: brandId, error: rpcError } = await client.rpc('create_brand_with_products', {
         _tenant_id: tenantId,
         _name: brandData.name,
         _slug: brandData.slug,
@@ -235,9 +242,10 @@ export const useBrandsStore = defineStore('brands', () => {
 
       if (isFile(brandData.image)) {
         const uploadedUrl = await uploadBrandImage(brandData.image, brandId)
-        const { error: updateError } = await supabase
+        const updatePayload = { image: uploadedUrl, updated_at: new Date().toISOString() }
+        const { error: updateError } = await client
           .from('brands')
-          .update({ image: uploadedUrl, updated_at: new Date().toISOString() })
+          .update(updatePayload)
           .eq('id', brandId)
         if (updateError) {
           console.warn('Brand created but image update failed:', updateError)
@@ -264,11 +272,12 @@ export const useBrandsStore = defineStore('brands', () => {
     error.value = ''
 
     try {
-      const updatePayload: any = { updated_at: new Date().toISOString() }
+      const client = getClient()
+      const updatePayload: Record<string, any> = { updated_at: new Date().toISOString() }
 
       if (updates.image) {
         if (isFile(updates.image)) {
-          const { data: oldBrand, error: fetchError } = await supabase
+          const { data: oldBrand, error: fetchError } = await client
             .from('brands')
             .select('image')
             .eq('id', brandId)
@@ -290,7 +299,7 @@ export const useBrandsStore = defineStore('brands', () => {
       if (updates.signature !== undefined) updatePayload.signature = updates.signature
       if (updates.isActive !== undefined) updatePayload.is_active = updates.isActive
 
-      const { error: updateError } = await supabase
+      const { error: updateError } = await client
         .from('brands')
         .update(updatePayload)
         .eq('id', brandId)
@@ -312,14 +321,15 @@ export const useBrandsStore = defineStore('brands', () => {
     error.value = ''
 
     try {
-      const { data: brandRow, error: fetchError } = await supabase
+      const client = getClient()
+      const { data: brandRow, error: fetchError } = await client
         .from('brands')
         .select('image')
         .eq('id', brandId)
         .single()
       if (fetchError && fetchError.code !== 'PGRST116') throw fetchError
 
-      const { error: deleteError } = await supabase
+      const { error: deleteError } = await client
         .from('brands')
         .delete()
         .eq('id', brandId)
