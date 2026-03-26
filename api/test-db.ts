@@ -3,76 +3,72 @@ import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { createClient } from '@supabase/supabase-js'
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  // Log all environment variables (without values for security)
-  console.log('Environment variables present:', {
-    supabaseUrl: !!process.env.VITE_SUPABASE_URL,
-    serviceRoleKey: !!process.env.VITE_SUPABASE_SERVICE_ROLE_KEY,
-    rootDomain: !!process.env.VITE_ROOT_DOMAIN
-  })
-
+  // Log the actual values (partially masked) for debugging
   const supabaseUrl = process.env.VITE_SUPABASE_URL
   const serviceRoleKey = process.env.VITE_SUPABASE_SERVICE_ROLE_KEY
-
+  
+  console.log('=== DEBUG INFO ===')
+  console.log('Supabase URL exists:', !!supabaseUrl)
+  console.log('Supabase URL value (first 20 chars):', supabaseUrl?.substring(0, 20))
+  console.log('Service role key exists:', !!serviceRoleKey)
+  console.log('Service role key length:', serviceRoleKey?.length)
+  console.log('Root domain:', process.env.VITE_ROOT_DOMAIN)
+  
   if (!supabaseUrl || !serviceRoleKey) {
     return res.status(500).json({ 
       error: 'Missing environment variables',
-      supabaseUrl: !!supabaseUrl,
-      serviceRoleKey: !!serviceRoleKey
+      hasUrl: !!supabaseUrl,
+      hasKey: !!serviceRoleKey
     })
   }
 
-  // Create admin client with service role
-  const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
-    auth: { autoRefreshToken: false, persistSession: false }
-  })
+  // Try to create client and test connection
+  try {
+    const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
+      auth: { autoRefreshToken: false, persistSession: false }
+    })
 
-  // Try a simple query - count tenants
-  const { data: countData, error: countError } = await supabaseAdmin
-    .from('tenants')
-    .select('*', { count: 'exact', head: true })
-
-  if (countError) {
-    console.error('Count error:', countError)
+    // Test 1: Simple query to check if we can connect
+    console.log('Testing connection with a simple query...')
+    const { data: healthData, error: healthError } = await supabaseAdmin
+      .from('tenants')
+      .select('id')
+      .limit(1)
+    
+    if (healthError) {
+      console.error('Health check error:', healthError)
+      return res.status(500).json({ 
+        error: 'Connection test failed',
+        details: healthError.message,
+        code: healthError.code,
+        hint: healthError.hint
+      })
+    }
+    
+    console.log('Health check successful, found', healthData?.length, 'tenants')
+    
+    // Test 2: Try to get the Supabase version or run a raw query
+    const { data: versionData, error: versionError } = await supabaseAdmin
+      .rpc('version')
+      .catch(err => ({ data: null, error: err }))
+    
+    return res.status(200).json({ 
+      success: true, 
+      message: 'Database connection successful',
+      tenantCount: healthData?.length || 0,
+      supabaseVersion: versionData || 'unknown',
+      environment: {
+        nodeVersion: process.version,
+        vercelEnv: process.env.VERCEL_ENV
+      }
+    })
+    
+  } catch (err: any) {
+    console.error('Fatal error:', err)
     return res.status(500).json({ 
-      error: 'Failed to query tenants',
-      details: countError.message,
-      code: countError.code
+      error: 'Failed to create Supabase client',
+      details: err.message,
+      stack: err.stack
     })
   }
-
-  // Try to insert a test tenant
-  const testId = `test-${Date.now()}`
-  const { data: insertData, error: insertError } = await supabaseAdmin
-    .from('tenants')
-    .insert({
-      id: testId,
-      name: 'Test Tenant',
-      domain: `${testId}.test.com`,
-      owner_id: null,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    })
-    .select()
-
-  if (insertError) {
-    console.error('Insert error:', insertError)
-    return res.status(500).json({ 
-      error: 'Failed to insert test tenant',
-      details: insertError.message,
-      code: insertError.code
-    })
-  }
-
-  // Clean up - delete test tenant
-  await supabaseAdmin
-    .from('tenants')
-    .delete()
-    .eq('id', testId)
-
-  return res.status(200).json({ 
-    success: true, 
-    message: 'Database connection successful',
-    tenantCount: countData?.length || 0,
-    testInsert: 'successful'
-  })
 }
