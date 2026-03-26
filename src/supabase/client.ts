@@ -1,6 +1,6 @@
 // src/supabase/client.ts
 import { createClient, SupabaseClient, SupabaseClientOptions } from '@supabase/supabase-js'
-import type { Product, Category, AdminUser, ProductFormData } from '@/types'
+import type { Product, Category, AdminUser } from '@/types'
 
 // Define your Database type using your existing types
 export interface Database {
@@ -116,7 +116,7 @@ export const getSupabaseClient = (): SupabaseClient<Database> | null => {
   }
 
   const env = getSupabaseEnv()
-  
+
   if (!env) {
     console.warn('⚠️ Supabase client not initialized - missing environment variables')
     return null
@@ -128,11 +128,11 @@ export const getSupabaseClient = (): SupabaseClient<Database> | null => {
       env.anonKey,
       clientOptions
     )
-    
+
     if (import.meta.env.DEV) {
       console.log('✅ Supabase client initialized successfully')
     }
-    
+
     return supabaseInstance
   } catch (error) {
     console.error('❌ Failed to initialize Supabase client:', error)
@@ -146,6 +146,11 @@ export const getSupabaseClient = (): SupabaseClient<Database> | null => {
 export const isSupabaseConfigured = (): boolean => {
   return !!getSupabaseClient()
 }
+
+/**
+ * Helper to cast table access to any (bypass TypeScript strict typing for tables)
+ */
+export const getTable = (table: string) => supabaseSafe.client.from(table) as any
 
 /**
  * Safe wrapper for Supabase operations
@@ -182,7 +187,7 @@ export const supabaseSafe = {
       console.warn('Supabase not available, skipping operation')
       return null
     }
-    
+
     try {
       return await operation(client)
     } catch (error) {
@@ -202,7 +207,7 @@ export const supabaseSafe = {
     if (!client) {
       throw new Error('Supabase client is not available')
     }
-    
+
     return await operation(client)
   },
 
