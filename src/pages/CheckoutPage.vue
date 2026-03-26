@@ -274,7 +274,7 @@
             <div class="space-y-4">
               <label class="flex items-start p-4 border-2 border-gray-300 rounded-xl cursor-pointer 
                            hover:border-primary-500 transition-all group"
-                     :class="{ 'border-primary-500 bg-primary-50': checkoutForm.paymentMethod === 'cash_on_delivery' }">
+                     :class="{ 'border-primary-500 bg-primary-50': (checkoutForm.paymentMethod as string) === 'cash_on_delivery' }">
                 <input
                   type="radio"
                   v-model="checkoutForm.paymentMethod"
@@ -295,7 +295,7 @@
                     </div>
                     <span class="text-2xl">💰</span>
                   </div>
-                  <div v-if="checkoutForm.paymentMethod === 'cash_on_delivery'" class="mt-4 p-4 bg-yellow-50 
+                  <div v-if="(checkoutForm.paymentMethod as string) === 'cash_on_delivery'" class="mt-4 p-4 bg-yellow-50 
                                                                           rounded-lg border border-yellow-100">
                     <p class="text-sm text-yellow-800">
                       {{ currentLanguage === 'en' 
@@ -308,7 +308,7 @@
 
               <label class="flex items-start p-4 border-2 border-gray-300 rounded-xl cursor-pointer 
                            hover:border-primary-500 transition-all group"
-                     :class="{ 'border-primary-500 bg-primary-50': checkoutForm.paymentMethod === 'bank_transfer' }">
+                     :class="{ 'border-primary-500 bg-primary-50': (checkoutForm.paymentMethod as string) === 'bank_transfer' }">
                 <input
                   type="radio"
                   v-model="checkoutForm.paymentMethod"
@@ -329,7 +329,7 @@
                     </div>
                     <span class="text-2xl">🏦</span>
                   </div>
-                  <div v-if="checkoutForm.paymentMethod === 'bank_transfer'" class="mt-4 p-4 bg-blue-50 
+                  <div v-if="(checkoutForm.paymentMethod as string) === 'bank_transfer'" class="mt-4 p-4 bg-blue-50 
                                                                           rounded-lg border border-blue-100">
                     <p class="text-sm text-blue-800 font-medium mb-2">
                       {{ currentLanguage === 'en' ? 'Bank Details:' : 'تفاصيل البنك:' }}
