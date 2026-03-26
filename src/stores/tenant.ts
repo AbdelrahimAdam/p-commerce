@@ -1,12 +1,16 @@
+// src/stores/tenant.ts
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { supabase } from '@/supabase/client'
+import { supabaseSafe } from '@/supabase/client'
 
 interface CachedTenant {
   tenantId: string
   tenantDomain: string
   expiry: number
 }
+
+// Helper to get Supabase client (throws if null)
+const getClient = () => supabaseSafe.client
 
 export const useTenantStore = defineStore('tenant', () => {
   const tenantId = ref<string | null>(null)
@@ -61,7 +65,8 @@ export const useTenantStore = defineStore('tenant', () => {
         }
       }
 
-      let { data, error: fetchError } = await supabase
+      const client = getClient()
+      let { data, error: fetchError } = await client
         .from('tenants')
         .select('id, domain, name, settings')
         .eq('domain', hostname)
@@ -70,7 +75,7 @@ export const useTenantStore = defineStore('tenant', () => {
       if (fetchError) {
         if (retryCount < MAX_RETRIES && fetchError.message && 
             (fetchError.message.toLowerCase().includes('network') || 
-fetchError.message.toLowerCase().includes('unavailable'))) {
+             fetchError.message.toLowerCase().includes('unavailable'))) {
           console.warn(`⚠️ Supabase error, retrying (${retryCount + 1}/${MAX_RETRIES})...`)
           await sleep(RETRY_DELAY_MS)
           return resolveTenantFromDomain(retryCount + 1)
@@ -81,7 +86,7 @@ fetchError.message.toLowerCase().includes('unavailable'))) {
       if (!data || data.length === 0) {
         // Fallback: get first tenant (for local development)
         console.warn(`No tenant for domain "${hostname}", trying fallback...`)
-        const { data: fallbackData, error: fallbackError } = await supabase
+        const { data: fallbackData, error: fallbackError } = await client
           .from('tenants')
           .select('id, domain, name, settings')
           .limit(1)
@@ -176,7 +181,8 @@ fetchError.message.toLowerCase().includes('unavailable'))) {
 
   const fetchTenantById = async (id: string): Promise<{ id: string; data: any } | null> => {
     try {
-      const { data, error: fetchError } = await supabase
+      const client = getClient()
+      const { data, error: fetchError } = await client
         .from('tenants')
         .select('*')
         .eq('id', id)
