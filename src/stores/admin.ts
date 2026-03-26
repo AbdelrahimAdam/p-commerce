@@ -1,7 +1,7 @@
 // src/stores/admin.ts
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import { supabaseSafe } from '@/supabase/client'
+import { supabaseSafe, getTable } from '@/supabase/client'
 import type { AdminUser, CreateAdminDto, UpdateAdminDto } from '@/types/admin'
 import { useAuthStore } from './auth'
 
@@ -96,7 +96,7 @@ export const useAdminStore = defineStore('admin', () => {
 
       const userId = signUpData.user.id
 
-      // Insert into admins table
+      // Insert into admins table – use getTable to bypass strict typing
       const dbInsert = {
         id: userId,
         tenant_id: tenantId,
@@ -109,9 +109,8 @@ export const useAdminStore = defineStore('admin', () => {
         updated_at: new Date().toISOString()
       }
 
-      const { error: insertError } = await client
-        .from('admins')
-        .insert(dbInsert as any)
+      const { error: insertError } = await getTable('admins')
+        .insert(dbInsert)
 
       if (insertError) throw insertError
 
@@ -143,7 +142,6 @@ export const useAdminStore = defineStore('admin', () => {
     loading.value = true
     error.value = null
     try {
-      const client = getClient()
       const updatePayload: any = { updated_at: new Date().toISOString() }
       if (updateData.displayName !== undefined) updatePayload.display_name = updateData.displayName
       if (updateData.role !== undefined) updatePayload.role = updateData.role
@@ -152,8 +150,8 @@ export const useAdminStore = defineStore('admin', () => {
 
       if (Object.keys(updatePayload).length === 1) return // only updated_at, nothing else changed
 
-      const { error: updateError } = await client
-        .from('admins')
+      // Use getTable to bypass strict typing
+      const { error: updateError } = await getTable('admins')
         .update(updatePayload)
         .eq('id', uid)
 
@@ -180,9 +178,8 @@ export const useAdminStore = defineStore('admin', () => {
     loading.value = true
     error.value = null
     try {
-      const client = getClient()
-      const { error: deleteError } = await client
-        .from('admins')
+      // Use getTable to bypass strict typing
+      const { error: deleteError } = await getTable('admins')
         .delete()
         .eq('id', uid)
 
@@ -245,9 +242,8 @@ export const useAdminStore = defineStore('admin', () => {
 
   const updateLastLogin = async (uid: string) => {
     try {
-      const client = getClient()
-      const { error: updateError } = await client
-        .from('admins')
+      // Use getTable to bypass strict typing
+      const { error: updateError } = await getTable('admins')
         .update({ last_login: new Date().toISOString() })
         .eq('id', uid)
 
