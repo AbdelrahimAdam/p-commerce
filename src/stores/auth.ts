@@ -1,5 +1,5 @@
 // src/stores/auth.ts – final version with serverless API registration
-import { defineStore } from 'pinia
+import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import type { AdminUser, CustomerUser, Address } from '@/types'
 import { supabaseSafe } from '@/supabase/client'
