@@ -1,5 +1,6 @@
+// src/supabase/client.ts
 import { createClient, SupabaseClient, SupabaseClientOptions } from '@supabase/supabase-js'
-import type { Database } from '@/types/supabase' // You'll need to generate this
+import type { Database } from '@/types/supabase'
 
 // Type definitions for better DX
 type SupabaseEnv = {
@@ -53,7 +54,7 @@ const clientOptions: SupabaseClientOptions<'public'> = {
     detectSessionInUrl: true,
     storage: localStorage,
     storageKey: 'sb-auth-token',
-    flowType: 'pkce', // More secure auth flow
+    flowType: 'pkce',
   },
   global: {
     headers: {
@@ -98,7 +99,6 @@ export const getSupabaseClient = (): SupabaseClient<Database> | null => {
       clientOptions
     )
     
-    // Log successful initialization in development
     if (import.meta.env.DEV) {
       console.log('✅ Supabase client initialized successfully')
     }
@@ -144,7 +144,6 @@ export const isSupabaseConfigured = (): boolean => {
 
 /**
  * Health check for Supabase connection
- * Useful for debugging and monitoring
  */
 export const checkSupabaseHealth = async (): Promise<{
   healthy: boolean
@@ -162,7 +161,6 @@ export const checkSupabaseHealth = async (): Promise<{
   }
 
   try {
-    // Simple query to check connection
     const { error } = await supabase
       .from('_health')
       .select('*')
@@ -191,8 +189,120 @@ export const checkSupabaseHealth = async (): Promise<{
   }
 }
 
+/**
+ * Safe wrapper for Supabase operations
+ * Provides null-safe access to supabase client
+ */
+export const supabaseSafe = {
+  /**
+   * Get the supabase client (throws if not available)
+   */
+  get client(): SupabaseClient<Database> {
+    const client = getSupabaseClient()
+    if (!client) {
+      throw new Error('Supabase client is not available. Please check your environment variables.')
+    }
+    return client
+  },
+
+  /**
+   * Check if supabase is available
+   */
+  get isAvailable(): boolean {
+    return isSupabaseConfigured()
+  },
+
+  /**
+   * Safely execute a supabase operation
+   * Returns null if supabase is not available
+   */
+  async safeQuery<T>(
+    operation: (client: SupabaseClient<Database>) => Promise<T>
+  ): Promise<T | null> {
+    const client = getSupabaseClient()
+    if (!client) {
+      console.warn('Supabase not available, skipping operation')
+      return null
+    }
+    
+    try {
+      return await operation(client)
+    } catch (error) {
+      console.error('Supabase operation failed:', error)
+      return null
+    }
+  },
+
+  /**
+   * Execute a supabase operation with error handling
+   * Throws if supabase is not available or operation fails
+   */
+  async execute<T>(
+    operation: (client: SupabaseClient<Database>) => Promise<T>
+  ): Promise<T> {
+    const client = getSupabaseClient()
+    if (!client) {
+      throw new Error('Supabase client is not available')
+    }
+    
+    return await operation(client)
+  },
+
+  /**
+   * From helper - returns the from method or throws
+   */
+  from(table: string) {
+    const client = getSupabaseClient()
+    if (!client) {
+      throw new Error('Supabase client is not available')
+    }
+    return client.from(table)
+  },
+
+  /**
+   * Auth helper - returns auth object or throws
+   */
+  get auth() {
+    const client = getSupabaseClient()
+    if (!client) {
+      throw new Error('Supabase client is not available')
+    }
+    return client.auth
+  },
+
+  /**
+   * Storage helper - returns storage object or throws
+   */
+  get storage() {
+    const client = getSupabaseClient()
+    if (!client) {
+      throw new Error('Supabase client is not available')
+    }
+    return client.storage
+  },
+
+  /**
+   * Realtime helper - returns realtime channel or throws
+   */
+  channel(channelName: string) {
+    const client = getSupabaseClient()
+    if (!client) {
+      throw new Error('Supabase client is not available')
+    }
+    return client.channel(channelName)
+  }
+}
+
 // Export a default instance for convenience
 export const supabase = getSupabaseClient()
 
 // Export types for use in other files
 export type SupabaseClientType = SupabaseClient<Database>
+
+// Export error class for better error handling
+export class SupabaseNotAvailableError extends Error {
+  constructor() {
+    super('Supabase client is not available. Please check your environment variables.')
+    this.name = 'SupabaseNotAvailableError'
+  }
+}
