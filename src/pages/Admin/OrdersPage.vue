@@ -665,6 +665,7 @@ font-semibold rounded-full">
     </div>
   </div>
 </template>
+   
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
@@ -673,6 +674,7 @@ import { useOrdersStore } from '@/stores/orders'
 import { useAuthStore } from '@/stores/auth'
 import { useRouter } from 'vue-router'
 import type { Order, OrderStatus } from '@/types'
+import type { RealtimeChannel } from '@supabase/supabase-js'
 import debounce from 'lodash/debounce'
 import { supabaseSafe } from '@/supabase/client'
 import { authNotification } from '@/utils/notifications'
@@ -690,7 +692,7 @@ if (!authStore.isAdmin) {
 const { t } = languageStore
 
 // Real-time subscription
-let channel: ReturnType<ReturnType<typeof supabaseSafe.client>['channel']> | null = null
+let channel: RealtimeChannel | null = null
 const newOrdersCount = ref(0)
 const showNewOrdersNotification = ref(false)
 const lastOrderCount = ref(0)
@@ -719,7 +721,7 @@ const getShippingAddress = (order: any) => {
   return order.shippingAddress || order.customer?.address || t('N/A')
 }
 
-// Computed properties
+// Computed properties (unchanged)
 const filteredOrders = computed(() => {
   let filtered = [...ordersStore.orders]
 
@@ -771,7 +773,7 @@ const paginatedOrders = computed(() => {
   return filteredOrders.value.slice(startIndex.value, endIndex.value)
 })
 
-// Methods
+// Methods (unchanged)
 const formatCurrency = (amount: number) => {
   return new Intl.NumberFormat('en-EG', {
     style: 'currency',
@@ -1080,7 +1082,7 @@ watch([statusFilter, dateFilter], () => {
   applyFilters()
 })
 </script>
-
+                    
 <style scoped>
 .shadow-luxury {
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
