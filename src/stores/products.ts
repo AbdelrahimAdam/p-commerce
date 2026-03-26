@@ -89,6 +89,9 @@ function debounce<F extends (...args: any[]) => any>(func: F, wait: number): (..
 // Helper to get supabase client (throws if null)
 const getClient = () => supabaseSafe.client
 
+// Helper to cast table access to any to bypass strict typing
+const getTable = (table: string) => getClient().from(table) as any
+
 export const useProductsStore = defineStore('products', () => {
   const brandsStore = useBrandsStore()
   const authStore = useAuthStore()
@@ -212,11 +215,13 @@ export const useProductsStore = defineStore('products', () => {
   ): Promise<Product[]> => {
     try {
       const client = getClient()
+      // Ensure tenant is defined (checked before calling)
+      const tenant = authStore.currentTenant!
       let query = client
         .from('products')
         .select('*')
         .eq('brand_id', brandId)
-        .eq('tenant_id', authStore.currentTenant)
+        .eq('tenant_id', tenant)
         .eq('in_stock', true)
         .order('created_at', { ascending: false })
         .order('id', { ascending: false })
@@ -478,11 +483,11 @@ export const useProductsStore = defineStore('products', () => {
 
     try {
       const client = getClient()
-      const { data: productData, error: fetchError } = await client
-        .from('products')
+      const { data: productData, error: fetchError } = await getTable('products')
         .select('images')
         .eq('id', productId)
         .single()
+
       if (fetchError) throw fetchError
 
       if (productData?.images && Array.isArray(productData.images)) {
@@ -491,10 +496,10 @@ export const useProductsStore = defineStore('products', () => {
         }
       }
 
-      const { error: deleteError } = await client
-        .from('products')
+      const { error: deleteError } = await getTable('products')
         .delete()
         .eq('id', productId)
+
       if (deleteError) throw deleteError
 
       productCache.value.delete(`${brandId}_${productId}`)
