@@ -83,7 +83,8 @@ export const useTenantStore = defineStore('tenant', () => {
         throw fetchError
       }
 
-      if (!data || data.length === 0) {
+      const rows = data as any[]
+      if (!rows || rows.length === 0) {
         // Fallback: get first tenant (for local development)
         console.warn(`No tenant for domain "${hostname}", trying fallback...`)
         const { data: fallbackData, error: fallbackError } = await client
@@ -92,8 +93,10 @@ export const useTenantStore = defineStore('tenant', () => {
           .limit(1)
 
         if (fallbackError) throw fallbackError
-        if (fallbackData && fallbackData.length > 0) {
-          const row = fallbackData[0]
+
+        const fallbackRows = fallbackData as any[]
+        if (fallbackRows && fallbackRows.length > 0) {
+          const row = fallbackRows[0]
           tenantId.value = row.id
           tenantDomain.value = row.domain
           console.info('🟢 Tenant resolved from fallback:', tenantId.value)
@@ -116,7 +119,7 @@ export const useTenantStore = defineStore('tenant', () => {
         return
       }
 
-      const row = data[0]
+      const row = rows[0]
       const resolvedDomain: string = row.domain ?? ''
       if (!resolvedDomain) throw new Error('Tenant domain is missing in database')
 
@@ -188,7 +191,8 @@ export const useTenantStore = defineStore('tenant', () => {
         .eq('id', id)
         .single()
       if (fetchError || !data) return null
-      return { id: data.id, data }
+      const row = data as any
+      return { id: row.id, data: row }
     } catch (err) {
       console.error('Error fetching tenant by ID:', err)
       return null
