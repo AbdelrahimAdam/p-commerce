@@ -1,6 +1,43 @@
 // src/supabase/client.ts
 import { createClient, SupabaseClient, SupabaseClientOptions } from '@supabase/supabase-js'
-import type { Database } from '@/types/supabase'
+import type { Product, Category, AdminUser, ProductFormData } from '@/types'
+
+// Define your Database type using your existing types
+export interface Database {
+  public: {
+    Tables: {
+      products: {
+        Row: Product
+        Insert: Omit<Product, 'id' | 'createdAt' | 'updatedAt'>
+        Update: Partial<Omit<Product, 'id'>>
+      }
+      categories: {
+        Row: Category
+        Insert: Omit<Category, 'id'>
+        Update: Partial<Category>
+      }
+      admin_users: {
+        Row: AdminUser
+        Insert: Omit<AdminUser, 'uid' | 'createdAt'>
+        Update: Partial<AdminUser>
+      }
+      // Add other tables as needed
+      orders: {
+        Row: any // Define later
+        Insert: any
+        Update: any
+      }
+      wishlist: {
+        Row: any // Define later
+        Insert: any
+        Update: any
+      }
+    }
+    Views: {}
+    Functions: {}
+    Enums: {}
+  }
+}
 
 // Type definitions for better DX
 type SupabaseEnv = {
@@ -11,14 +48,12 @@ type SupabaseEnv = {
 
 /**
  * Validates and retrieves Supabase environment variables
- * Throws only in development, gracefully fails in production
  */
 const getSupabaseEnv = (): SupabaseEnv | null => {
   const url = import.meta.env.VITE_SUPABASE_URL
   const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
   const serviceRoleKey = import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY
 
-  // Development: Strict validation
   if (import.meta.env.DEV) {
     if (!url || !anonKey) {
       throw new Error(
@@ -28,16 +63,12 @@ const getSupabaseEnv = (): SupabaseEnv | null => {
     }
   }
 
-  // Production: Log warning but don't crash
   if (!url || !anonKey) {
-    console.error(
-      '❌ Supabase: Missing required environment variables',
-      {
-        hasUrl: !!url,
-        hasAnonKey: !!anonKey,
-        mode: import.meta.env.MODE
-      }
-    )
+    console.error('❌ Supabase: Missing required environment variables', {
+      hasUrl: !!url,
+      hasAnonKey: !!anonKey,
+      mode: import.meta.env.MODE
+    })
     return null
   }
 
@@ -78,7 +109,6 @@ let supabaseInstance: SupabaseClient<Database> | null = null
 
 /**
  * Initialize and return Supabase client
- * Uses singleton pattern to prevent multiple instances
  */
 export const getSupabaseClient = (): SupabaseClient<Database> | null => {
   if (supabaseInstance) {
@@ -111,31 +141,6 @@ export const getSupabaseClient = (): SupabaseClient<Database> | null => {
 }
 
 /**
- * Get service role client (for admin operations only)
- * This should NEVER be exposed to the client-side
- */
-export const getServiceRoleClient = () => {
-  const env = getSupabaseEnv()
-  
-  if (!env?.serviceRoleKey) {
-    console.error('❌ Service role key not available')
-    return null
-  }
-
-  return createClient<Database>(
-    env.url,
-    env.serviceRoleKey,
-    {
-      ...clientOptions,
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
-      },
-    }
-  )
-}
-
-/**
  * Check if Supabase is configured and available
  */
 export const isSupabaseConfigured = (): boolean => {
@@ -143,55 +148,8 @@ export const isSupabaseConfigured = (): boolean => {
 }
 
 /**
- * Health check for Supabase connection
- */
-export const checkSupabaseHealth = async (): Promise<{
-  healthy: boolean
-  error?: string
-  latency?: number
-}> => {
-  const startTime = performance.now()
-  const supabase = getSupabaseClient()
-  
-  if (!supabase) {
-    return {
-      healthy: false,
-      error: 'Supabase client not initialized'
-    }
-  }
-
-  try {
-    const { error } = await supabase
-      .from('_health')
-      .select('*')
-      .limit(1)
-      .maybeSingle()
-    
-    const latency = performance.now() - startTime
-    
-    if (error && !error.message.includes('relation "_health" does not exist')) {
-      return {
-        healthy: false,
-        error: error.message,
-        latency
-      }
-    }
-    
-    return {
-      healthy: true,
-      latency
-    }
-  } catch (error) {
-    return {
-      healthy: false,
-      error: error instanceof Error ? error.message : 'Unknown error'
-    }
-  }
-}
-
-/**
  * Safe wrapper for Supabase operations
- * Provides null-safe access to supabase client
+ * Provides null-safe access to supabase client with your types
  */
 export const supabaseSafe = {
   /**
@@ -251,12 +209,12 @@ export const supabaseSafe = {
   /**
    * From helper - returns the from method or throws
    */
-  from(table: string) {
+  from(table: keyof Database['public']['Tables']) {
     const client = getSupabaseClient()
     if (!client) {
       throw new Error('Supabase client is not available')
     }
-    return client.from(table)
+    return client.from(table as string)
   },
 
   /**
@@ -290,10 +248,21 @@ export const supabaseSafe = {
       throw new Error('Supabase client is not available')
     }
     return client.channel(channelName)
+  },
+
+  /**
+   * RPC helper - call stored procedures
+   */
+  rpc(fn: string, params?: any) {
+    const client = getSupabaseClient()
+    if (!client) {
+      throw new Error('Supabase client is not available')
+    }
+    return client.rpc(fn, params)
   }
 }
 
-// Export a default instance for convenience
+// Export the main supabase client (could be null)
 export const supabase = getSupabaseClient()
 
 // Export types for use in other files
@@ -306,3 +275,6 @@ export class SupabaseNotAvailableError extends Error {
     this.name = 'SupabaseNotAvailableError'
   }
 }
+
+// Default export for convenience
+export default supabaseSafe
