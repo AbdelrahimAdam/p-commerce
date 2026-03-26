@@ -3,7 +3,7 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { useHomepageStore } from './homepage'
 import { useAuthStore } from './auth'
-import { supabase } from '@/supabase/client'
+import { supabaseSafe } from '@/supabase/client'
 
 export interface Offer {
   id: string
@@ -105,6 +105,9 @@ export const useOffersStore = defineStore('offers', () => {
     }
   }
 
+  // Helper to get supabase client (throws if null)
+  const getClient = () => supabaseSafe.client
+
   // ========== Actions ==========
 
   // Load offers from homepage store first, then fallback to Supabase
@@ -150,7 +153,8 @@ export const useOffersStore = defineStore('offers', () => {
         return
       }
 
-      let query = supabase
+      const client = getClient()
+      let query = client
         .from('offers')
         .select('*')
         .eq('tenant_id', tenantId)
@@ -211,7 +215,8 @@ export const useOffersStore = defineStore('offers', () => {
         throw new Error('Tenant not resolved – cannot fetch offer')
       }
 
-      const { data, error: fetchError } = await supabase
+      const client = getClient()
+      const { data, error: fetchError } = await client
         .from('offers')
         .select('*')
         .eq('slug', slug)
@@ -257,7 +262,8 @@ export const useOffersStore = defineStore('offers', () => {
       }
 
       // If not found, try Supabase
-      const { data, error: fetchError } = await supabase
+      const client = getClient()
+      const { data, error: fetchError } = await client
         .from('offers')
         .select('*')
         .eq('id', id)
@@ -316,7 +322,8 @@ export const useOffersStore = defineStore('offers', () => {
         throw new Error('Tenant not resolved – cannot fetch offer')
       }
 
-      const { data: slugData, error: slugError } = await supabase
+      const client = getClient()
+      const { data: slugData, error: slugError } = await client
         .from('offers')
         .select('*')
         .eq('slug', identifier)
@@ -333,7 +340,7 @@ export const useOffersStore = defineStore('offers', () => {
 
       // If not found by slug, try as ID
       console.log('🔄 Not found by slug, trying Supabase by ID...')
-      const { data: idData, error: idError } = await supabase
+      const { data: idData, error: idError } = await client
         .from('offers')
         .select('*')
         .eq('id', identifier)
@@ -386,8 +393,10 @@ export const useOffersStore = defineStore('offers', () => {
         throw new Error('Tenant not resolved – cannot create offer')
       }
 
+      const client = getClient()
+
       // Check slug uniqueness within tenant
-      const { data: existing, error: checkError } = await supabase
+      const { data: existing, error: checkError } = await client
         .from('offers')
         .select('id')
         .eq('slug', input.slug)
@@ -417,7 +426,7 @@ export const useOffersStore = defineStore('offers', () => {
         active: input.active !== false
       }
 
-      const { data, error: insertError } = await supabase
+      const { data, error: insertError } = await client
         .from('offers')
         .insert(insertPayload)
         .select()
@@ -447,9 +456,11 @@ export const useOffersStore = defineStore('offers', () => {
         throw new Error('Tenant not resolved – cannot update offer')
       }
 
+      const client = getClient()
+
       // If slug is being updated, check uniqueness within tenant
       if (input.slug) {
-        const { data: existing, error: checkError } = await supabase
+        const { data: existing, error: checkError } = await client
           .from('offers')
           .select('id')
           .eq('slug', input.slug)
@@ -463,7 +474,7 @@ export const useOffersStore = defineStore('offers', () => {
       }
 
       // Prepare update payload (map camelCase to snake_case)
-      const updatePayload: any = {
+      const updatePayload: Record<string, any> = {
         updated_at: new Date().toISOString()
       }
       if (input.slug !== undefined) updatePayload.slug = input.slug
@@ -480,7 +491,7 @@ export const useOffersStore = defineStore('offers', () => {
       if (input.terms !== undefined) updatePayload.terms = input.terms
       if (input.active !== undefined) updatePayload.active = input.active
 
-      const { error: updateError } = await supabase
+      const { error: updateError } = await client
         .from('offers')
         .update(updatePayload)
         .eq('id', id)
@@ -504,7 +515,8 @@ export const useOffersStore = defineStore('offers', () => {
     error.value = ''
 
     try {
-      const { error: deleteError } = await supabase
+      const client = getClient()
+      const { error: deleteError } = await client
         .from('offers')
         .delete()
         .eq('id', id)
