@@ -1,7 +1,7 @@
 // src/stores/orders.ts
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { supabaseSafe } from '@/supabase/client'
+import { supabaseSafe, getTable } from '@/supabase/client'
 import { useAuthStore } from './auth'
 import { useCartStore } from './cart'
 import { useProductsStore } from './products'
@@ -19,9 +19,6 @@ import type {
 
 // Helper to get Supabase client (throws if null)
 const getClient = () => supabaseSafe.client
-
-// Helper to cast table reference to any to bypass strict type checking
-const getTable = (table: string) => getClient().from(table) as any
 
 export const useOrdersStore = defineStore('orders', () => {
   const authStore = useAuthStore()
@@ -355,7 +352,7 @@ export const useOrdersStore = defineStore('orders', () => {
 
   const createOrder = async (
     shippingAddress: ShippingAddress,
-    paymentMethod: PaymentMethod = 'cash_on_delivery',
+    paymentMethod: PaymentMethod = 'cash_on_delivery' as PaymentMethod,
     notes?: string
   ) => {
     if (cartStore.items.length === 0) {
