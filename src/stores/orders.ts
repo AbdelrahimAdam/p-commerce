@@ -17,6 +17,12 @@ import type {
   Product
 } from '@/types'
 
+// Helper to get Supabase client (throws if null)
+const getClient = () => supabaseSafe.client
+
+// Helper to cast table reference to any to bypass strict type checking
+const getTable = (table: string) => getClient().from(table) as any
+
 export const useOrdersStore = defineStore('orders', () => {
   const authStore = useAuthStore()
   const cartStore = useCartStore()
@@ -109,9 +115,6 @@ export const useOrdersStore = defineStore('orders', () => {
 
   const generateGuestId = (): string => 
     `guest_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`
-
-  // Helper to get supabase client (throws if null)
-  const getClient = () => supabaseSafe.client
 
   const convertRowToOrder = (row: any): Order => ({
     id: row.id,
@@ -224,7 +227,7 @@ export const useOrdersStore = defineStore('orders', () => {
       const { data, error: fetchError } = await query
       if (fetchError) throw fetchError
 
-      const fetchedOrders = (data || []).map(row => convertRowToOrder(row))
+      const fetchedOrders = ((data as any[]) || []).map(row => convertRowToOrder(row))
       orders.value = fetchedOrders
       return fetchedOrders
     } catch (err) {
@@ -277,12 +280,13 @@ export const useOrdersStore = defineStore('orders', () => {
         return null
       }
 
-      if (data.tenant_id !== authStore.currentTenant) {
+      const row = data as any
+      if (row.tenant_id !== authStore.currentTenant) {
         error.value = 'Order not found in current tenant'
         return null
       }
 
-      const order = convertRowToOrder(data)
+      const order = convertRowToOrder(row)
       const currentUserId = getCurrentUserId()
 
       if (authStore.isAdmin) {
@@ -415,9 +419,8 @@ export const useOrdersStore = defineStore('orders', () => {
 
       const shippingAddressString = `${shippingAddress.address}, ${shippingAddress.city}, ${shippingAddress.country || 'Egypt'}`
 
-      const client = getClient()
-      // Use `as any` to bypass strict type checking for RPC parameters
-      const { data: orderData, error: rpcError } = await client.rpc('create_order', {
+      // Use RPC call – cast to any
+      const { data: orderData, error: rpcError } = await (getClient().rpc as any)('create_order', {
         _tenant_id: tenantId,
         _order_number: orderNumber,
         _customer: {
@@ -445,7 +448,7 @@ export const useOrdersStore = defineStore('orders', () => {
         _user_id: currentUserId,
         _guest_id: guestId,
         _user_email: currentUserEmail
-      } as any)
+      })
 
       if (rpcError) throw rpcError
 
@@ -508,7 +511,7 @@ export const useOrdersStore = defineStore('orders', () => {
       const { data, error: fetchError } = await query
       if (fetchError) throw fetchError
 
-      const guestOrders = (data || []).map(row => convertRowToOrder(row))
+      const guestOrders = ((data as any[]) || []).map(row => convertRowToOrder(row))
 
       if (guestOrders.length > 0) {
         const latestOrder = guestOrders[0]
@@ -542,23 +545,23 @@ export const useOrdersStore = defineStore('orders', () => {
 
     try {
       const client = getClient()
-      // Use `as any` to avoid TypeScript inferring `never` for the result
       const { data: currentOrderData, error: fetchError } = await client
         .from('orders')
         .select('*')
         .eq('id', orderId)
-        .single() as any
+        .single()
 
       if (fetchError || !currentOrderData) throw new Error('Order not found')
-      if (currentOrderData.tenant_id !== authStore.currentTenant) throw new Error('Order does not belong to this tenant')
+      const row = currentOrderData as any
+      if (row.tenant_id !== authStore.currentTenant) throw new Error('Order does not belong to this tenant')
 
-      const currentStatus = currentOrderData.status
+      const currentStatus = row.status
       if (currentStatus === status) return true
 
       const currentUserId = getCurrentUserId()
       const currentUserName = getCurrentUserName() || 'admin'
 
-      const existingHistory = currentOrderData.status_history || []
+      const existingHistory = row.status_history || []
       const newHistoryItem = {
         status,
         timestamp: new Date().toISOString(),
@@ -577,7 +580,7 @@ export const useOrdersStore = defineStore('orders', () => {
 
       if (status === 'shipped') {
         updatePayload.shipped_at = new Date().toISOString()
-        if (!trackingNumber && currentOrderData.payment_method === 'cash_on_delivery') {
+        if (!trackingNumber && row.payment_method === 'cash_on_delivery') {
           updatePayload.payment_status = 'paid'
         }
       } else if (status === 'delivered') {
@@ -585,29 +588,27 @@ export const useOrdersStore = defineStore('orders', () => {
         updatePayload.payment_status = 'paid'
       } else if (status === 'cancelled') {
         updatePayload.cancelled_at = new Date().toISOString()
-        if (currentOrderData.payment_status === 'paid') {
+        if (row.payment_status === 'paid') {
           updatePayload.payment_status = 'refunded'
         }
 
-        const items = currentOrderData.items as OrderItem[]
+        const items = row.items as OrderItem[]
         for (const item of items) {
-          // Use `as any` for the RPC call
-          const { error: stockError } = await client.rpc('adjust_product_stock', {
+          const { error: stockError } = await (getClient().rpc as any)('adjust_product_stock', {
             _product_id: item.productId,
             _quantity: item.quantity
-          } as any)
+          })
           if (stockError) console.warn(`Failed to restore stock for product ${item.productId}:`, stockError)
         }
       }
 
-      const { error: updateError } = await client
-        .from('orders')
+      const { error: updateError } = await getTable('orders')
         .update(updatePayload)
         .eq('id', orderId)
 
       if (updateError) throw updateError
 
-      const updatedOrder: Order = { ...convertRowToOrder({ ...currentOrderData, ...updatePayload }), id: orderId }
+      const updatedOrder: Order = { ...convertRowToOrder({ ...row, ...updatePayload }), id: orderId }
       const index = orders.value.findIndex(o => o.id === orderId)
       if (index !== -1) orders.value = [...orders.value.slice(0, index), updatedOrder, ...orders.value.slice(index + 1)]
       else orders.value = [updatedOrder, ...orders.value]
@@ -639,11 +640,9 @@ export const useOrdersStore = defineStore('orders', () => {
     }
     loading.value = true
     try {
-      const client = getClient()
       const updatePayload = { payment_status: paymentStatus, updated_at: new Date().toISOString() }
-      const { error: updateError } = await client
-        .from('orders')
-        .update(updatePayload as any)
+      const { error: updateError } = await getTable('orders')
+        .update(updatePayload)
         .eq('id', orderId)
 
       if (updateError) throw updateError
