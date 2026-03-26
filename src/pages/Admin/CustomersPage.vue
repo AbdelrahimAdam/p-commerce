@@ -26,8 +26,7 @@
         <button 
           @click="exportCustomers"
           :disabled="loading || filteredCustomers.length === 0"
-          class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center justify-center gap-2 disabled:opacity-50 
-disabled:cursor-not-allowed min-h-[44px]"
+          class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed min-h-[44px]"
         >
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 
@@ -264,13 +263,13 @@ disabled:cursor-not-allowed min-h-[44px]"
                     <p class="text-sm text-gray-500">ID: {{ customer.id.slice(0, 8) }}</p>
                   </div>
                 </div>
-              </td>
+               </td>
               <td class="py-4 px-4">
                 <p class="text-sm">{{ customer.email }}</p>
-              </td>
+               </td>
               <td class="py-4 px-4">
                 <p class="text-sm">{{ customer.phone || '-' }}</p>
-              </td>
+               </td>
               <td class="py-4 px-4">
                 <span :class="[
                   'px-3 py-1 rounded-full text-sm font-medium',
@@ -278,13 +277,13 @@ disabled:cursor-not-allowed min-h-[44px]"
                 ]">
                   {{ customer.orders || 0 }}
                 </span>
-              </td>
+               </td>
               <td class="py-4 px-4 font-medium">
                 {{ formatCurrency(customer.totalSpent || 0) }}
-              </td>
+               </td>
               <td class="py-4 px-4 text-sm text-gray-600">
                 {{ customer.lastOrder ? formatDate(customer.lastOrder) : t('Never') }}
-              </td>
+               </td>
               <td class="py-4 px-4">
                 <span :class="[
                   'px-3 py-1 rounded-full text-sm',
@@ -296,7 +295,7 @@ disabled:cursor-not-allowed min-h-[44px]"
                 ]">
                   {{ getStatusText(customer.status) }}
                 </span>
-              </td>
+               </td>
               <td class="py-4 px-4">
                 <div class="flex items-center gap-2">
                   <button 
@@ -341,10 +340,10 @@ disabled:cursor-not-allowed min-h-[44px]"
                     </svg>
                   </button>
                 </div>
-              </td>
-            </tr>
+               </td>
+             </tr>
           </tbody>
-        </table>
+         </table>
       </div>
 
       <!-- Empty State -->
@@ -564,7 +563,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useLanguageStore } from '@/stores/language'
 import { useAuthStore } from '@/stores/auth'
-import { supabase } from '@/supabase/client'
+import { supabaseSafe } from '@/supabase/client'
 import { showConfirmation } from '@/utils/confirmation'
 import debounce from 'lodash/debounce'
 
@@ -653,6 +652,9 @@ const selectAll = computed({
   }
 })
 
+// Helper to get Supabase client (throws if null)
+const getClient = () => supabaseSafe.client
+
 // Methods
 const getInitials = (name: string) => {
   return name
@@ -710,7 +712,8 @@ const loadOrders = async () => {
   }
 
   try {
-    const { data, error } = await supabase
+    const client = getClient()
+    const { data, error } = await client
       .from('orders')
       .select('*')
       .eq('tenant_id', tenantId)
@@ -718,7 +721,7 @@ const loadOrders = async () => {
 
     if (error) throw error
 
-    allOrders.value = data || []
+    allOrders.value = (data as any[]) || []
 
     // Group orders by user
     const ordersByUser: Record<string, any[]> = {}
@@ -749,7 +752,8 @@ const loadCustomers = async () => {
   }
 
   try {
-    const { data, error: fetchError } = await supabase
+    const client = getClient()
+    const { data, error: fetchError } = await client
       .from('customers')
       .select('*')
       .eq('tenant_id', tenantId)
@@ -760,7 +764,7 @@ const loadCustomers = async () => {
 
     const ordersByUser = await loadOrders()
     
-    customers.value = (data || []).map(row => {
+    customers.value = ((data as any[]) || []).map(row => {
       const userId = row.id
       const userOrders = ordersByUser[userId] || []
       
@@ -885,7 +889,8 @@ const deleteCustomer = async (id: string) => {
   
   if (confirmed) {
     try {
-      const { error } = await supabase
+      const client = getClient()
+      const { error } = await client
         .from('customers')
         .delete()
         .eq('id', id)
