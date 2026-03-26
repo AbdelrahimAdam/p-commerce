@@ -5,7 +5,7 @@ import type { CartItem, Product } from '@/types'
 import { useLocalStorage } from '@vueuse/core'
 import { showNotification } from '@/utils/notifications'
 import { showConfirmation } from '@/utils/confirmation'
-import { supabase } from '@/supabase/client'
+import { supabaseSafe } from '@/supabase/client'
 import { useAuthStore } from './auth'
 
 // Egyptian Pound configuration
@@ -16,6 +16,12 @@ const CURRENCY = {
   shippingRate: 150,
   taxRate: 0.14
 }
+
+// Helper to get Supabase client (throws if null)
+const getClient = () => supabaseSafe.client
+
+// Helper to cast table reference to any to bypass strict type checking
+const getTable = (table: string) => getClient().from(table) as any
 
 export const useCartStore = defineStore('cart', () => {
   const authStore = useAuthStore()
@@ -91,13 +97,12 @@ export const useCartStore = defineStore('cart', () => {
 
     syncing.value = true
     try {
-      const { error } = await supabase
-        .from('carts')
+      const { error } = await getTable('carts')
         .upsert({
           user_id: userId,
           items: items.value,
           updated_at: new Date().toISOString()
-        }, { onConflict: 'user_id' })
+        } as any, { onConflict: 'user_id' })
       if (error) throw error
     } catch (error) {
       console.error('Error syncing cart to Supabase:', error)
@@ -113,16 +118,15 @@ export const useCartStore = defineStore('cart', () => {
 
     syncing.value = true
     try {
-      const { data, error } = await supabase
-        .from('carts')
+      const { data, error } = await getTable('carts')
         .select('items')
         .eq('user_id', userId)
         .maybeSingle()
 
       if (error) throw error
 
-      if (data?.items) {
-        const serverItems = data.items as CartItem[]
+      if (data && (data as any).items) {
+        const serverItems = (data as any).items as CartItem[]
         const localMap = new Map(items.value.map(i => [i.id, i]))
         const merged: CartItem[] = []
 
