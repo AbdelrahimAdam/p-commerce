@@ -18,6 +18,7 @@ interface SupabaseCustomer {
   newsletter: boolean
   created_at: string
   updated_at: string
+  last_login?: string | null
 }
 
 // Define the admin data structure from Supabase
@@ -84,7 +85,7 @@ export const useAuthStore = defineStore('auth', () => {
     
     if (fetchError || !data) return null
     
-    const adminData = data as SupabaseAdmin
+    const adminData = data as unknown as SupabaseAdmin
     return {
       uid: adminData.id,
       email: adminData.email,
@@ -111,7 +112,7 @@ export const useAuthStore = defineStore('auth', () => {
     
     if (fetchError || !data) return null
     
-    const customerData = data as SupabaseCustomer
+    const customerData = data as unknown as SupabaseCustomer
     return {
       uid: customerData.id,
       email: customerData.email,
@@ -181,10 +182,12 @@ export const useAuthStore = defineStore('auth', () => {
       if (adminData) {
         setAdminUser(adminData)
         const supabaseClient = supabaseSafe.client
-        await supabaseClient
+        const updateData = { last_login: new Date().toISOString() }
+        const { error: updateError } = await supabaseClient
           .from('admins')
-          .update({ last_login: new Date().toISOString() })
+          .update(updateData)
           .eq('id', userId)
+        if (updateError) console.warn('Failed to update admin last_login:', updateError)
         authNotification.loggedIn(adminData.displayName ?? 'Admin')
         console.log('✅ Admin authenticated:', adminData.email)
         return { ...adminData, role: 'admin' }
@@ -193,13 +196,15 @@ export const useAuthStore = defineStore('auth', () => {
       if (customerData) {
         setCustomerUser(customerData, credentials.remember)
         const supabaseClient = supabaseSafe.client
-        await supabaseClient
+        const updateData = {
+          last_login: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        }
+        const { error: updateError } = await supabaseClient
           .from('customers')
-          .update({
-            last_login: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          })
+          .update(updateData)
           .eq('id', userId)
+        if (updateError) console.warn('Failed to update customer last_login:', updateError)
         authNotification.loggedIn(customerData.displayName ?? 'Customer')
         console.log('✅ Customer authenticated:', customerData.email)
         return { ...customerData, role: 'customer' }
@@ -334,7 +339,7 @@ export const useAuthStore = defineStore('auth', () => {
         if (updateAuthError) throw updateAuthError
       }
 
-      const updateData: any = { updated_at: new Date().toISOString() }
+      const updateData: Record<string, any> = { updated_at: new Date().toISOString() }
       if (profileData.displayName) updateData.name = profileData.displayName
       if (profileData.phoneNumber !== undefined) updateData.phone_number = profileData.phoneNumber
       if (profileData.newsletter !== undefined) updateData.newsletter = profileData.newsletter
@@ -417,9 +422,10 @@ export const useAuthStore = defineStore('auth', () => {
       }
       const newAddresses = [...current, addressWithId]
 
+      const updatePayload = { addresses: newAddresses, updated_at: new Date().toISOString() }
       const { error: updateError } = await supabase
         .from('customers')
-        .update({ addresses: newAddresses, updated_at: new Date().toISOString() })
+        .update(updatePayload)
         .eq('id', customer.value.uid)
       if (updateError) throw updateError
 
@@ -454,9 +460,10 @@ export const useAuthStore = defineStore('auth', () => {
         addr.id === addressId ? { ...addr, ...updatedAddress, id: addressId } : addr
       )
 
+      const updatePayload = { addresses: newAddresses, updated_at: new Date().toISOString() }
       const { error: updateError } = await supabase
         .from('customers')
-        .update({ addresses: newAddresses, updated_at: new Date().toISOString() })
+        .update(updatePayload)
         .eq('id', customer.value.uid)
       if (updateError) throw updateError
 
@@ -489,9 +496,10 @@ export const useAuthStore = defineStore('auth', () => {
       const current = (data as any)?.addresses || []
       const newAddresses = current.filter((addr: Address) => addr.id !== addressId)
 
+      const updatePayload = { addresses: newAddresses, updated_at: new Date().toISOString() }
       const { error: updateError } = await supabase
         .from('customers')
-        .update({ addresses: newAddresses, updated_at: new Date().toISOString() })
+        .update(updatePayload)
         .eq('id', customer.value.uid)
       if (updateError) throw updateError
 
@@ -527,9 +535,10 @@ export const useAuthStore = defineStore('auth', () => {
         isDefault: addr.id === addressId
       }))
 
+      const updatePayload = { addresses: newAddresses, updated_at: new Date().toISOString() }
       const { error: updateError } = await supabase
         .from('customers')
-        .update({ addresses: newAddresses, updated_at: new Date().toISOString() })
+        .update(updatePayload)
         .eq('id', customer.value.uid)
       if (updateError) throw updateError
 
