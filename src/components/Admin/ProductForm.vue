@@ -41,8 +41,7 @@
                     @click="goToStep(2)"
                     :class="currentStep === 2 ? 'text-primary-600 border-primary-600' : 'text-gray-500 border-gray-300'"
                     :disabled="!canProceedToProductDetails"
-                    class="flex-1 py-2 text-sm font-medium border-b-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap 
-px-1"
+                    class="flex-1 py-2 text-sm font-medium border-b-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap px-1"
                   >
                     {{ t('Product Details') }}
                   </button>
@@ -106,8 +105,7 @@ px-1"
                   <input
                     v-model="brandSearchQuery"
                     type="text"
-                    class="w-full px-3 py-2 pl-10 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 
-focus:border-primary-500 text-sm"
+                    class="w-full px-3 py-2 pl-10 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-sm"
                     :placeholder="t('Search brands...')"
                     @input="onBrandSearch"
                   />
@@ -123,8 +121,7 @@ focus:border-primary-500 text-sm"
                 </div>
 
                 <!-- Brand List -->
-                <div v-else-if="filteredBrands.length > 0" class="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-48 overflow-y-auto p-2 border 
-border-gray-200 rounded-lg">
+                <div v-else-if="filteredBrands.length > 0" class="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-48 overflow-y-auto p-2 border border-gray-200 rounded-lg">
                   <div
                     v-for="brand in filteredBrands"
                     :key="brand.id"
@@ -164,8 +161,7 @@ border-gray-200 rounded-lg">
                 <!-- No brands found -->
                 <div v-else-if="!brandsLoading" class="mt-3 p-4 text-center border border-gray-200 rounded-lg">
                   <svg class="w-12 h-12 mx-auto text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 
-11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                   </svg>
                   <p class="mt-2 text-sm text-gray-600">
                     {{ t('No brands found. Try searching or create a new brand.') }}
@@ -211,8 +207,7 @@ border-gray-200 rounded-lg">
                   v-model="newBrand.name"
                   type="text"
                   :placeholder="t('e.g., Tom Ford')"
-                  class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 
-focus:border-primary-500 text-sm"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-sm"
                   :class="{ 'border-red-300': brandErrors.name }"
                   @input="generateBrandSlug"
                 />
@@ -233,14 +228,12 @@ focus:border-primary-500 text-sm"
                       v-model="newBrand.imageUrl"
                       type="text"
                       placeholder="https://example.com/image.jpg"
-                      class="flex-1 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 
-focus:border-primary-500 text-sm"
+                      class="flex-1 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-sm"
                     />
                     <button
                       type="button"
                       @click="previewBrandImage(newBrand.imageUrl)"
-                      class="inline-flex items-center justify-center px-3 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 
-bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary-500 whitespace-nowrap"
+                      class="inline-flex items-center justify-center px-3 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary-500 whitespace-nowrap"
                     >
                       {{ t('Preview') }}
                     </button>
@@ -256,21 +249,19 @@ bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary-500
                       type="file"
                       accept="image/*"
                       @change="handleBrandImageUpload"
-                      class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium 
-file:bg-primary-50 file:text-primary-700 hover:file:bg-primary-100 cursor-pointer"
+                      class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-primary-50 file:text-primary-700 hover:file:bg-primary-100 cursor-pointer"
                     />
                     <button
                       v-if="brandImageFile || newBrand.imageUrl"
                       @click="removeBrandImage"
                       type="button"
-                      class="inline-flex items-center justify-center px-3 py-2 border border-red-300 text-red-700 rounded-md hover:bg-red-50 text-sm 
-whitespace-nowrap"
+                      class="inline-flex items-center justify-center px-3 py-2 border border-red-300 text-red-700 rounded-md hover:bg-red-50 text-sm whitespace-nowrap"
                     >
                       {{ t('Remove') }}
                     </button>
                   </div>
                   <p class="mt-1 text-xs text-gray-500">
-                    {{ t('Images will be stored in Supabase Storage (no size limit). JPG, PNG, GIF recommended.') }}
+                    {{ t('Images will be stored in Supabase Storage. JPG, PNG, GIF recommended.') }}
                   </p>
                 </div>
 
@@ -309,16 +300,14 @@ whitespace-nowrap"
                       v-model="newBrand.slug"
                       type="text"
                       :placeholder="t('tom-ford')"
-                      class="w-full pl-16 sm:pl-20 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 
-focus:border-primary-500 text-sm"
+                      class="w-full pl-16 sm:pl-20 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-sm"
                       :class="{ 'border-red-300': brandErrors.slug }"
                     />
                   </div>
                   <button
                     type="button"
                     @click="generateBrandSlug"
-                    class="inline-flex items-center justify-center px-3 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 
-bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary-500 whitespace-nowrap"
+                    class="inline-flex items-center justify-center px-3 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary-500 whitespace-nowrap"
                   >
                     {{ t('Generate') }}
                   </button>
@@ -336,8 +325,7 @@ bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary-500
                 </label>
                 <select
                   v-model="newBrand.category"
-                  class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 
-focus:border-primary-500 text-sm"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-sm"
                   :class="{ 'border-red-300': brandErrors.category }"
                 >
                   <option value="">{{ t('Select category') }}</option>
@@ -359,8 +347,7 @@ focus:border-primary-500 text-sm"
                   v-model="newBrand.description"
                   rows="2"
                   :placeholder="t('Brief description about the brand...')"
-                  class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 
-focus:border-primary-500 text-sm"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-sm"
                 ></textarea>
               </div>
 
@@ -426,15 +413,13 @@ focus:border-primary-500 text-sm"
                     v-model="productData.imageUrl"
                     type="text"
                     placeholder="https://example.com/product.jpg"
-                    class="flex-1 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 
-focus:border-primary-500 text-sm"
+                    class="flex-1 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-sm"
                     :class="{ 'border-red-300': errors.image }"
                   />
                   <button
                     type="button"
                     @click="previewProductImage(productData.imageUrl)"
-                    class="inline-flex items-center justify-center px-3 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 
-bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary-500 whitespace-nowrap"
+                    class="inline-flex items-center justify-center px-3 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary-500 whitespace-nowrap"
                   >
                     {{ t('Preview') }}
                   </button>
@@ -450,21 +435,19 @@ bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary-500
                     type="file"
                     accept="image/*"
                     @change="handleProductImageUpload"
-                    class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium 
-file:bg-primary-50 file:text-primary-700 hover:file:bg-primary-100 cursor-pointer"
+                    class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-primary-50 file:text-primary-700 hover:file:bg-primary-100 cursor-pointer"
                   />
                   <button
                     v-if="productImageFile || productData.imageUrl"
                     @click="removeProductImage"
                     type="button"
-                    class="inline-flex items-center justify-center px-3 py-2 border border-red-300 text-red-700 rounded-md hover:bg-red-50 text-sm 
-whitespace-nowrap"
+                    class="inline-flex items-center justify-center px-3 py-2 border border-red-300 text-red-700 rounded-md hover:bg-red-50 text-sm whitespace-nowrap"
                   >
                     {{ t('Remove') }}
                   </button>
                 </div>
                 <p class="mt-1 text-xs text-gray-500">
-                  {{ t('Images will be stored in Supabase Storage (no size limit). JPG, PNG, GIF recommended.') }}
+                  {{ t('Images will be stored in Supabase Storage. JPG, PNG, GIF recommended.') }}
                 </p>
               </div>
 
@@ -500,8 +483,7 @@ whitespace-nowrap"
                 v-model="productData.name.en"
                 type="text"
                 :placeholder="t('e.g., Noir Extreme')"
-                class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 
-focus:border-primary-500 text-sm"
+                class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-sm"
                 :class="{ 'border-red-300': errors.nameEn }"
                 @input="generateProductSlug"
               />
@@ -517,8 +499,7 @@ focus:border-primary-500 text-sm"
                 v-model="productData.name.ar"
                 type="text"
                 :placeholder="t('نوار إكستريم')"
-                class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 
-focus:border-primary-500 text-sm text-right"
+                class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-sm text-right"
                 :class="{ 'border-red-300': errors.nameAr }"
                 dir="rtl"
               />
@@ -539,16 +520,14 @@ focus:border-primary-500 text-sm text-right"
                     v-model="productData.slug"
                     type="text"
                     :placeholder="t('noir-extreme')"
-                    class="w-full pl-16 sm:pl-20 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 
-focus:border-primary-500 text-sm"
+                    class="w-full pl-16 sm:pl-20 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-sm"
                     :class="{ 'border-red-300': errors.slug }"
                   />
                 </div>
                 <button
                   type="button"
                   @click="generateProductSlug"
-                  class="inline-flex items-center justify-center px-3 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 
-bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary-500 whitespace-nowrap"
+                  class="inline-flex items-center justify-center px-3 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary-500 whitespace-nowrap"
                 >
                   {{ t('Generate') }}
                 </button>
@@ -609,8 +588,7 @@ bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary-500
                 </label>
                 <select
                   v-model="productData.category"
-                  class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 
-focus:border-primary-500 text-sm"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-sm"
                   :class="{ 'border-red-300': errors.category }"
                 >
                   <option value="">{{ t('Select category') }}</option>
@@ -634,8 +612,7 @@ focus:border-primary-500 text-sm"
                     min="0"
                     step="0.01"
                     placeholder="450"
-                    class="w-full pl-12 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 
-focus:border-primary-500 text-sm"
+                    class="w-full pl-12 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-sm"
                     :class="{ 'border-red-300': errors.price }"
                   />
                 </div>
@@ -651,8 +628,7 @@ focus:border-primary-500 text-sm"
                 </label>
                 <select
                   v-model="productData.size"
-                  class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 
-focus:border-primary-500 text-sm"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-sm"
                   :class="{ 'border-red-300': errors.size }"
                 >
                   <option value="">{{ t('Select size') }}</option>
@@ -669,8 +645,7 @@ focus:border-primary-500 text-sm"
                 </label>
                 <select
                   v-model="productData.concentration"
-                  class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 
-focus:border-primary-500 text-sm"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-sm"
                   :class="{ 'border-red-300': errors.concentration }"
                 >
                   <option value="">{{ t('Select concentration') }}</option>
@@ -692,8 +667,7 @@ focus:border-primary-500 text-sm"
                 v-model="productData.description.en"
                 rows="3"
                 :placeholder="t('A luxurious oriental fragrance with notes of vanilla, amber, and spices.')"
-                class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 
-focus:border-primary-500 text-sm"
+                class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-sm"
                 :class="{ 'border-red-300': errors.descEn }"
               ></textarea>
               <p v-if="errors.descEn" class="mt-1 text-sm text-red-600">{{ errors.descEn }}</p>
@@ -708,8 +682,7 @@ focus:border-primary-500 text-sm"
                 v-model="productData.description.ar"
                 rows="3"
                 :placeholder="t('عطر شرقي فاخر بنغمات الفانيليا والعنبر والتوابل.')"
-                class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 
-focus:border-primary-500 text-sm text-right"
+                class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-sm text-right"
                 :class="{ 'border-red-300': errors.descAr }"
                 dir="rtl"
               ></textarea>
@@ -846,8 +819,7 @@ focus:border-primary-500 text-sm text-right"
                   type="number"
                   min="0"
                   placeholder="0"
-                  class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 
-focus:border-primary-500 text-sm"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-sm"
                 />
               </div>
               <div>
@@ -866,8 +838,7 @@ focus:border-primary-500 text-sm"
                   <div v-if="skuLoading" class="absolute right-2 top-1/2 -translate-y-1/2">
                     <svg class="animate-spin h-4 w-4 text-primary-500" fill="none" viewBox="0 0 24 24">
                       <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 
-5.824 3 7.938l3-2.647z"></path>
+                      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
                   </div>
                 </div>
@@ -933,8 +904,7 @@ focus:border-primary-500 text-sm"
               type="button"
               @click="close"
               :disabled="loading"
-              class="w-full sm:w-auto px-4 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 
-focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:opacity-50"
+              class="w-full sm:w-auto px-4 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:opacity-50"
             >
               {{ t('Cancel') }}
             </button>
@@ -947,8 +917,7 @@ focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:opacity-50"
                 type="button"
                 @click="goToStep(1)"
                 :disabled="loading"
-                class="w-full sm:w-auto px-4 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 
-focus:outline-none focus:ring-2 focus:ring-primary-500"
+                class="w-full sm:w-auto px-4 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary-500"
               >
                 <svg class="w-4 h-4 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
@@ -962,8 +931,7 @@ focus:outline-none focus:ring-2 focus:ring-primary-500"
                 type="button"
                 @click="goToStep(2)"
                 :disabled="!canProceedToProductDetails || loading"
-                class="w-full sm:w-auto px-4 py-2.5 text-sm font-semibold text-white bg-primary-600 rounded-md hover:bg-primary-700 focus:outline-none 
-focus:ring-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                class="w-full sm:w-auto px-4 py-2.5 text-sm font-semibold text-white bg-primary-600 rounded-md hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {{ t('Next: Product Details') }}
                 <svg class="w-4 h-4 ml-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -976,14 +944,12 @@ focus:ring-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allo
                 type="button"
                 @click="saveProduct"
                 :disabled="loading || !canSave || skuLoading || !productData.sku"
-                class="w-full sm:w-auto px-4 py-2.5 text-sm font-semibold text-white bg-primary-600 rounded-md hover:bg-primary-700 focus:outline-none 
-focus:ring-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                class="w-full sm:w-auto px-4 py-2.5 text-sm font-semibold text-white bg-primary-600 rounded-md hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <template v-if="loading">
                   <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline" fill="none" viewBox="0 0 24 24">
                     <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 
-5.824 3 7.938l3-2.647z"></path>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
                   {{ t('Saving...') }}
                 </template>
@@ -1000,14 +966,14 @@ focus:ring-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allo
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted, watch } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { useLanguageStore } from '@/stores/language'
 import { useProductsStore } from '@/stores/products'
 import { useBrandsStore } from '@/stores/brands'
 import { useAuthStore } from '@/stores/auth'
 import type { Product, Category, Brand } from '@/types'
 import { authNotification } from '@/utils/notifications'
-import { supabase } from '@/supabase/client'
+import { supabaseSafe } from '@/supabase/client'
 
 const languageStore = useLanguageStore()
 const productsStore = useProductsStore()
@@ -1051,12 +1017,20 @@ const cleanForSupabase = (obj: any): any => {
 // ========== STORAGE HELPERS ==========
 // Upload product image
 const uploadProductImage = async (file: File, productId: string): Promise<string> => {
-  const path = `products/${productId}/main.jpg`
-  const { error: uploadError } = await supabase.storage
+  const fileExt = file.name.split('.').pop()
+  const fileName = `${productId}-${Date.now()}.${fileExt}`
+  const filePath = `products/${fileName}`
+  
+  const { error: uploadError } = await supabaseSafe.storage
     .from('images')
-    .upload(path, file, { upsert: true })
+    .upload(filePath, file, { upsert: true })
+  
   if (uploadError) throw uploadError
-  const { data: urlData } = supabase.storage.from('images').getPublicUrl(path)
+  
+  const { data: urlData } = supabaseSafe.storage
+    .from('images')
+    .getPublicUrl(filePath)
+  
   return urlData.publicUrl
 }
 
@@ -1068,7 +1042,7 @@ const deleteProductImageFromStorage = async (imageUrl: string) => {
     const pathMatch = url.pathname.match(/\/storage\/v1\/object\/public\/images\/(.+)$/)
     if (pathMatch && pathMatch[1]) {
       const path = decodeURIComponent(pathMatch[1])
-      await supabase.storage.from('images').remove([path])
+      await supabaseSafe.storage.from('images').remove([path])
     }
   } catch (err) {
     console.warn('Failed to delete old product image from Storage:', err)
@@ -1077,12 +1051,20 @@ const deleteProductImageFromStorage = async (imageUrl: string) => {
 
 // Upload brand image
 const uploadBrandImage = async (file: File, brandId: string): Promise<string> => {
-  const path = `brands/${brandId}/logo.jpg`
-  const { error: uploadError } = await supabase.storage
+  const fileExt = file.name.split('.').pop()
+  const fileName = `${brandId}-${Date.now()}.${fileExt}`
+  const filePath = `brands/${fileName}`
+  
+  const { error: uploadError } = await supabaseSafe.storage
     .from('images')
-    .upload(path, file, { upsert: true })
+    .upload(filePath, file, { upsert: true })
+  
   if (uploadError) throw uploadError
-  const { data: urlData } = supabase.storage.from('images').getPublicUrl(path)
+  
+  const { data: urlData } = supabaseSafe.storage
+    .from('images')
+    .getPublicUrl(filePath)
+  
   return urlData.publicUrl
 }
 
@@ -1217,7 +1199,7 @@ const canSave = computed(() => {
          productData.concentration &&
          productData.description.en.trim() &&
          productData.description.ar.trim() &&
-         (productData.imageUrl || productImageFile.value) // file pending upload
+         (productData.imageUrl || productImageFile.value)
 })
 
 // Helper methods
@@ -1500,7 +1482,7 @@ const goToStep = (step: number) => {
   currentStep.value = step
 }
 
-// ========== SKU GENERATION (STRICT WITH FALLBACK) ==========
+// ========== SKU GENERATION ==========
 const onClassificationChange = () => {
   if (!editing.value) {
     generateStrictSKU()
@@ -1546,9 +1528,8 @@ const generateStrictSKU = async () => {
     let packageNumber = '001'
 
     if (brandSelectionMode.value === 'existing' && selectedBrandId.value) {
-      // Query existing products for this brand to find the highest sequence number
       const prefix = `P.N${brandAbbr}${gender}`
-      const { data, error } = await supabase
+      const { data, error } = await supabaseSafe
         .from('products')
         .select('sku')
         .eq('brand_id', selectedBrandId.value)
@@ -1628,7 +1609,6 @@ const validateForm = (): boolean => {
     isValid = false
   }
 
-  // Image is required: either URL or a file selected
   if (!productData.imageUrl && !productImageFile.value) {
     errors.image = t('Product image is required')
     isValid = false
@@ -1684,7 +1664,6 @@ const getChangedFields = (): Record<string, any> => {
     }
   })
 
-  // For image, we only handle if a new file was selected
   if (productImageFile.value) {
     changed.imageFile = productImageFile.value
   } else if (productData.imageUrl !== orig.imageUrl) {
@@ -1768,7 +1747,6 @@ const saveProduct = async () => {
       isActive: productData.isActive !== false
     }
 
-    // Clean the payload (remove any undefined or File fields)
     const cleanPayload = cleanForSupabase(productPayload)
 
     if (editing.value) {
@@ -1784,15 +1762,11 @@ const saveProduct = async () => {
 
       let finalImageUrl = productData.imageUrl
       if (productImageFile.value) {
-        // Upload new image and delete old if exists
         finalImageUrl = await uploadProductImage(productImageFile.value, props.product.id)
         await deleteProductImageFromStorage(productData.imageUrl)
         changedFields.imageUrl = finalImageUrl
-      } else if (changedFields.imageUrl) {
-        // Already handled
       }
 
-      // Build update payload (only fields that are allowed to change)
       const updatePayload: any = { updated_at: new Date().toISOString() }
       if (changedFields.name) updatePayload.name = changedFields.name
       if (changedFields.description) updatePayload.description = changedFields.description
@@ -1810,7 +1784,7 @@ const saveProduct = async () => {
       if (changedFields.isActive !== undefined) updatePayload.is_active = changedFields.isActive
       if (changedFields.imageUrl) updatePayload.image_url = changedFields.imageUrl
 
-      const { error: updateError } = await supabase
+      const { error: updateError } = await supabaseSafe
         .from('products')
         .update(updatePayload)
         .eq('id', props.product.id)
@@ -1825,11 +1799,9 @@ const saveProduct = async () => {
       })
     } 
     else if (brandSelectionMode.value === 'existing' && selectedBrandId.value) {
-      // --- ADD PRODUCT TO EXISTING BRAND ---
       const brand = brandsStore.brands.find(b => b.id === selectedBrandId.value)
       if (!brand) throw new Error('Brand not found')
 
-      // First, create the product document without the final image URL (if needed)
       const now = new Date().toISOString()
       const productInsertData = {
         brand_id: brand.id,
@@ -1850,10 +1822,10 @@ const saveProduct = async () => {
         is_active: cleanPayload.isActive,
         created_at: now,
         updated_at: now,
-        image_url: '' // temporary
+        image_url: ''
       }
 
-      const { data: newProduct, error: insertError } = await supabase
+      const { data: newProduct, error: insertError } = await supabaseSafe
         .from('products')
         .insert(productInsertData)
         .select()
@@ -1863,18 +1835,17 @@ const saveProduct = async () => {
 
       const newProductId = newProduct.id
 
-      // If a file was uploaded, upload it to Storage and update the product
       let finalImageUrl = ''
       if (productImageFile.value) {
         finalImageUrl = await uploadProductImage(productImageFile.value, newProductId)
-        await supabase
+        await supabaseSafe
           .from('products')
           .update({ image_url: finalImageUrl, updated_at: now })
           .eq('id', newProductId)
         cleanPayload.imageUrl = finalImageUrl
       } else if (cleanPayload.imageUrl) {
         finalImageUrl = cleanPayload.imageUrl
-        await supabase
+        await supabaseSafe
           .from('products')
           .update({ image_url: finalImageUrl, updated_at: now })
           .eq('id', newProductId)
@@ -1884,15 +1855,12 @@ const saveProduct = async () => {
       emit('save', { productData: cleanPayload, brandId: brand.id, createNewBrand: false })
     } 
     else if (brandSelectionMode.value === 'new') {
-      // --- CREATE NEW BRAND WITH PRODUCT ---
-      // Prepare brand data
       const brandSlug = newBrand.slug
       const brandCategory = newBrand.category
       const brandDescription = newBrand.description || ''
       const brandSignature = newBrand.signature || ''
       const isBrandActive = newBrand.isActive !== false
 
-      // Prepare product data (without brand_id yet)
       const now = new Date().toISOString()
       const productPayloadForRPC = {
         name: cleanPayload.name,
@@ -1911,8 +1879,7 @@ const saveProduct = async () => {
         is_active: cleanPayload.isActive
       }
 
-      // Call RPC function to create brand and product atomically
-      const { data: brandId, error: rpcError } = await supabase.rpc('create_brand_with_products', {
+      const { data: brandId, error: rpcError } = await supabaseSafe.rpc('create_brand_with_products', {
         _tenant_id: authStore.currentTenant,
         _name: newBrand.name,
         _slug: brandSlug,
@@ -1920,34 +1887,30 @@ const saveProduct = async () => {
         _description: brandDescription,
         _signature: brandSignature,
         _is_active: isBrandActive,
-        _image: '', // will update after upload
-        _products: [productPayloadForRPC] // array of one product
+        _image: '',
+        _products: [productPayloadForRPC]
       })
 
       if (rpcError) throw rpcError
       if (!brandId) throw new Error('Failed to create brand')
 
-      // Now upload brand image if provided
       let brandImageUrl = ''
       if (brandImageFile.value) {
         brandImageUrl = await uploadBrandImage(brandImageFile.value, brandId)
-        await supabase
+        await supabaseSafe
           .from('brands')
           .update({ image: brandImageUrl, updated_at: now })
           .eq('id', brandId)
       } else if (newBrand.imageUrl) {
         brandImageUrl = newBrand.imageUrl
-        await supabase
+        await supabaseSafe
           .from('brands')
           .update({ image: brandImageUrl, updated_at: now })
           .eq('id', brandId)
       }
 
-      // Upload product image if provided
       let productImageUrl = ''
-      // Need to get the product ID after creation. Since the RPC returns only brand ID,
-      // we must fetch the product by slug + brand_id.
-      const { data: newProduct, error: fetchError } = await supabase
+      const { data: newProduct, error: fetchError } = await supabaseSafe
         .from('products')
         .select('id')
         .eq('brand_id', brandId)
@@ -1958,13 +1921,13 @@ const saveProduct = async () => {
 
       if (productImageFile.value) {
         productImageUrl = await uploadProductImage(productImageFile.value, newProduct.id)
-        await supabase
+        await supabaseSafe
           .from('products')
           .update({ image_url: productImageUrl, updated_at: now })
           .eq('id', newProduct.id)
       } else if (cleanPayload.imageUrl) {
         productImageUrl = cleanPayload.imageUrl
-        await supabase
+        await supabaseSafe
           .from('products')
           .update({ image_url: productImageUrl, updated_at: now })
           .eq('id', newProduct.id)
@@ -2058,7 +2021,7 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-/* Custom scrollbar (unchanged) */
+/* Custom scrollbar */
 .overflow-y-auto::-webkit-scrollbar,
 .max-h-48::-webkit-scrollbar {
   width: 6px;
