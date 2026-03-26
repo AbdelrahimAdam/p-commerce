@@ -1,5 +1,5 @@
 // ===============================
-// Luxury Types
+// Luxury Types - Complete Index
 // ===============================
 
 export type Language = 'en' | 'ar' | 'fa' | 'he'
@@ -7,6 +7,8 @@ export type Language = 'en' | 'ar' | 'fa' | 'he'
 export interface Translation {
   en: string
   ar: string
+  fa?: string
+  he?: string
 }
 
 // ===============================
@@ -61,7 +63,7 @@ export interface HomepageData {
   productCount?: number
   tenantId?: string
   lastUpdated?: string
-  source?: 'supabase' | 'local' | 'api' // changed from 'firebase' to 'supabase'
+  source?: 'supabase' | 'local' | 'api'
 }
 
 // ===============================
@@ -75,6 +77,10 @@ export interface Category {
   description: Translation
   image: string
   featured: boolean
+  slug?: string
+  parentId?: string
+  order?: number
+  isActive?: boolean
 }
 
 // ===============================
@@ -115,6 +121,7 @@ export interface Product {
   images: string[]
 
   category: string
+  categoryId?: string
 
   isBestSeller: boolean
   isFeatured?: boolean
@@ -151,29 +158,50 @@ export interface Product {
 // Product Form
 // ===============================
 
-export interface ProductFormData {
-  name: Translation
-  brand: string
-  description: Translation
+export interface ProductFormData extends Omit<Product, 'id' | 'createdAt' | 'updatedAt' | 'slug'> {
+  imageFile?: File
+  slug?: string
+}
+
+// ===============================
+// Product Filters & Options
+// ===============================
+
+export type ProductSize = '30ml' | '50ml' | '100ml' | '200ml' | '500ml'
+export type Concentration = 'EDT' | 'EDP' | 'Parfum' | 'Extrait'
+
+export const CONCENTRATIONS: Record<Concentration, string> = {
+  'EDT': 'Eau de Toilette',
+  'EDP': 'Eau de Parfum',
+  'Parfum': 'Parfum',
+  'Extrait': 'Extrait de Parfum'
+}
+
+export const SIZES: ProductSize[] = ['30ml', '50ml', '100ml', '200ml', '500ml']
+
+export const NOTES_CATEGORIES = {
+  top: 'Top Notes',
+  heart: 'Heart Notes',
+  base: 'Base Notes'
+}
+
+export const NOTES_LIST = [
+  'Bergamot', 'Lemon', 'Orange', 'Grapefruit', 'Lime',
+  'Lavender', 'Rose', 'Jasmine', 'Lily', 'Violet',
+  'Sandalwood', 'Cedar', 'Oud', 'Patchouli', 'Vetiver',
+  'Vanilla', 'Amber', 'Musk', 'Tonka Bean', 'Leather'
+]
+
+export interface ProductVariant {
+  size: ProductSize
   price: number
-  originalPrice?: number
-  size: string
-  concentration: string
-  classification?: string
-  notes: {
-    top: string[]
-    heart: string[]
-    base: string[]
-  }
-  imageUrl: string
-  images: string[]
-  category: string
-  isBestSeller: boolean
-  isFeatured?: boolean
-  isNew?: boolean
-  isActive?: boolean
-  inStock: boolean
-  // tenantId would be added at creation
+  sku: string
+}
+
+export interface ProductInventory {
+  productId: string
+  variants: ProductVariant[]
+  stock: number
 }
 
 // ===============================
@@ -193,6 +221,16 @@ export interface CartItem {
   quantity: number
   addedAt?: string
   productId?: string // used in order items
+  sku?: string
+}
+
+export interface Cart {
+  items: CartItem[]
+  total: number
+  subtotal: number
+  tax: number
+  shipping: number
+  discount: number
 }
 
 // ===============================
@@ -211,6 +249,27 @@ export interface AdminUser {
   isActive?: boolean
   createdAt?: Date
   updatedAt?: Date
+  permissions?: string[]
+}
+
+export interface CreateAdminDto {
+  email: string
+  password: string
+  displayName: string
+  phoneNumber?: string
+  role: 'admin' | 'super-admin'
+  photoURL?: string
+  tenantId: string
+  isActive?: boolean
+  permissions?: string[]
+}
+
+export interface UpdateAdminDto {
+  displayName?: string
+  phoneNumber?: string
+  role?: 'admin' | 'super-admin'
+  photoURL?: string
+  isActive?: boolean
   permissions?: string[]
 }
 
@@ -247,34 +306,63 @@ export interface Address {
 }
 
 // ===============================
+// Tenant
+// ===============================
+
+export interface Tenant {
+  id: string
+  name: string
+  domain: string | null
+  logo: string | null
+  primary_color: string | null
+  secondary_color: string | null
+  is_active: boolean
+  created_at: string
+  updated_at: string
+  settings?: {
+    defaultLanguage?: Language
+    currency?: string
+    timezone?: string
+  }
+}
+
+// ===============================
 // Filters
 // ===============================
 
 export interface FilterOptions {
   category?: string
   categories?: string[]
-
   brand?: string
   brands?: string[]
   brandSlug?: string
-
   size?: string
   concentration?: string
-
   price?: number
   minPrice?: number
   maxPrice?: number
-
   minRating?: number
-
   bestseller?: boolean
   isFeatured?: boolean
   newArrival?: boolean
-
   classification?: string
-
-  sortBy?: string
+  sortBy?: 'newest' | 'price-low' | 'price-high' | 'popular' | 'rating'
   searchTerm?: string
+  page?: number
+  limit?: number
+}
+
+// ===============================
+// Pagination
+// ===============================
+
+export interface PaginationMeta {
+  total: number
+  page: number
+  limit: number
+  totalPages: number
+  hasNext: boolean
+  hasPrev: boolean
 }
 
 // ===============================
@@ -283,7 +371,7 @@ export interface FilterOptions {
 
 export type OrderStatus = 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled'
 export type PaymentStatus = 'pending' | 'paid' | 'failed' | 'refunded'
-export type PaymentMethod = string // or union of supported methods
+export type PaymentMethod = 'credit_card' | 'paypal' | 'cod' | 'bank_transfer'
 
 export interface StatusHistoryItem {
   status: OrderStatus
@@ -320,6 +408,7 @@ export interface OrderItem {
   brand?: string
   imageUrl?: string
   originalPrice?: number
+  sku?: string
 }
 
 export interface ShippingAddress {
@@ -329,39 +418,33 @@ export interface ShippingAddress {
   address: string
   city: string
   country: string
+  postalCode?: string
+  state?: string
 }
 
 export interface Order {
   id: string
   orderNumber: string
-
   customer: OrderCustomer
   items: OrderItem[]
-
   subtotal: number
   shippingCost: number
   tax?: number
   discount?: number
   total: number
   shipping?: number // alias for shippingCost (used in some places)
-
   status: OrderStatus
-  paymentMethod: string
+  paymentMethod: PaymentMethod
   paymentStatus: PaymentStatus
-
   shippingAddress: string // legacy
   trackingNumber?: string
   notes?: string
   adminNotes?: string
-
   userId?: string
   guestId?: string
   userEmail?: string // legacy
-
   tenantId: string
-
   statusHistory?: StatusHistoryItem[]
-
   createdAt: Date
   updatedAt: Date
   shippedAt?: Date
@@ -399,23 +482,46 @@ export interface Review {
   comment: string
   createdAt: Date
   helpful?: number
+  verified?: boolean
+  title?: string
 }
 
 // ===============================
 // Wishlist
 // ===============================
 
+export interface Wishlist {
+  id: string
+  user_id: string
+  items: WishlistItem[]
+  privacy: 'public' | 'private' | 'shared'
+  shareable_id: string | null
+  tenant_id: string
+  created_at: string
+  updated_at: string
+  name?: string
+  description?: string
+}
+
 export interface WishlistItem {
   id: string
-  productId: string
-  userId: string
-  addedAt: Date
-  product?: Product // populated version
-  brand?: string
-  brandSlug?: string
-  price?: number
-  imageUrl?: string
-  name?: Translation
+  product_id: string
+  product?: Product
+  added_at: string
+  notes?: string
+  variant?: {
+    size?: string
+    concentration?: string
+  }
+}
+
+export interface WishlistShare {
+  id: string
+  wishlist_id: string
+  shared_with_email: string
+  permission: 'view' | 'edit'
+  created_at: string
+  accepted_at?: string
 }
 
 // ===============================
@@ -432,37 +538,9 @@ export interface NewsletterSubscriber {
     promotions: boolean
     tips: boolean
   }
-}
-
-// ===============================
-// API
-// ===============================
-
-export interface ApiResponse<T> {
-  success: boolean
-  data?: T
-  message?: string
-  error?: string
-}
-
-export interface PaginatedResponse<T> {
-  items: T[]
-  total: number
-  page: number
-  pageSize: number
-  totalPages: number
-}
-
-// ===============================
-// Forms
-// ===============================
-
-export interface ContactFormData {
-  name: string
-  email: string
-  subject: string
-  message: string
-  language: Language
+  language?: Language
+  tenantId?: string
+  isActive?: boolean
 }
 
 export interface NewsletterFormData {
@@ -474,6 +552,60 @@ export interface NewsletterFormData {
     promotions: boolean
     tips: boolean
   }
+}
+
+// ===============================
+// Contact
+// ===============================
+
+export interface ContactFormData {
+  name: string
+  email: string
+  subject: string
+  message: string
+  language: Language
+  phone?: string
+  orderNumber?: string
+}
+
+// ===============================
+// API
+// ===============================
+
+export interface ApiResponse<T> {
+  success: boolean
+  data?: T
+  message?: string
+  error?: string
+  statusCode?: number
+}
+
+export interface PaginatedResponse<T> {
+  items: T[]
+  total: number
+  page: number
+  pageSize: number
+  totalPages: number
+  hasNext: boolean
+  hasPrev: boolean
+}
+
+// ===============================
+// SEO
+// ===============================
+
+export interface SEOData {
+  title: string
+  description: string
+  keywords?: string[]
+  image?: string
+  url?: string
+  type?: 'website' | 'article' | 'product'
+  canonical?: string
+  robots?: string
+  author?: string
+  publishedTime?: string
+  modifiedTime?: string
 }
 
 // ===============================
@@ -490,6 +622,9 @@ export interface LuxuryTheme {
     lightBg: string
     cardBg: string
     red: string
+    success: string
+    warning: string
+    info: string
   }
   typography: {
     serif: string
@@ -502,12 +637,21 @@ export interface LuxuryTheme {
     md: string
     lg: string
     xl: string
+    xxl: string
   }
   shadows: {
     soft: string
     medium: string
     gold: string
     luxury: string
+    card: string
+  }
+  breakpoints: {
+    sm: string
+    md: string
+    lg: string
+    xl: string
+    xxl: string
   }
 }
 
@@ -530,6 +674,9 @@ export interface Brand {
   tenantId: string
   createdAt: Date
   updatedAt: Date
+  country?: string
+  founded?: number
+  website?: string
 }
 
 export interface BrandWithProducts extends Brand {
@@ -544,28 +691,121 @@ export interface FeaturedBrand {
   price: number
   slug: string
   category?: string
-  // tenantId may be omitted as this is a derived type
+  productCount?: number
 }
 
 // ===============================
-// DTOs for Admin Services
+// Utils & Validation
 // ===============================
 
-export interface CreateAdminDto {
-  email: string
-  password: string
-  displayName: string
-  phoneNumber?: string
-  role: 'admin' | 'super-admin'
-  photoURL?: string
-  tenantId: string
+export const validateProductData = (data: Partial<ProductFormData>): string[] => {
+  const errors: string[] = []
+
+  if (!data.name?.en?.trim()) errors.push('English name is required')
+  if (!data.name?.ar?.trim()) errors.push('Arabic name is required')
+  if (!data.brand?.trim()) errors.push('Brand is required')
+  if (!data.category?.trim()) errors.push('Category is required')
+  if (!data.price || data.price < 0) errors.push('Valid price is required')
+  if (!data.size?.trim()) errors.push('Size is required')
+  if (!data.concentration?.trim()) errors.push('Concentration is required')
+  if (!data.description?.en?.trim()) errors.push('English description is required')
+  if (!data.description?.ar?.trim()) errors.push('Arabic description is required')
+  if (!data.imageUrl?.trim()) errors.push('Image URL is required')
+
+  return errors
 }
 
-export interface UpdateAdminDto {
-  displayName?: string
-  phoneNumber?: string
-  role?: 'admin' | 'super-admin'
-  photoURL?: string
-  isActive?: boolean
-  // tenantId should not be changed
+export const generateSlug = (name: string): string => {
+  return name
+    .toLowerCase()
+    .replace(/[^\w\s-]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/--+/g, '-')
+    .trim()
+}
+
+// ===============================
+// Export all types
+// ===============================
+
+export type {
+  // Core types
+  Language,
+  Translation,
+  
+  // Homepage
+  HeroBanner,
+  Offer,
+  MarqueeBrand,
+  HomepageData,
+  
+  // Categories
+  Category,
+  
+  // Products
+  Product,
+  ProductFormData,
+  ProductSize,
+  Concentration,
+  ProductVariant,
+  ProductInventory,
+  
+  // Cart
+  CartItem,
+  Cart,
+  
+  // Users
+  AdminUser,
+  CreateAdminDto,
+  UpdateAdminDto,
+  CustomerUser,
+  Address,
+  
+  // Tenant
+  Tenant,
+  
+  // Filters & Pagination
+  FilterOptions,
+  PaginationMeta,
+  
+  // Orders
+  OrderStatus,
+  PaymentStatus,
+  PaymentMethod,
+  StatusHistoryItem,
+  OrderCustomer,
+  OrderItem,
+  ShippingAddress,
+  Order,
+  SupabaseOrder,
+  
+  // Reviews
+  Review,
+  
+  // Wishlist
+  Wishlist,
+  WishlistItem,
+  WishlistShare,
+  
+  // Newsletter
+  NewsletterSubscriber,
+  NewsletterFormData,
+  
+  // Contact
+  ContactFormData,
+  
+  // API
+  ApiResponse,
+  PaginatedResponse,
+  
+  // SEO
+  SEOData,
+  
+  // Theme
+  LuxuryTheme,
+  
+  // Brands
+  Brand,
+  BrandWithProducts,
+  FeaturedBrand
 }
