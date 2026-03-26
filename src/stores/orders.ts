@@ -1,6 +1,7 @@
+// src/stores/orders.ts
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { supabase } from '@/supabase/client'
+import { supabaseSafe } from '@/supabase/client'
 import { useAuthStore } from './auth'
 import { useCartStore } from './cart'
 import { useProductsStore } from './products'
@@ -109,6 +110,9 @@ export const useOrdersStore = defineStore('orders', () => {
   const generateGuestId = (): string => 
     `guest_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`
 
+  // Helper to get supabase client (throws if null)
+  const getClient = () => supabaseSafe.client
+
   const convertRowToOrder = (row: any): Order => ({
     id: row.id,
     orderNumber: row.order_number,
@@ -179,7 +183,8 @@ export const useOrdersStore = defineStore('orders', () => {
         return []
       }
 
-      let query = supabase
+      const client = getClient()
+      let query = client
         .from('orders')
         .select('*')
         .eq('tenant_id', tenantId)
@@ -236,7 +241,8 @@ export const useOrdersStore = defineStore('orders', () => {
     error.value = null
 
     try {
-      const { data, error: fetchError } = await supabase
+      const client = getClient()
+      const { data, error: fetchError } = await client
         .from('orders')
         .select('*')
         .eq('id', orderId)
@@ -318,7 +324,8 @@ export const useOrdersStore = defineStore('orders', () => {
     error.value = null
 
     try {
-      const { data, error: fetchError } = await supabase
+      const client = getClient()
+      const { data, error: fetchError } = await client
         .from('orders')
         .select('*')
         .eq('order_number', orderNumber)
@@ -408,7 +415,8 @@ export const useOrdersStore = defineStore('orders', () => {
 
       const shippingAddressString = `${shippingAddress.address}, ${shippingAddress.city}, ${shippingAddress.country || 'Egypt'}`
 
-      const { data: orderData, error: rpcError } = await supabase.rpc('create_order', {
+      const client = getClient()
+      const { data: orderData, error: rpcError } = await client.rpc('create_order', {
         _tenant_id: tenantId,
         _order_number: orderNumber,
         _customer: {
@@ -435,7 +443,8 @@ export const useOrdersStore = defineStore('orders', () => {
         })),
         _user_id: currentUserId,
         _guest_id: guestId,
-        _user_email: currentUserEmail })
+        _user_email: currentUserEmail
+      })
 
       if (rpcError) throw rpcError
 
@@ -478,7 +487,8 @@ export const useOrdersStore = defineStore('orders', () => {
       const tenantId = authStore.currentTenant
       if (!tenantId) return []
 
-      let query = supabase
+      const client = getClient()
+      let query = client
         .from('orders')
         .select('*')
         .eq('tenant_id', tenantId)
@@ -530,14 +540,15 @@ export const useOrdersStore = defineStore('orders', () => {
     error.value = null
 
     try {
-      const { data: currentOrderData, error: fetchError } = await supabase
+      const client = getClient()
+      const { data: currentOrderData, error: fetchError } = await client
         .from('orders')
         .select('*')
         .eq('id', orderId)
         .single()
 
       if (fetchError || !currentOrderData) throw new Error('Order not found')
-      if (currentOrderData.tenant_id !== authStore.currentTenant) throw new Error('Order does not belong to thistenant')
+      if (currentOrderData.tenant_id !== authStore.currentTenant) throw new Error('Order does not belong to this tenant')
 
       const currentStatus = currentOrderData.status
       if (currentStatus === status) return true
@@ -554,7 +565,7 @@ export const useOrdersStore = defineStore('orders', () => {
       }
       const updatedHistory = [...existingHistory, newHistoryItem]
 
-      const updatePayload: any = {
+      const updatePayload: Record<string, any> = {
         status,
         updated_at: new Date().toISOString(),
         status_history: updatedHistory
@@ -578,7 +589,7 @@ export const useOrdersStore = defineStore('orders', () => {
 
         const items = currentOrderData.items as OrderItem[]
         for (const item of items) {
-          const { error: stockError } = await supabase.rpc('adjust_product_stock', {
+          const { error: stockError } = await client.rpc('adjust_product_stock', {
             _product_id: item.productId,
             _quantity: item.quantity
           })
@@ -586,7 +597,7 @@ export const useOrdersStore = defineStore('orders', () => {
         }
       }
 
-      const { error: updateError } = await supabase
+      const { error: updateError } = await client
         .from('orders')
         .update(updatePayload)
         .eq('id', orderId)
@@ -595,7 +606,7 @@ export const useOrdersStore = defineStore('orders', () => {
 
       const updatedOrder: Order = { ...convertRowToOrder({ ...currentOrderData, ...updatePayload }), id: orderId }
       const index = orders.value.findIndex(o => o.id === orderId)
-      if (index !== -1) orders.value = [...orders.value.slice(0, index), updatedOrder, ...orders.value.slice(index +1)]
+      if (index !== -1) orders.value = [...orders.value.slice(0, index), updatedOrder, ...orders.value.slice(index + 1)]
       else orders.value = [updatedOrder, ...orders.value]
       if (currentOrder.value?.id === orderId) currentOrder.value = updatedOrder
 
@@ -625,16 +636,18 @@ export const useOrdersStore = defineStore('orders', () => {
     }
     loading.value = true
     try {
-      const { error: updateError } = await supabase
+      const client = getClient()
+      const updatePayload = { payment_status: paymentStatus, updated_at: new Date().toISOString() }
+      const { error: updateError } = await client
         .from('orders')
-        .update({ payment_status: paymentStatus, updated_at: new Date().toISOString() })
+        .update(updatePayload)
         .eq('id', orderId)
 
       if (updateError) throw updateError
 
       const index = orders.value.findIndex(o => o.id === orderId)
       if (index !== -1) orders.value[index] = { ...orders.value[index], paymentStatus, updatedAt: new Date() }
-      if (currentOrder.value?.id === orderId) currentOrder.value = { ...currentOrder.value, paymentStatus, updatedAt:new Date() }
+      if (currentOrder.value?.id === orderId) currentOrder.value = { ...currentOrder.value, paymentStatus, updatedAt: new Date() }
       return true
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Failed to update payment status'
