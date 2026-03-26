@@ -201,6 +201,15 @@ export const useTenantStore = defineStore('tenant', () => {
 
   const isCurrentTenant = (id: string): boolean => tenantId.value === id
 
+  // Method to manually set initialized state (for root domain)
+  const setIsInitialized = (value: boolean) => {
+    isInitialized.value = value
+    if (value) {
+      // If we're setting initialized without a tenant, resolve the promise
+      resolveReady()
+    }
+  }
+
   return {
     tenantId,
     tenantDomain,
@@ -213,6 +222,7 @@ export const useTenantStore = defineStore('tenant', () => {
     refreshTenant,
     whenReady,
     fetchTenantById,
-    isCurrentTenant
+    isCurrentTenant,
+    setIsInitialized
   }
 })
