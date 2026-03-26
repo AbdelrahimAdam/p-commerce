@@ -999,6 +999,9 @@ const emit = defineEmits<{
   saved: []
 }>()
 
+// ========== Helper to cast table names ==========
+const getTable = (table: string) => (supabaseSafe.from as any)(table)
+
 // ========== IMAGE COMPRESSION HELPER ==========
 const compressImage = async (file: File, maxWidth: number = 1200, quality: number = 0.8): Promise<File> => {
   return new Promise((resolve, reject) => {
@@ -1062,9 +1065,7 @@ const cleanForSupabase = (obj: any): any => {
 // ========== STORAGE HELPERS WITH COMPRESSION ==========
 // Upload product image with compression
 const uploadProductImage = async (file: File, productId: string): Promise<string> => {
-  // Compress image before upload
   const compressedFile = await compressImage(file, 1200, 0.8)
-  
   const fileExt = 'jpg'
   const fileName = `${productId}-${Date.now()}.${fileExt}`
   const filePath = `products/${fileName}`
@@ -1102,9 +1103,7 @@ const deleteProductImageFromStorage = async (imageUrl: string) => {
 
 // Upload brand image with compression
 const uploadBrandImage = async (file: File, brandId: string): Promise<string> => {
-  // Compress image before upload
   const compressedFile = await compressImage(file, 500, 0.8)
-  
   const fileExt = 'jpg'
   const fileName = `${brandId}-${Date.now()}.${fileExt}`
   const filePath = `brands/${fileName}`
@@ -1295,7 +1294,6 @@ const handleBrandImageUpload = async (event: Event) => {
   if (!input.files || !input.files[0]) return
   const file = input.files[0]
   
-  // Show preview with compression preview
   brandImageFile.value = file
   const reader = new FileReader()
   reader.onload = (e) => {
@@ -1586,8 +1584,7 @@ const generateStrictSKU = async () => {
 
     if (brandSelectionMode.value === 'existing' && selectedBrandId.value) {
       const prefix = `P.N${brandAbbr}${gender}`
-      const { data, error } = await supabaseSafe
-        .from('products')
+      const { data, error } = await getTable('products')
         .select('sku')
         .eq('brand_id', selectedBrandId.value)
         .ilike('sku', `${prefix}%`)
@@ -1837,8 +1834,7 @@ const saveProduct = async () => {
       if (changedFields.isActive !== undefined) updatePayload.is_active = changedFields.isActive
       if (changedFields.imageUrl) updatePayload.image_url = changedFields.imageUrl
 
-      const { error: updateError } = await supabaseSafe
-        .from('products')
+      const { error: updateError } = await getTable('products')
         .update(updatePayload)
         .eq('id', props.product.id)
 
@@ -1878,8 +1874,7 @@ const saveProduct = async () => {
         image_url: ''
       }
 
-      const { data: newProduct, error: insertError } = await supabaseSafe
-        .from('products')
+      const { data: newProduct, error: insertError } = await getTable('products')
         .insert(productInsertData)
         .select()
         .single()
@@ -1891,15 +1886,13 @@ const saveProduct = async () => {
       let finalImageUrl = ''
       if (productImageFile.value) {
         finalImageUrl = await uploadProductImage(productImageFile.value, newProductId)
-        await supabaseSafe
-          .from('products')
+        await getTable('products')
           .update({ image_url: finalImageUrl, updated_at: now })
           .eq('id', newProductId)
         cleanPayload.imageUrl = finalImageUrl
       } else if (cleanPayload.imageUrl) {
         finalImageUrl = cleanPayload.imageUrl
-        await supabaseSafe
-          .from('products')
+        await getTable('products')
           .update({ image_url: finalImageUrl, updated_at: now })
           .eq('id', newProductId)
       }
@@ -1932,7 +1925,7 @@ const saveProduct = async () => {
         is_active: cleanPayload.isActive
       }
 
-      const { data: brandId, error: rpcError } = await supabaseSafe.rpc('create_brand_with_products', {
+      const { data: brandId, error: rpcError } = await (supabaseSafe.rpc as any)('create_brand_with_products', {
         _tenant_id: authStore.currentTenant,
         _name: newBrand.name,
         _slug: brandSlug,
@@ -1950,21 +1943,18 @@ const saveProduct = async () => {
       let brandImageUrl = ''
       if (brandImageFile.value) {
         brandImageUrl = await uploadBrandImage(brandImageFile.value, brandId as string)
-        await supabaseSafe
-          .from('brands')
+        await getTable('brands')
           .update({ image: brandImageUrl, updated_at: now })
           .eq('id', brandId as string)
       } else if (newBrand.imageUrl) {
         brandImageUrl = newBrand.imageUrl
-        await supabaseSafe
-          .from('brands')
+        await getTable('brands')
           .update({ image: brandImageUrl, updated_at: now })
           .eq('id', brandId as string)
       }
 
       let productImageUrl = ''
-      const { data: newProduct, error: fetchError } = await supabaseSafe
-        .from('products')
+      const { data: newProduct, error: fetchError } = await getTable('products')
         .select('id')
         .eq('brand_id', brandId as string)
         .eq('slug', cleanPayload.slug)
@@ -1976,14 +1966,12 @@ const saveProduct = async () => {
 
       if (productImageFile.value) {
         productImageUrl = await uploadProductImage(productImageFile.value, productId)
-        await supabaseSafe
-          .from('products')
+        await getTable('products')
           .update({ image_url: productImageUrl, updated_at: now })
           .eq('id', productId)
       } else if (cleanPayload.imageUrl) {
         productImageUrl = cleanPayload.imageUrl
-        await supabaseSafe
-          .from('products')
+        await getTable('products')
           .update({ image_url: productImageUrl, updated_at: now })
           .eq('id', productId)
       }
