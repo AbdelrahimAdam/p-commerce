@@ -1,5 +1,9 @@
-import { supabase } from '@/supabase/client'
+// src/services/adminService.ts
+import { supabaseSafe } from '@/supabase/client'
 import type { AdminUser, CreateAdminDto, UpdateAdminDto } from '@/types/admin'
+
+// Helper to get the Supabase client (throws if null)
+const getClient = () => supabaseSafe.client
 
 export class AdminService {
   /**
@@ -7,7 +11,8 @@ export class AdminService {
    */
   static async getAdmins(tenantId?: string): Promise<AdminUser[]> {
     try {
-      let query = supabase
+      const client = getClient()
+      let query = client
         .from('admins')
         .select('*')
         .order('created_at', { ascending: false })
@@ -20,7 +25,8 @@ export class AdminService {
 
       if (error) throw error
 
-      return (data || []).map(row => ({
+      // Cast data to any[] to access properties safely
+      return ((data as any[]) || []).map((row: any) => ({
         uid: row.id,
         email: row.email,
         displayName: row.display_name,
@@ -40,7 +46,8 @@ export class AdminService {
 
   static async getAdminById(uid: string): Promise<AdminUser | null> {
     try {
-      const { data, error } = await supabase
+      const client = getClient()
+      const { data, error } = await client
         .from('admins')
         .select('*')
         .eq('id', uid)
@@ -48,17 +55,18 @@ export class AdminService {
 
       if (error || !data) return null
 
+      const row = data as any
       return {
-        uid: data.id,
-        email: data.email,
-        displayName: data.display_name,
-        role: data.role,
-        tenantId: data.tenant_id,
-        isActive: data.is_active !== false,
-        createdAt: data.created_at,
-        lastLoginAt: data.last_login || data.created_at,
-        permissions: data.permissions || [],
-        phoneNumber: data.phone_number
+        uid: row.id,
+        email: row.email,
+        displayName: row.display_name,
+        role: row.role,
+        tenantId: row.tenant_id,
+        isActive: row.is_active !== false,
+        createdAt: row.created_at,
+        lastLoginAt: row.last_login || row.created_at,
+        permissions: row.permissions || [],
+        phoneNumber: row.phone_number
       }
     } catch (error) {
       console.error('Error fetching admin:', error)
@@ -68,8 +76,9 @@ export class AdminService {
 
   static async createAdmin(adminData: CreateAdminDto): Promise<AdminUser> {
     try {
+      const client = getClient()
       // 1. Create user in Supabase Auth
-      const { data: authData, error: signUpError } = await supabase.auth.signUp({
+      const { data: authData, error: signUpError } = await client.auth.signUp({
         email: adminData.email,
         password: adminData.password,
         options: {
@@ -86,7 +95,7 @@ export class AdminService {
       const userId = authData.user.id
 
       // 2. Insert into admins table
-      const { error: insertError } = await supabase
+      const { error: insertError } = await client
         .from('admins')
         .insert({
           id: userId,
@@ -97,7 +106,7 @@ export class AdminService {
           is_active: adminData.isActive !== false,
           permissions: adminData.permissions || [],
           phone_number: adminData.phoneNumber || ''
-        })
+        } as any) // cast to any to bypass strict type checking
 
       if (insertError) throw insertError
 
@@ -130,7 +139,8 @@ export class AdminService {
 
   static async updateAdmin(uid: string, updateData: UpdateAdminDto): Promise<void> {
     try {
-      const updatePayload: any = {}
+      const client = getClient()
+      const updatePayload: Record<string, any> = {}
 
       if (updateData.displayName !== undefined) updatePayload.display_name = updateData.displayName
       if (updateData.role !== undefined) updatePayload.role = updateData.role
@@ -139,7 +149,7 @@ export class AdminService {
       if (updateData.permissions !== undefined) updatePayload.permissions = updateData.permissions
 
       // Update admins table
-      const { error: updateError } = await supabase
+      const { error: updateError } = await client
         .from('admins')
         .update(updatePayload)
         .eq('id', uid)
@@ -148,9 +158,9 @@ export class AdminService {
 
       // Update display name in Auth metadata if it changed
       if (updateData.displayName) {
-        const { data: { user } } = await supabase.auth.getUser()
+        const { data: { user } } = await client.auth.getUser()
         if (user && user.id === uid && user.user_metadata?.displayName !== updateData.displayName) {
-          await supabase.auth.updateUser({
+          await client.auth.updateUser({
             data: { displayName: updateData.displayName }
           })
         }
@@ -163,14 +173,15 @@ export class AdminService {
 
   static async deleteAdmin(uid: string): Promise<void> {
     try {
+      const client = getClient()
       // Don't allow deletion of current user
-      const { data: { user } } = await supabase.auth.getUser()
+      const { data: { user } } = await client.auth.getUser()
       if (user?.id === uid) {
         throw new Error('Cannot delete your own account')
       }
 
       // Delete from admins table
-      const { error: deleteError } = await supabase
+      const { error: deleteError } = await client
         .from('admins')
         .delete()
         .eq('id', uid)
@@ -186,7 +197,8 @@ export class AdminService {
 
   static async resetAdminPassword(email: string): Promise<void> {
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      const client = getClient()
+      const { error } = await client.auth.resetPasswordForEmail(email, {
         redirectTo: `${window.location.origin}/reset-password`
       })
       if (error) throw error
@@ -237,7 +249,8 @@ export class AdminService {
 
   static async updateLastLogin(uid: string): Promise<void> {
     try {
-      const { error } = await supabase
+      const client = getClient()
+      const { error } = await client
         .from('admins')
         .update({ last_login: new Date().toISOString() })
         .eq('id', uid)
