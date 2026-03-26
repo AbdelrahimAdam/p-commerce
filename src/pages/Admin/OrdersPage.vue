@@ -260,7 +260,7 @@ disabled:opacity-50 disabled:cursor-not-allowed"
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   {{ t('Actions') }}
                 </th>
-              </tr>
+               </tr>
             </thead>
             <tbody class="bg-white divide-y divide-gray-200">
               <tr 
@@ -654,8 +654,7 @@ font-semibold rounded-full">
             <span v-if="ordersStore.loading" class="flex items-center gap-2">
               <svg class="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 
-3 7.938l3-2.647z"></path>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
               </svg>
               {{ t('Updating...') }}
             </span>
@@ -675,7 +674,7 @@ import { useAuthStore } from '@/stores/auth'
 import { useRouter } from 'vue-router'
 import type { Order, OrderStatus } from '@/types'
 import debounce from 'lodash/debounce'
-import { supabase } from '@/supabase/client'
+import { supabaseSafe } from '@/supabase/client'
 import { authNotification } from '@/utils/notifications'
 
 const router = useRouter()
@@ -691,7 +690,7 @@ if (!authStore.isAdmin) {
 const { t } = languageStore
 
 // Real-time subscription
-let channel: ReturnType<typeof supabase.channel> | null = null
+let channel: ReturnType<ReturnType<typeof supabaseSafe.client>['channel']> | null = null
 const newOrdersCount = ref(0)
 const showNewOrdersNotification = ref(false)
 const lastOrderCount = ref(0)
@@ -985,8 +984,9 @@ const setupOrdersListener = () => {
     return
   }
 
+  const client = supabaseSafe.client
   // Create a channel for this tenant's orders table
-  channel = supabase
+  channel = client
     .channel(`orders:${tenantId}`)
     .on(
       'postgres_changes',
@@ -1071,7 +1071,8 @@ onMounted(async () => {
 
 onUnmounted(() => {
   if (channel) {
-    supabase.removeChannel(channel)
+    const client = supabaseSafe.client
+    client.removeChannel(channel)
   }
 })
 
