@@ -41,6 +41,12 @@ export interface OfferInput {
   active?: boolean
 }
 
+// Helper to get Supabase client (throws if null)
+const getClient = () => supabaseSafe.client
+
+// Helper to cast table reference to any to bypass strict type checking
+const getTable = (table: string) => getClient().from(table) as any
+
 export const useOffersStore = defineStore('offers', () => {
   const homepageStore = useHomepageStore()
   const authStore = useAuthStore()
@@ -105,9 +111,6 @@ export const useOffersStore = defineStore('offers', () => {
     }
   }
 
-  // Helper to get supabase client (throws if null)
-  const getClient = () => supabaseSafe.client
-
   // ========== Actions ==========
 
   // Load offers from homepage store first, then fallback to Supabase
@@ -168,7 +171,7 @@ export const useOffersStore = defineStore('offers', () => {
 
       if (fetchError) throw fetchError
 
-      offers.value = (data || []).map(transformOffer)
+      offers.value = ((data as any[]) || []).map(transformOffer)
       dataSource.value = 'supabase'
       console.log(`✅ Loaded ${offers.value.length} offers from Supabase offers table`)
 
@@ -276,13 +279,14 @@ export const useOffersStore = defineStore('offers', () => {
         return null
       }
 
+      const row = data as any
       // Verify tenant matches
-      if (data.tenant_id !== authStore.currentTenant) {
+      if (row.tenant_id !== authStore.currentTenant) {
         console.log('❌ Offer belongs to another tenant')
         return null
       }
 
-      currentOffer.value = transformOffer(data)
+      currentOffer.value = transformOffer(row)
       console.log('✅ Offer found in Supabase by ID:', currentOffer.value.title)
       return currentOffer.value
     } catch (err: any) {
@@ -349,11 +353,12 @@ export const useOffersStore = defineStore('offers', () => {
       if (idError) throw idError
 
       if (idData) {
-        if (idData.tenant_id !== tenantId) {
+        const row = idData as any
+        if (row.tenant_id !== tenantId) {
           console.log('❌ Offer belongs to another tenant')
           return null
         }
-        currentOffer.value = transformOffer(idData)
+        currentOffer.value = transformOffer(row)
         console.log('✅ Offer found in Supabase by ID:', currentOffer.value.title)
         return currentOffer.value
       }
@@ -393,11 +398,8 @@ export const useOffersStore = defineStore('offers', () => {
         throw new Error('Tenant not resolved – cannot create offer')
       }
 
-      const client = getClient()
-
       // Check slug uniqueness within tenant
-      const { data: existing, error: checkError } = await client
-        .from('offers')
+      const { data: existing, error: checkError } = await getTable('offers')
         .select('id')
         .eq('slug', input.slug)
         .eq('tenant_id', tenantId)
@@ -423,11 +425,12 @@ export const useOffersStore = defineStore('offers', () => {
         end_date: input.endDate,
         offer_type: input.offerType || 'percentage',
         terms: input.terms,
-        active: input.active !== false
+        active: input.active !== false,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
       }
 
-      const { data, error: insertError } = await client
-        .from('offers')
+      const { data, error: insertError } = await getTable('offers')
         .insert(insertPayload)
         .select()
         .single()
@@ -435,7 +438,7 @@ export const useOffersStore = defineStore('offers', () => {
       if (insertError) throw insertError
 
       await loadOffers()
-      return data.id
+      return (data as any).id
     } catch (err: any) {
       error.value = err.message || 'Failed to create offer'
       console.error('createOffer error:', err)
@@ -456,19 +459,16 @@ export const useOffersStore = defineStore('offers', () => {
         throw new Error('Tenant not resolved – cannot update offer')
       }
 
-      const client = getClient()
-
       // If slug is being updated, check uniqueness within tenant
       if (input.slug) {
-        const { data: existing, error: checkError } = await client
-          .from('offers')
+        const { data: existing, error: checkError } = await getTable('offers')
           .select('id')
           .eq('slug', input.slug)
           .eq('tenant_id', tenantId)
           .maybeSingle()
 
         if (checkError) throw checkError
-        if (existing && existing.id !== id) {
+        if (existing && (existing as any).id !== id) {
           throw new Error(`Offer slug "${input.slug}" already exists in this tenant`)
         }
       }
@@ -491,8 +491,7 @@ export const useOffersStore = defineStore('offers', () => {
       if (input.terms !== undefined) updatePayload.terms = input.terms
       if (input.active !== undefined) updatePayload.active = input.active
 
-      const { error: updateError } = await client
-        .from('offers')
+      const { error: updateError } = await getTable('offers')
         .update(updatePayload)
         .eq('id', id)
 
@@ -515,9 +514,7 @@ export const useOffersStore = defineStore('offers', () => {
     error.value = ''
 
     try {
-      const client = getClient()
-      const { error: deleteError } = await client
-        .from('offers')
+      const { error: deleteError } = await getTable('offers')
         .delete()
         .eq('id', id)
 
