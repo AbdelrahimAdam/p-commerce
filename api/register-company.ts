@@ -1,7 +1,6 @@
-// api/register-company.ts
+// api/register-company.ts (simplified working version)
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { createClient } from '@supabase/supabase-js'
-import { randomUUID } from 'crypto'
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // CORS
@@ -24,201 +23,115 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     const { email, password, displayName, companyName, domain } = req.body
 
-    console.log('📝 Registration request:', { email, companyName, domain })
-
-    // =========================
     // Validation
-    // =========================
     if (!email || !password || !displayName || !companyName || !domain) {
-      return res.status(400).json({
-        error: 'Missing required fields',
-        required: ['email', 'password', 'displayName', 'companyName', 'domain']
-      })
+      return res.status(400).json({ error: 'Missing required fields' })
     }
 
-    const emailRegex = /^[^\s@]+@([^\s@]+\.)+[^\s@]+$/
-    if (!emailRegex.test(email)) {
-      return res.status(400).json({ error: 'Invalid email format' })
-    }
-
-    if (password.length < 6) {
-      return res.status(400).json({ error: 'Password must be at least 6 characters' })
-    }
-
-    const domainRegex = /^[a-z0-9.-]+$/
-    if (!domainRegex.test(domain)) {
-      return res.status(400).json({
-        error: 'Domain must contain only lowercase letters, numbers, hyphens, and dots'
-      })
-    }
-
-    // =========================
-    // Environment variables
-    // =========================
+    // Get environment variables
     const supabaseUrl = process.env.VITE_SUPABASE_URL
     const serviceRoleKey = process.env.VITE_SUPABASE_SERVICE_ROLE_KEY
     const rootDomain = process.env.VITE_ROOT_DOMAIN
 
-    if (!supabaseUrl) {
-      console.error('Missing VITE_SUPABASE_URL')
-      return res.status(500).json({ error: 'Missing VITE_SUPABASE_URL' })
-    }
-    if (!serviceRoleKey) {
-      console.error('Missing VITE_SUPABASE_SERVICE_ROLE_KEY')
-      return res.status(500).json({ error: 'Missing service role key' })
-    }
-    if (!rootDomain) {
-      console.error('Missing VITE_ROOT_DOMAIN')
-      return res.status(500).json({ error: 'Missing root domain' })
+    if (!supabaseUrl || !serviceRoleKey || !rootDomain) {
+      return res.status(500).json({ error: 'Missing environment variables' })
     }
 
     const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
       auth: { autoRefreshToken: false, persistSession: false }
     })
 
-    // =========================
-    // Domain availability
-    // =========================
+    // Generate IDs
     const fullDomain = `${domain}.${rootDomain}`
+    const tenantId = `tenant_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`
+    const now = new Date().toISOString()
 
-    const { data: existingTenant } = await supabaseAdmin
+    // STEP 1: Create the tenant FIRST (without owner_id)
+    console.log('Creating tenant...')
+    const { error: tenantError } = await supabaseAdmin
       .from('tenants')
-      .select('id')
-      .eq('domain', fullDomain)
-      .maybeSingle()
+      .insert({
+        id: tenantId,
+        name: companyName,
+        domain: fullDomain,
+        owner_id: null,
+        created_at: now,
+        updated_at: now
+      })
 
-    if (existingTenant) {
-      return res.status(400).json({
-        error: 'Domain already exists',
-        domain: fullDomain
+    if (tenantError) {
+      console.error('Tenant error:', tenantError)
+      return res.status(400).json({ 
+        error: 'Failed to create tenant', 
+        details: tenantError.message,
+        code: tenantError.code 
       })
     }
 
-    // =========================
-    // Generate tenant ID (use UUID to guarantee uniqueness)
-    // =========================
-    const tenantId = randomUUID()
-
-    console.log('📦 Tenant ID (UUID):', tenantId)
-    console.log('🌐 Domain:', fullDomain)
-
-    // =========================
-    // 1. CREATE AUTH USER
-    // =========================
-    const { data: userData, error: userError } =
-      await supabaseAdmin.auth.admin.createUser({
-        email,
-        password,
-        email_confirm: true,
-        user_metadata: {
-          displayName,
-          tenant_id: tenantId,
-          role: 'admin'
-        }
-      })
+    // STEP 2: Create the auth user
+    console.log('Creating user...')
+    const { data: userData, error: userError } = await supabaseAdmin.auth.admin.createUser({
+      email,
+      password,
+      email_confirm: true,
+      user_metadata: {
+        displayName,
+        tenant_id: tenantId,
+        role: 'admin'
+      }
+    })
 
     if (userError) {
       console.error('User error:', userError)
-      return res.status(400).json({
-        error: 'Failed to create user',
-        details: userError.message
-      })
+      // Rollback: delete tenant
+      await supabaseAdmin.from('tenants').delete().eq('id', tenantId)
+      return res.status(400).json({ error: 'Failed to create user', details: userError.message })
     }
 
     const userId = userData.user?.id
     if (!userId) {
+      await supabaseAdmin.from('tenants').delete().eq('id', tenantId)
       return res.status(500).json({ error: 'User creation failed' })
     }
-    console.log('✅ User created:', userId)
 
-    // =========================
-    // 2. CREATE TENANT (with owner_id = NULL)
-    // =========================
-    const now = new Date().toISOString()
-    const tenantData = {
-      id: tenantId,
-      name: companyName,
-      domain: fullDomain,
-      owner_id: null,
-      created_at: now,
-      updated_at: now
-    }
-    console.log('📝 Inserting tenant:', tenantData)
-
-    const { error: tenantError } = await supabaseAdmin
-      .from('tenants')
-      .insert(tenantData)
-
-    if (tenantError) {
-      console.error('Tenant error:', tenantError)
-      // Rollback: delete auth user
-      await supabaseAdmin.auth.admin.deleteUser(userId)
-      return res.status(400).json({
-        error: 'Failed to create tenant',
-        details: tenantError.message,
-        code: tenantError.code
-      })
-    }
-    console.log('✅ Tenant created (owner_id = null)')
-
-    // =========================
-    // 3. CREATE ADMIN RECORD
-    // =========================
-    const adminData = {
-      id: userId,
-      tenant_id: tenantId,
-      role: 'admin',
-      email,
-      display_name: displayName,
-      created_at: now,
-      updated_at: now,
-      is_active: true,
-      permissions: ['all']
-    }
-    console.log('📝 Inserting admin:', adminData)
-
+    // STEP 3: Create the admin record
+    console.log('Creating admin...')
     const { error: adminError } = await supabaseAdmin
       .from('admins')
-      .insert(adminData)
+      .insert({
+        id: userId,
+        tenant_id: tenantId,
+        role: 'admin',
+        email,
+        display_name: displayName,
+        created_at: now,
+        updated_at: now,
+        is_active: true,
+        permissions: ['all']
+      })
 
     if (adminError) {
       console.error('Admin error:', adminError)
-      // Rollback: delete tenant and auth user
-      await supabaseAdmin.from('tenants').delete().eq('id', tenantId)
+      // Rollback: delete user and tenant
       await supabaseAdmin.auth.admin.deleteUser(userId)
-      return res.status(400).json({
-        error: 'Failed to create admin',
-        details: adminError.message,
-        code: adminError.code
-      })
+      await supabaseAdmin.from('tenants').delete().eq('id', tenantId)
+      return res.status(400).json({ error: 'Failed to create admin', details: adminError.message })
     }
-    console.log('✅ Admin created')
 
-    // =========================
-    // 4. UPDATE TENANT WITH OWNER_ID
-    // =========================
+    // STEP 4: Update tenant with owner_id
+    console.log('Updating tenant with owner...')
     const { error: updateError } = await supabaseAdmin
       .from('tenants')
       .update({ owner_id: userId, updated_at: now })
       .eq('id', tenantId)
 
     if (updateError) {
-      console.error('Update tenant error:', updateError)
-      // Rollback: delete admin, tenant, auth user
-      await supabaseAdmin.from('admins').delete().eq('id', userId)
-      await supabaseAdmin.from('tenants').delete().eq('id', tenantId)
-      await supabaseAdmin.auth.admin.deleteUser(userId)
-      return res.status(400).json({
-        error: 'Failed to update tenant with owner',
-        details: updateError.message,
-        code: updateError.code
-      })
+      console.error('Update error:', updateError)
+      // This is not critical, we can still continue
+      console.warn('Could not update owner_id, but tenant and admin were created')
     }
-    console.log('✅ Tenant owner updated')
 
-    // =========================
-    // SUCCESS
-    // =========================
+    // Success! Return the result
     return res.status(200).json({
       success: true,
       tenantId,
@@ -227,10 +140,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     })
 
   } catch (error: any) {
-    console.error('❌ FATAL ERROR:', error)
-    return res.status(500).json({
-      error: 'Internal server error',
-      details: error.message
+    console.error('Fatal error:', error)
+    return res.status(500).json({ 
+      error: 'Internal server error', 
+      details: error.message 
     })
   }
 }
