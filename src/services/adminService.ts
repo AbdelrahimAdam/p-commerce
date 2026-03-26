@@ -1,5 +1,5 @@
 // src/services/adminService.ts
-import { supabaseSafe } from '@/supabase/client'
+import { supabaseSafe, getTable } from '@/supabase/client'
 import type { AdminUser, CreateAdminDto, UpdateAdminDto } from '@/types/admin'
 
 // Helper to get the Supabase client (throws if null)
@@ -94,9 +94,8 @@ export class AdminService {
 
       const userId = authData.user.id
 
-      // 2. Insert into admins table
-      const { error: insertError } = await client
-        .from('admins')
+      // 2. Insert into admins table – use getTable to bypass strict typing
+      const { error: insertError } = await getTable('admins')
         .insert({
           id: userId,
           tenant_id: adminData.tenantId,
@@ -106,7 +105,7 @@ export class AdminService {
           is_active: adminData.isActive !== false,
           permissions: adminData.permissions || [],
           phone_number: adminData.phoneNumber || ''
-        } as any) // cast to any to bypass strict type checking
+        })
 
       if (insertError) throw insertError
 
@@ -148,9 +147,11 @@ export class AdminService {
       if (updateData.phoneNumber !== undefined) updatePayload.phone_number = updateData.phoneNumber
       if (updateData.permissions !== undefined) updatePayload.permissions = updateData.permissions
 
-      // Update admins table
-      const { error: updateError } = await client
-        .from('admins')
+      // If nothing to update, return early
+      if (Object.keys(updatePayload).length === 0) return
+
+      // Update admins table – use getTable to bypass strict typing
+      const { error: updateError } = await getTable('admins')
         .update(updatePayload)
         .eq('id', uid)
 
@@ -180,9 +181,8 @@ export class AdminService {
         throw new Error('Cannot delete your own account')
       }
 
-      // Delete from admins table
-      const { error: deleteError } = await client
-        .from('admins')
+      // Delete from admins table – use getTable
+      const { error: deleteError } = await getTable('admins')
         .delete()
         .eq('id', uid)
 
@@ -249,9 +249,8 @@ export class AdminService {
 
   static async updateLastLogin(uid: string): Promise<void> {
     try {
-      const client = getClient()
-      const { error } = await client
-        .from('admins')
+      // Use getTable to bypass strict typing
+      const { error } = await getTable('admins')
         .update({ last_login: new Date().toISOString() })
         .eq('id', uid)
 
