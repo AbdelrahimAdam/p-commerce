@@ -58,7 +58,7 @@
       <!-- Main Content -->
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 md:py-10">
         <div class="grid grid-cols-1 lg:grid-cols-4 gap-6 sm:gap-8">
-          <!-- Sidebar -->
+          <!-- Sidebar (unchanged) -->
           <div class="lg:col-span-1">
             <div class="bg-white rounded-xl sm:rounded-2xl shadow-lg overflow-hidden sticky top-24">
               <!-- User Info -->
@@ -192,9 +192,9 @@
 
                     <!-- Address Content -->
                     <div class="pr-12 sm:pr-16">
-                      <h3 class="font-semibold text-sm sm:text-base text-gray-900">{{ address.name }}</h3>
-                      <p class="text-xs sm:text-sm text-gray-600 mt-2 leading-relaxed">{{ address.address }}</p>
-                      <p class="text-xs sm:text-sm text-gray-600">{{ address.city }}, {{ address.state }} {{ address.zip }}</p>
+                      <h3 class="font-semibold text-sm sm:text-base text-gray-900">{{ address.fullName }}</h3>
+                      <p class="text-xs sm:text-sm text-gray-600 mt-2 leading-relaxed">{{ address.addressLine1 }}</p>
+                      <p class="text-xs sm:text-sm text-gray-600">{{ address.city }}, {{ address.state }} {{ address.postalCode }}</p>
                       <p class="text-xs sm:text-sm text-gray-600">{{ address.country }}</p>
                       <p class="text-xs sm:text-sm text-gray-600 mt-3 font-medium">{{ t('phone') }}: {{ address.phone }}</p>
                     </div>
@@ -251,7 +251,7 @@
                 </svg>
               </button>
             </div>
-            
+
             <form @submit.prevent="saveAddress" class="space-y-4">
               <!-- Full Name -->
               <div>
@@ -259,7 +259,7 @@
                   {{ t('fullName') }} *
                 </label>
                 <input
-                  v-model="addressForm.name"
+                  v-model="addressForm.fullName"
                   type="text"
                   required
                   class="w-full px-3 sm:px-4 py-2.5 sm:py-3 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-transparent transition-all"
@@ -272,9 +272,21 @@
                   {{ t('addressLine') }} *
                 </label>
                 <input
-                  v-model="addressForm.address"
+                  v-model="addressForm.addressLine1"
                   type="text"
                   required
+                  class="w-full px-3 sm:px-4 py-2.5 sm:py-3 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-transparent transition-all"
+                />
+              </div>
+
+              <!-- Address Line 2 (optional) -->
+              <div>
+                <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
+                  {{ t('addressLine2') }} ({{ t('optional') }})
+                </label>
+                <input
+                  v-model="addressForm.addressLine2"
+                  type="text"
                   class="w-full px-3 sm:px-4 py-2.5 sm:py-3 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-transparent transition-all"
                 />
               </div>
@@ -304,14 +316,14 @@
                 </div>
               </div>
 
-              <!-- Zip and Country -->
+              <!-- Postal Code and Country -->
               <div class="grid grid-cols-2 gap-3 sm:gap-4">
                 <div>
                   <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
-                    {{ t('zipCode') }} *
+                    {{ t('postalCode') }} *
                   </label>
                   <input
-                    v-model="addressForm.zip"
+                    v-model="addressForm.postalCode"
                     type="text"
                     required
                     class="w-full px-3 sm:px-4 py-2.5 sm:py-3 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-transparent transition-all"
@@ -396,6 +408,7 @@ import { useAuthStore } from '@/stores/auth'
 import { useLanguageStore } from '@/stores/language'
 import { authNotification } from '@/utils/notifications'
 import { showConfirmation } from '@/utils/confirmation'
+import type { Address } from '@/types'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -406,16 +419,17 @@ const loading = ref(true)
 const saving = ref(false)
 const error = ref<string | null>(null)
 const showAddressForm = ref(false)
-const editingAddress = ref<any>(null)
-const addresses = ref<any[]>([])
+const editingAddress = ref<Address | null>(null)
+const addresses = ref<Address[]>([])
 
-// Address form
-const addressForm = reactive({
-  name: '',
-  address: '',
+// Address form – now matches the Address type
+const addressForm = reactive<Partial<Address>>({
+  fullName: '',
+  addressLine1: '',
+  addressLine2: '',
   city: '',
   state: '',
-  zip: '',
+  postalCode: '',
   country: 'Egypt',
   phone: '',
   isDefault: false
@@ -449,24 +463,6 @@ const loadAddresses = async () => {
   try {
     // Load addresses from customer data
     addresses.value = customer.value.addresses || []
-    
-    // If no addresses in customer data, use mock data for demonstration
-    if (addresses.value.length === 0) {
-      // Uncomment this to use mock data for testing
-      // addresses.value = [
-      //   {
-      //     id: '1',
-      //     name: customer.value.displayName || 'Ahmed Mohamed',
-      //     address: '123 Nile Street, Apartment 4B',
-      //     city: 'Cairo',
-      //     state: 'Cairo',
-      //     zip: '11511',
-      //     country: 'Egypt',
-      //     phone: '+20 100 123 4567',
-      //     isDefault: true
-      //   }
-      // ]
-    }
   } catch (err) {
     console.error('Error loading addresses:', err)
     error.value = t('failedToLoadAddresses')
@@ -480,13 +476,26 @@ const saveAddress = async () => {
   
   saving.value = true
   try {
+    // Create a complete address object
+    const addressData: Omit<Address, 'id'> = {
+      fullName: addressForm.fullName || '',
+      addressLine1: addressForm.addressLine1 || '',
+      addressLine2: addressForm.addressLine2 || '',
+      city: addressForm.city || '',
+      state: addressForm.state || '',
+      postalCode: addressForm.postalCode || '',
+      country: addressForm.country || 'Egypt',
+      phone: addressForm.phone || '',
+      isDefault: addressForm.isDefault || false
+    }
+
     if (editingAddress.value) {
-      // Update existing address
-      await authStore.updateCustomerAddress(editingAddress.value.id, addressForm)
+      // Update existing address (preserve the original id)
+      await authStore.updateCustomerAddress(editingAddress.value.id, addressData)
       authNotification.loggedIn(t('addressUpdated'))
     } else {
       // Add new address
-      await authStore.addCustomerAddress(addressForm)
+      await authStore.addCustomerAddress(addressData as Address)
       authNotification.loggedIn(t('addressAdded'))
     }
     
@@ -501,9 +510,18 @@ const saveAddress = async () => {
   }
 }
 
-const editAddress = (address: any) => {
+const editAddress = (address: Address) => {
   editingAddress.value = address
-  Object.assign(addressForm, address)
+  // Fill the form with the address data
+  addressForm.fullName = address.fullName
+  addressForm.addressLine1 = address.addressLine1
+  addressForm.addressLine2 = address.addressLine2 || ''
+  addressForm.city = address.city
+  addressForm.state = address.state || ''
+  addressForm.postalCode = address.postalCode || ''
+  addressForm.country = address.country
+  addressForm.phone = address.phone
+  addressForm.isDefault = address.isDefault || false
   showAddressForm.value = true
 }
 
@@ -541,11 +559,12 @@ const setDefaultAddress = async (addressId: string) => {
 
 const resetForm = () => {
   editingAddress.value = null
-  addressForm.name = ''
-  addressForm.address = ''
+  addressForm.fullName = ''
+  addressForm.addressLine1 = ''
+  addressForm.addressLine2 = ''
   addressForm.city = ''
   addressForm.state = ''
-  addressForm.zip = ''
+  addressForm.postalCode = ''
   addressForm.country = 'Egypt'
   addressForm.phone = ''
   addressForm.isDefault = false
