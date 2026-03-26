@@ -30,6 +30,13 @@ function isValidLocale(lang: string): lang is 'en' | 'ar' {
   return lang === 'en' || lang === 'ar'
 }
 
+// Helper to check if current domain is the root domain
+function isRootDomain(): boolean {
+  const hostname = window.location.hostname
+  const rootDomain = import.meta.env.VITE_ROOT_DOMAIN || 'localhost:5173'
+  return hostname === rootDomain || hostname === 'localhost'
+}
+
 // Create the Vue app
 const vueApp = createApp(App)
 const pinia = createPinia()
@@ -48,18 +55,30 @@ console.log('🌐 Languages: English & Arabic')
 // ------------------------------------------------------------------
 ;(async () => {
   try {
-    // ----- Step 1: Resolve tenant (public, unauthenticated) -----
-    const tenantStore = useTenantStore()
-    await tenantStore.resolveTenantFromDomain()
-
-    if (tenantStore.error) {
-      console.error('❌ Tenant resolution failed:', tenantStore.error)
-      // Optionally redirect to a "tenant not found" page
-      // router.replace('/tenant-not-found')
-    } else if (tenantStore.tenantId) {
-      console.log(`🌍 Tenant resolved: ${tenantStore.tenantId} (${tenantStore.tenantDomain})`)
+    // ----- Step 1: Check if we're on root domain -----
+    const isRoot = isRootDomain()
+    
+    if (isRoot) {
+      console.log('🏠 Root domain detected - skipping tenant resolution for landing page')
+      // For root domain, we don't need tenant resolution
+      // Just mark tenant as initialized so other stores don't wait
+      const tenantStore = useTenantStore()
+      tenantStore.setIsInitialized(true)
     } else {
-      console.warn('⚠️ No tenant resolved. Data may not load.')
+      // ----- Step 1b: Resolve tenant (only for subdomains) -----
+      console.log('🌍 Subdomain detected - resolving tenant...')
+      const tenantStore = useTenantStore()
+      await tenantStore.resolveTenantFromDomain()
+
+      if (tenantStore.error) {
+        console.error('❌ Tenant resolution failed:', tenantStore.error)
+        // Optionally redirect to a "tenant not found" page
+        // router.replace('/tenant-not-found')
+      } else if (tenantStore.tenantId) {
+        console.log(`🌍 Tenant resolved: ${tenantStore.tenantId} (${tenantStore.tenantDomain})`)
+      } else {
+        console.warn('⚠️ No tenant resolved. Data may not load.')
+      }
     }
 
     // ----- Step 2: Restore Supabase session (check if user is logged in) -----
@@ -92,26 +111,33 @@ console.log('🌐 Languages: English & Arabic')
       i18n.global.locale.value = 'en'
     }
 
-    // Initialize data stores in parallel (these depend on tenant and possibly auth)
-    await Promise.all([
-      brandsStore.initialize?.(),
-      productsStore.initialize?.(),
-      homepageStore.loadHomepageData?.()
-    ])
+    // Only load data stores if we're on a subdomain (tenant exists)
+    if (!isRoot) {
+      // Initialize data stores in parallel (these depend on tenant)
+      await Promise.all([
+        brandsStore.initialize?.(),
+        productsStore.initialize?.(),
+        homepageStore.loadHomepageData?.()
+      ])
+    } else {
+      console.log('🏠 Root domain - skipping data store initialization (landing page)')
+    }
 
-    // Restore cart (depends on auth to sync with server)
+    // Restore cart (depends on auth to sync with server) - works for both root and subdomains
     cartStore.restoreCart?.()
 
     // ----- Final status -----
     console.log('✅ All stores initialized successfully')
+    if (!isRoot) {
+      console.log(`  📁 Brands: ${brandsStore.brands?.length || 0}`)
+      console.log(`  📦 Products: ${productsStore.products?.length || 0}`)
+    }
     console.log(`  👤 Auth: ${authStore.isAuthenticated ? 'Logged in' : 'Guest'}`)
-    console.log(`  📁 Brands: ${brandsStore.brands?.length || 0}`)
-    console.log(`  📦 Products: ${productsStore.products?.length || 0}`)
     console.log(`  🛒 Cart Items: ${cartStore.items?.length || 0}`)
     console.log(`  🌐 Language: ${languageStore.currentLanguage}`)
 
     // (Optional) Sample data hint for development
-    if (import.meta.env.DEV) {
+    if (import.meta.env.DEV && !isRoot) {
       const brandsCount = brandsStore.brands?.length || 0
       const productsCount = productsStore.products?.length || 0
       if (brandsCount === 0 || productsCount === 0) {
