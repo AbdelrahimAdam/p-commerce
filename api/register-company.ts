@@ -98,12 +98,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Generate tenant ID (use UUID to guarantee uniqueness)
     // =========================
     const tenantId = randomUUID()
-    // Also keep a slug for reference if needed
-    const baseSlug = companyName
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-|-$/g, '')
-    const slug = `${baseSlug}-${Date.now()}`
 
     console.log('📦 Tenant ID (UUID):', tenantId)
     console.log('🌐 Domain:', fullDomain)
