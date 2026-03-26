@@ -4,7 +4,7 @@ import { ref, computed, watch } from 'vue'
 import { useLocalStorage } from '@vueuse/core'
 import { showNotification } from '@/utils/notifications'
 import { showConfirmation } from '@/utils/confirmation'
-import { supabase } from '@/supabase/client'
+import { supabaseSafe } from '@/supabase/client'
 import type { Product } from '@/types'
 import { useAuthStore } from './auth'
 
@@ -32,6 +32,9 @@ export interface WishlistItem {
   dateAdded: string
 }
 
+// Helper to get Supabase client (throws if null)
+const getClient = () => supabaseSafe.client
+
 export const useWishlistStore = defineStore('wishlist', () => {
   const authStore = useAuthStore()
 
@@ -47,8 +50,7 @@ export const useWishlistStore = defineStore('wishlist', () => {
   const totalItems = computed(() => items.value.length)
   const totalValue = computed(() => items.value.reduce((sum, item) => sum + item.price, 0))
   const inStockCount = computed(() => items.value.filter(item => item.stockStatus === 'in_stock').length)
-  const lowStockCount = computed(() => items.value.filter(item => item.stockStatus === 
-'low_stock').length)
+  const lowStockCount = computed(() => items.value.filter(item => item.stockStatus === 'low_stock').length)
   const hasItem = (productId: string) => items.value.some(item => item.id === productId)
 
   const determineStockStatus = (product: Product): 'in_stock' | 'low_stock' | 'out_of_stock' => {
@@ -70,7 +72,8 @@ export const useWishlistStore = defineStore('wishlist', () => {
         return
       }
 
-      const { error } = await supabase
+      const client = getClient()
+      const { error } = await client
         .from('wishlists')
         .upsert({
           user_id: userId,
@@ -79,7 +82,7 @@ export const useWishlistStore = defineStore('wishlist', () => {
           shareable_id: shareableId.value || null,
           tenant_id: tenantId,
           updated_at: new Date().toISOString()
-        }, { onConflict: 'user_id' })
+        } as any, { onConflict: 'user_id' })
 
       if (error) throw error
     } catch (error) {
@@ -105,7 +108,8 @@ export const useWishlistStore = defineStore('wishlist', () => {
         return
       }
 
-      const { data, error } = await supabase
+      const client = getClient()
+      const { data, error } = await client
         .from('wishlists')
         .select('*')
         .eq('user_id', userId)
@@ -114,7 +118,8 @@ export const useWishlistStore = defineStore('wishlist', () => {
       if (error) throw error
 
       if (data) {
-        const serverItems = data.items || []
+        const row = data as any
+        const serverItems = row.items || []
         // Merge: server items take precedence, but keep local items not on server
         const localMap = new Map(items.value.map(i => [i.id, i]))
         const merged: WishlistItem[] = []
@@ -126,8 +131,8 @@ export const useWishlistStore = defineStore('wishlist', () => {
         merged.push(...localMap.values())
 
         items.value = merged
-        privacySetting.value = data.privacy || 'private'
-        shareableId.value = data.shareable_id || ''
+        privacySetting.value = row.privacy || 'private'
+        shareableId.value = row.shareable_id || ''
 
         await saveToSupabase() // persist merged list
       } else {
