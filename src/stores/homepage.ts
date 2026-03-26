@@ -1,7 +1,7 @@
 // src/stores/homepage.ts – SUPABASE VERSION
 import { defineStore } from 'pinia'
 import { ref, reactive, onUnmounted } from 'vue'
-import { supabase } from '@/supabase/client'
+import { supabaseSafe } from '@/supabase/client'
 import { useAuthStore } from '@/stores/auth'
 
 // =================== TYPE DEFINITIONS ===================
@@ -56,6 +56,9 @@ interface HomepageData {
 
 type ListenerCallback = (data: HomepageData) => void
 
+// Helper to get supabase client (throws if null)
+const getClient = () => supabaseSafe.client
+
 export const useHomepageStore = defineStore('homepage', () => {
   const authStore = useAuthStore()
 
@@ -86,7 +89,7 @@ export const useHomepageStore = defineStore('homepage', () => {
   const isLoading = ref(false)
   const error = ref<string>('')
 
-  let subscription: ReturnType<typeof supabase.channel> | null = null
+  let subscription: ReturnType<ReturnType<typeof getClient>['channel']> | null = null
   const isListening = ref(false)
   const listeners = new Set<ListenerCallback>()
 
@@ -143,8 +146,9 @@ export const useHomepageStore = defineStore('homepage', () => {
     if (subscription) return
 
     try {
+      const client = getClient()
       // Create a channel for this tenant's homepage
-      const channel = supabase
+      const channel = client
         .channel(`homepage:${tenantId}`)
         .on(
           'postgres_changes',
@@ -229,8 +233,9 @@ export const useHomepageStore = defineStore('homepage', () => {
         return
       }
 
+      const client = getClient()
       // Fetch from Supabase
-      const { data, error: fetchError } = await supabase
+      const { data, error: fetchError } = await client
         .from('homepage')
         .select('sections')
         .eq('tenant_id', tenantId)
@@ -238,8 +243,8 @@ export const useHomepageStore = defineStore('homepage', () => {
 
       if (fetchError) throw fetchError
 
-      if (data?.sections) {
-        const sections = data.sections as HomepageData
+      if (data && (data as any).sections) {
+        const sections = (data as any).sections as HomepageData
         Object.assign(homepageData, { ...sections, source: 'supabase' })
         saveToCache(homepageData)
         notifyListeners(homepageData)
@@ -286,14 +291,15 @@ export const useHomepageStore = defineStore('homepage', () => {
         source: 'supabase'
       }
 
+      const client = getClient()
       // Upsert into Supabase
-      const { error: upsertError } = await supabase
+      const { error: upsertError } = await client
         .from('homepage')
         .upsert({
           tenant_id: tenantId,
           sections: newData,
           updated_at: new Date().toISOString()
-        }, { onConflict: 'tenant_id' })
+        } as any, { onConflict: 'tenant_id' })
 
       if (upsertError) throw upsertError
 
@@ -361,7 +367,8 @@ export const useHomepageStore = defineStore('homepage', () => {
     }
 
     try {
-      const { data, error: fetchError } = await supabase
+      const client = getClient()
+      const { data, error: fetchError } = await client
         .from('homepage')
         .select('updated_at')
         .eq('tenant_id', tenantId)
@@ -371,7 +378,7 @@ export const useHomepageStore = defineStore('homepage', () => {
 
       return {
         connected: true,
-        lastUpdate: data?.updated_at
+        lastUpdate: (data as any)?.updated_at
       }
     } catch (err) {
       return { connected: false }
@@ -389,8 +396,9 @@ export const useHomepageStore = defineStore('homepage', () => {
 
     try {
       checkPermission()
+      const client = getClient()
       // Check if already exists
-      const { data, error: fetchError } = await supabase
+      const { data, error: fetchError } = await client
         .from('homepage')
         .select('tenant_id')
         .eq('tenant_id', tenantId)
@@ -411,14 +419,14 @@ export const useHomepageStore = defineStore('homepage', () => {
         source: 'default'
       }
 
-      const { error: insertError } = await supabase
+      const { error: insertError } = await client
         .from('homepage')
         .insert({
           tenant_id: tenantId,
           sections: defaultData,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
-        })
+        } as any)
 
       if (insertError) throw insertError
 
@@ -431,7 +439,8 @@ export const useHomepageStore = defineStore('homepage', () => {
 
   const stopListening = () => {
     if (subscription) {
-      supabase.removeChannel(subscription)
+      const client = getClient()
+      client.removeChannel(subscription)
       subscription = null
       isListening.value = false
     }
