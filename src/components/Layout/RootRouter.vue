@@ -19,21 +19,32 @@ export default defineComponent({
     const isMainDomain = computed(() => {
       const hostname = window.location.hostname
       const rootDomain = import.meta.env.VITE_ROOT_DOMAIN || 'p-commerce-peach.vercel.app'
-      return hostname === rootDomain
+      return hostname === rootDomain || hostname === 'localhost'
     })
 
     onMounted(async () => {
       try {
-        await tenantStore.whenReady(5000)
-        console.log('✅ Tenant resolved:', tenantStore.tenantId)
+        // Only wait for tenant resolution if NOT on main domain
+        if (!isMainDomain.value) {
+          console.log('🌍 Subdomain detected - waiting for tenant resolution...')
+          await tenantStore.whenReady(5000)
+          console.log('✅ Tenant resolved:', tenantStore.tenantId)
+        } else {
+          console.log('🏠 Main domain detected - skipping tenant resolution')
+          // Mark tenant as initialized to prevent any waiting
+          tenantStore.setIsInitialized(true)
+        }
       } catch (err) {
         console.warn('Tenant resolution timed out or failed, falling back to store home')
       }
 
+      // Load the appropriate page component
       if (isMainDomain.value) {
+        console.log('📄 Loading LandingPage for main domain')
         const module = await import('@/pages/LandingPage.vue')
         activeComponent.value = module.default
       } else {
+        console.log('🏪 Loading HomePage for tenant store')
         const module = await import('@/pages/HomePage.vue')
         activeComponent.value = module.default
       }
