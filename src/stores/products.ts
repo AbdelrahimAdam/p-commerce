@@ -1,16 +1,14 @@
+// src/stores/products.ts
 import { defineStore } from 'pinia'
 import { ref, computed, watch, watchEffect } from 'vue'
 import { useLocalStorage } from '@vueuse/core'
-import { supabase } from '@/supabase/client'
+import { supabaseSafe } from '@/supabase/client'
 import type { Product, FilterOptions, Brand } from '@/types'
 import { productNotification } from '@/utils/notifications'
 import { useBrandsStore } from './brands'
 import { useAuthStore } from './auth'
 
-// Remove this import to break circular dependency
-// import { LUXURY_CATEGORIES } from '@/utils/luxuryConstants'
-
-// Define categories locally or import from a separate file
+// Define categories locally
 const LUXURY_CATEGORIES = [
   {
     id: 'arabic-oud',
@@ -88,6 +86,9 @@ function debounce<F extends (...args: any[]) => any>(func: F, wait: number): (..
   }
 }
 
+// Helper to get supabase client (throws if null)
+const getClient = () => supabaseSafe.client
+
 export const useProductsStore = defineStore('products', () => {
   const brandsStore = useBrandsStore()
   const authStore = useAuthStore()
@@ -155,11 +156,12 @@ export const useProductsStore = defineStore('products', () => {
     const cached = productCache.value.get(cacheKey)
     if (cached) return cached.product
 
+    const client = getClient()
     let imageUrl = ''
     let images: string[] = []
     if (row.images && Array.isArray(row.images)) {
       images = await Promise.all(row.images.map(async (path: string) => {
-        const { data: urlData } = supabase.storage.from('images').getPublicUrl(path)
+        const { data: urlData } = client.storage.from('images').getPublicUrl(path)
         return urlData.publicUrl
       }))
       imageUrl = images[0] || ''
@@ -209,7 +211,8 @@ export const useProductsStore = defineStore('products', () => {
     isInitialLoad: boolean = true
   ): Promise<Product[]> => {
     try {
-      let query = supabase
+      const client = getClient()
+      let query = client
         .from('products')
         .select('*')
         .eq('brand_id', brandId)
@@ -236,15 +239,16 @@ export const useProductsStore = defineStore('products', () => {
       const { data, error: fetchError } = await query
       if (fetchError) throw fetchError
 
-      if (!data || data.length === 0) return []
+      if (!data || (data as any[]).length === 0) return []
 
-      const lastItem = data[data.length - 1]
+      const rows = data as any[]
+      const lastItem = rows[rows.length - 1]
       lastCursor.value = {
         created_at: lastItem.created_at,
         id: lastItem.id
       }
 
-      const productsFromBatch = await Promise.all(data.map(row => transformProductRow(row, brand)))
+      const productsFromBatch = await Promise.all(rows.map(row => transformProductRow(row, brand)))
       const existing = brandProductsCache.value.get(brandId) || []
       brandProductsCache.value.set(brandId, [...existing, ...productsFromBatch])
       return productsFromBatch
@@ -389,9 +393,10 @@ export const useProductsStore = defineStore('products', () => {
 
       let product = products.value.find(p => p.slug === slug)
       if (!product) {
+        const client = getClient()
         const tenantBrands = brandsStore.brands.filter(b => b.tenantId === authStore.currentTenant)
         for (const brand of tenantBrands) {
-          const { data, error: fetchError } = await supabase
+          const { data, error: fetchError } = await client
             .from('products')
             .select('*')
             .eq('brand_id', brand.id)
@@ -425,7 +430,8 @@ export const useProductsStore = defineStore('products', () => {
       const cached = brandProductsCache.value.get(brand.id)
       if (cached && cached.length) return cached
 
-      const { data, error: fetchError } = await supabase
+      const client = getClient()
+      const { data, error: fetchError } = await client
         .from('products')
         .select('*')
         .eq('brand_id', brand.id)
@@ -434,7 +440,8 @@ export const useProductsStore = defineStore('products', () => {
         .order('created_at', { ascending: false })
 
       if (fetchError) throw fetchError
-      const brandProducts = await Promise.all(data.map(row => transformProductRow(row, brand)))
+      const rows = data as any[]
+      const brandProducts = await Promise.all(rows.map(row => transformProductRow(row, brand)))
       brandProductsCache.value.set(brand.id, brandProducts)
       return brandProducts
     } catch (err) {
@@ -448,14 +455,16 @@ export const useProductsStore = defineStore('products', () => {
     if (cached) return cached
     let product = products.value.find(p => p.id === id)
     if (!product) {
-      const { data, error: fetchError } = await supabase
+      const client = getClient()
+      const { data, error: fetchError } = await client
         .from('products')
         .select('*, brands!inner(tenant_id, name, slug)')
         .eq('id', id)
         .single()
       if (!fetchError && data) {
-        const brand = brandsStore.brands.find(b => b.id === data.brand_id)
-        if (brand) product = await transformProductRow(data, brand)
+        const row = data as any
+        const brand = brandsStore.brands.find(b => b.id === row.brand_id)
+        if (brand) product = await transformProductRow(row, brand)
       }
     }
     return product
@@ -468,7 +477,8 @@ export const useProductsStore = defineStore('products', () => {
     }
 
     try {
-      const { data: productData, error: fetchError } = await supabase
+      const client = getClient()
+      const { data: productData, error: fetchError } = await client
         .from('products')
         .select('images')
         .eq('id', productId)
@@ -477,11 +487,11 @@ export const useProductsStore = defineStore('products', () => {
 
       if (productData?.images && Array.isArray(productData.images)) {
         for (const path of productData.images) {
-          await supabase.storage.from('images').remove([path]).catch(console.warn)
+          await client.storage.from('images').remove([path]).catch(console.warn)
         }
       }
 
-      const { error: deleteError } = await supabase
+      const { error: deleteError } = await client
         .from('products')
         .delete()
         .eq('id', productId)
@@ -555,8 +565,8 @@ export const useProductsStore = defineStore('products', () => {
       let related = products.value
         .filter(p => p.id !== product.id && (p.category === product.category || p.brand === product.brand))
         .slice(0, limitNum)
-      if (related.length < limitNum && product.brandId) {
-        const brandProducts = await getProductsByBrand(product.brandSlug!)
+      if (related.length < limitNum && product.brandSlug) {
+        const brandProducts = await getProductsByBrand(product.brandSlug)
         const additional = brandProducts
           .filter(p => p.id !== product.id && p.category === product.category)
           .slice(0, limitNum - related.length)
