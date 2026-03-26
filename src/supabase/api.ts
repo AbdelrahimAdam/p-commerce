@@ -16,17 +16,31 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(400).json({ error: 'Missing required fields' })
     }
 
+    // --- Environment variables ---
+    const supabaseUrl = process.env.VITE_SUPABASE_URL
+    const supabaseServiceKey = process.env.VITE_SUPABASE_SERVICE_ROLE_KEY
+    const rootDomain = process.env.VITE_ROOT_DOMAIN
+
+    if (!supabaseUrl) {
+      console.error('Missing VITE_SUPABASE_URL environment variable')
+      return res.status(500).json({ error: 'Server configuration error: missing Supabase URL' })
+    }
+    if (!supabaseServiceKey) {
+      console.error('Missing VITE_SUPABASE_SERVICE_ROLE_KEY environment variable')
+      return res.status(500).json({ error: 'Server configuration error: missing Supabase service key' })
+    }
+    if (!rootDomain) {
+      console.error('Missing VITE_ROOT_DOMAIN environment variable')
+      return res.status(500).json({ error: 'Server configuration error: missing root domain' })
+    }
+
     // Use service role client (bypasses RLS)
-    const supabaseAdmin = createClient(
-      process.env.VITE_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      {
-        auth: {
-          autoRefreshToken: false,
-          persistSession: false
-        }
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false
       }
-    )
+    })
 
     // Generate unique tenant ID
     const baseSlug = companyName
@@ -35,10 +49,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       .replace(/^-|-$/g, '')
     const tenantId = `${baseSlug}-${Date.now()}`
 
-    const rootDomain = process.env.VITE_ROOT_DOMAIN
-    if (!rootDomain) {
-      throw new Error('VITE_ROOT_DOMAIN environment variable is not set')
-    }
     const fullDomain = `${domain}.${rootDomain}`
 
     // 1. Create the user (using service role)
