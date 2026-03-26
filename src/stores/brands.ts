@@ -1,7 +1,7 @@
 // src/stores/brands.ts
 import { defineStore } from 'pinia'
 import { ref, computed, watchEffect } from 'vue'
-import { supabaseSafe } from '@/supabase/client'
+import { supabaseSafe, getTable } from '@/supabase/client'
 import type { Brand, BrandWithProducts, Product } from '@/types'
 import { useProductsStore } from '@/stores/products'
 import { useAuthStore } from './auth'
@@ -243,8 +243,8 @@ export const useBrandsStore = defineStore('brands', () => {
       if (isFile(brandData.image)) {
         const uploadedUrl = await uploadBrandImage(brandData.image, brandId)
         const updatePayload = { image: uploadedUrl, updated_at: new Date().toISOString() }
-        const { error: updateError } = await client
-          .from('brands')
+        // Use getTable to bypass strict typing
+        const { error: updateError } = await getTable('brands')
           .update(updatePayload)
           .eq('id', brandId)
         if (updateError) {
@@ -299,8 +299,8 @@ export const useBrandsStore = defineStore('brands', () => {
       if (updates.signature !== undefined) updatePayload.signature = updates.signature
       if (updates.isActive !== undefined) updatePayload.is_active = updates.isActive
 
-      const { error: updateError } = await client
-        .from('brands')
+      // Use getTable to bypass strict typing
+      const { error: updateError } = await getTable('brands')
         .update(updatePayload)
         .eq('id', brandId)
 
@@ -330,8 +330,8 @@ export const useBrandsStore = defineStore('brands', () => {
 
       if (fetchError && fetchError.code !== 'PGRST116') throw fetchError
 
-      const { error: deleteError } = await client
-        .from('brands')
+      // Use getTable to bypass strict typing
+      const { error: deleteError } = await getTable('brands')
         .delete()
         .eq('id', brandId)
 
