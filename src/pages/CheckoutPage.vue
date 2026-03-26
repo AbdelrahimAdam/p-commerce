@@ -107,11 +107,11 @@
             </div>
             <span class="text-sm font-medium text-gray-900">{{ currentLanguage === 'en' ? 'Cart' : 'السلة' }}</span>
           </div>
-          
+
           <div class="flex-1 h-1 bg-gray-200 mx-4">
             <div class="h-full bg-primary-500 rounded-full"></div>
           </div>
-          
+
           <div class="flex flex-col items-center">
             <div class="w-10 h-10 rounded-full border-2 border-primary-500 bg-white text-primary-500 
                        flex items-center justify-center mb-2">
@@ -119,9 +119,9 @@
             </div>
             <span class="text-sm font-medium text-gray-900">{{ currentLanguage === 'en' ? 'Details' : 'التفاصيل' }}</span>
           </div>
-          
+
           <div class="flex-1 h-1 bg-gray-200 mx-4"></div>
-          
+
           <div class="flex flex-col items-center">
             <div class="w-10 h-10 rounded-full border-2 border-gray-300 bg-white text-gray-400 
                        flex items-center justify-center mb-2">
@@ -140,7 +140,7 @@
             <h2 class="text-2xl font-display-en font-bold text-gray-900 mb-6">
               {{ currentLanguage === 'en' ? 'Contact Information' : 'معلومات الاتصال' }}
             </h2>
-            
+
             <div class="grid md:grid-cols-2 gap-6">
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-2">
@@ -156,7 +156,7 @@
                 />
                 <p v-if="errors.fullName" class="mt-2 text-sm text-red-600">{{ errors.fullName }}</p>
               </div>
-              
+
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-2">
                   {{ currentLanguage === 'en' ? 'Email Address' : 'البريد الإلكتروني' }} *
@@ -171,7 +171,7 @@
                 />
                 <p v-if="errors.email" class="mt-2 text-sm text-red-600">{{ errors.email }}</p>
               </div>
-              
+
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-2">
                   {{ currentLanguage === 'en' ? 'Phone Number' : 'رقم الهاتف' }} *
@@ -194,7 +194,7 @@
             <h2 class="text-2xl font-display-en font-bold text-gray-900 mb-6">
               {{ currentLanguage === 'en' ? 'Shipping Address' : 'عنوان الشحن' }}
             </h2>
-            
+
             <div class="space-y-6">
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-2">
@@ -210,7 +210,7 @@
                 />
                 <p v-if="errors.address" class="mt-2 text-sm text-red-600">{{ errors.address }}</p>
               </div>
-              
+
               <div class="grid md:grid-cols-2 gap-6">
                 <div>
                   <label class="block text-sm font-medium text-gray-700 mb-2">
@@ -226,7 +226,7 @@
                   />
                   <p v-if="errors.city" class="mt-2 text-sm text-red-600">{{ errors.city }}</p>
                 </div>
-                
+
                 <div>
                   <label class="block text-sm font-medium text-gray-700 mb-2">
                     {{ currentLanguage === 'en' ? 'Governorate' : 'المحافظة' }} *
@@ -247,7 +247,7 @@
                   <p v-if="errors.governorate" class="mt-2 text-sm text-red-600">{{ errors.governorate }}</p>
                 </div>
               </div>
-              
+
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-2">
                   {{ currentLanguage === 'en' ? 'Additional Notes (Optional)' : 'ملاحظات إضافية (اختياري)' }}
@@ -270,7 +270,7 @@
             <h2 class="text-2xl font-display-en font-bold text-gray-900 mb-6">
               {{ currentLanguage === 'en' ? 'Payment Method' : 'طريقة الدفع' }}
             </h2>
-            
+
             <div class="space-y-4">
               <label class="flex items-start p-4 border-2 border-gray-300 rounded-xl cursor-pointer 
                            hover:border-primary-500 transition-all group"
@@ -305,7 +305,7 @@
                   </div>
                 </div>
               </label>
-              
+
               <label class="flex items-start p-4 border-2 border-gray-300 rounded-xl cursor-pointer 
                            hover:border-primary-500 transition-all group"
                      :class="{ 'border-primary-500 bg-primary-50': checkoutForm.paymentMethod === 'bank_transfer' }">
@@ -354,7 +354,7 @@
               <h3 class="text-2xl font-display-en font-bold text-gray-900 mb-6">
                 {{ currentLanguage === 'en' ? 'Order Summary' : 'ملخص الطلب' }}
               </h3>
-              
+
               <!-- Order Items -->
               <div class="space-y-4 mb-6 max-h-64 overflow-y-auto">
                 <div
@@ -377,7 +377,7 @@
                       {{ item.quantity }}
                     </div>
                   </div>
-                  
+
                   <div class="flex-1 min-w-0">
                     <h4 class="text-sm font-medium text-gray-900 truncate">
                       {{ getLocalizedText(item.name) }}
@@ -385,7 +385,7 @@
                     <p class="text-xs text-gray-500">{{ item.size }} • {{ item.concentration }}</p>
                     <p class="text-xs text-gray-500">{{ item.brand }}</p>
                   </div>
-                  
+
                   <div class="text-right">
                     <p class="text-sm font-bold text-primary-600">
                       {{ cartStore.formatPrice(item.price * item.quantity) }}
@@ -393,14 +393,14 @@
                   </div>
                 </div>
               </div>
-              
+
               <!-- Price Breakdown - Using cart store values -->
               <div class="space-y-3">
                 <div class="flex justify-between">
                   <span class="text-gray-600">{{ currentLanguage === 'en' ? 'Subtotal' : 'المجموع الفرعي' }}</span>
                   <span class="font-medium">{{ cartStore.formatPrice(cartStore.subtotal) }}</span>
                 </div>
-                
+
                 <div class="flex justify-between">
                   <span class="text-gray-600">{{ currentLanguage === 'en' ? 'Shipping' : 'الشحن' }}</span>
                   <span class="font-medium" :class="{ 'text-green-600': cartStore.shipping === 0 }">
@@ -409,18 +409,18 @@
                       : cartStore.formatPrice(cartStore.shipping) }}
                   </span>
                 </div>
-                
+
                 <div class="flex justify-between">
                   <span class="text-gray-600">{{ currentLanguage === 'en' ? 'Tax (14% VAT)' : 'الضريبة (14%)' }}</span>
                   <span class="font-medium">{{ cartStore.formatPrice(cartStore.tax) }}</span>
                 </div>
-                
+
                 <!-- Savings (if any) -->
                 <div v-if="savings > 0" class="flex justify-between text-green-600">
                   <span class="font-medium">{{ currentLanguage === 'en' ? 'You Save' : 'وفرت' }}</span>
                   <span class="font-bold">{{ cartStore.formatPrice(savings) }}</span>
                 </div>
-                
+
                 <!-- Free Shipping Progress -->
                 <div v-if="!cartStore.hasFreeShipping" class="mt-4 p-4 bg-gray-50 rounded-lg">
                   <div class="flex justify-between text-sm mb-2">
@@ -439,7 +439,7 @@
                       : `أضف ${cartStore.formatPrice(shippingProgress.remaining)} للحصول على شحن مجاني` }}
                   </p>
                 </div>
-                
+
                 <div class="border-t border-gray-200 pt-4 mt-4">
                   <div class="flex justify-between">
                     <span class="text-lg font-bold text-gray-900">{{ currentLanguage === 'en' ? 'Total' : 'الإجمالي' }}</span>
@@ -532,6 +532,7 @@ import { useCartStore } from '@/stores/cart'
 import { useOrdersStore } from '@/stores/orders'
 import SEOHead from '@/components/UI/SEOHead.vue'
 import { authNotification } from '@/utils/notifications'
+import type { PaymentMethod } from '@/types'
 
 const router = useRouter()
 const languageStore = useLanguageStore()
@@ -559,7 +560,7 @@ const checkoutForm = ref({
   address: '',
   city: '',
   governorate: '',
-  paymentMethod: 'cash_on_delivery',
+  paymentMethod: 'cash_on_delivery' as PaymentMethod,
   notes: ''
 })
 
