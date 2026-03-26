@@ -588,8 +588,8 @@ export const useAuthStore = defineStore('auth', () => {
       const result = await response.json()
       if (!response.ok) throw new Error(result.error || 'Registration failed')
 
-      const { tenantId, uid } = result
-      console.log('✅ API response:', { tenantId, uid })
+      const { tenantId, uid, domain: fullDomain } = result
+      console.log('✅ API response:', { tenantId, uid, fullDomain })
 
       // Now log in with the created user
       console.log('🔐 Logging in...')
@@ -611,7 +611,7 @@ export const useAuthStore = defineStore('auth', () => {
       setAdminUser(admin)
 
       console.log('✅ Company registered successfully:', tenantId)
-      return { tenantId, uid }
+      return { tenantId, uid, domain: fullDomain }
     } catch (err: any) {
       console.error('❌ Registration error:', err)
       error.value = err.message || 'Registration failed'
