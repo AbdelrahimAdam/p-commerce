@@ -1,8 +1,12 @@
+// src/stores/admin.ts
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import { supabase } from '@/supabase/client'
+import { supabaseSafe } from '@/supabase/client'
 import type { AdminUser, CreateAdminDto, UpdateAdminDto } from '@/types/admin'
 import { useAuthStore } from './auth'
+
+// Helper to get Supabase client (throws if null)
+const getClient = () => supabaseSafe.client
 
 export const useAdminStore = defineStore('admin', () => {
   const authStore = useAuthStore()
@@ -24,10 +28,10 @@ export const useAdminStore = defineStore('admin', () => {
     displayName: row.display_name || row.email,
     role: row.role,
     tenantId: row.tenant_id,
-    isActive: row.is_active !== false,          // if column exists, else default true
-    permissions: row.permissions || [],          // if column exists, else empty
-    createdAt: row.created_at,                   // string from database
-    lastLoginAt: row.last_login || new Date().toISOString() // fallback to now
+    isActive: row.is_active !== false,
+    permissions: row.permissions || [],
+    createdAt: row.created_at,
+    lastLoginAt: row.last_login || new Date().toISOString()
   })
 
   const updateStats = () => {
@@ -50,7 +54,8 @@ export const useAdminStore = defineStore('admin', () => {
         return
       }
 
-      const { data, error: fetchError } = await supabase
+      const client = getClient()
+      const { data, error: fetchError } = await client
         .from('admins')
         .select('*')
         .eq('tenant_id', tenantId)
@@ -58,7 +63,7 @@ export const useAdminStore = defineStore('admin', () => {
 
       if (fetchError) throw fetchError
 
-      admins.value = (data || []).map(rowToAdmin)
+      admins.value = ((data as any[]) || []).map(rowToAdmin)
       updateStats()
     } catch (err: any) {
       error.value = err.message || 'Failed to fetch admins'
@@ -76,8 +81,10 @@ export const useAdminStore = defineStore('admin', () => {
       const tenantId = adminData.tenantId || authStore.currentTenant
       if (!tenantId) throw new Error('Tenant ID is required')
 
+      const client = getClient()
+
       // Create auth user
-      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+      const { data: signUpData, error: signUpError } = await client.auth.signUp({
         email: adminData.email,
         password: adminData.password,
         options: {
@@ -89,22 +96,22 @@ export const useAdminStore = defineStore('admin', () => {
 
       const userId = signUpData.user.id
 
-      // Insert into admins table (only columns that exist in your schema)
+      // Insert into admins table
       const dbInsert = {
         id: userId,
         tenant_id: tenantId,
         email: adminData.email,
         role: adminData.role || 'admin',
-        // These columns may not exist; remove if not in schema:
-        // display_name: adminData.displayName,
-        // is_active: true,
-        // permissions: [],
-        // last_login: null
+        display_name: adminData.displayName,
+        is_active: true,
+        permissions: [],
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
       }
 
-      const { error: insertError } = await supabase
+      const { error: insertError } = await client
         .from('admins')
-        .insert(dbInsert)
+        .insert(dbInsert as any)
 
       if (insertError) throw insertError
 
@@ -136,16 +143,16 @@ export const useAdminStore = defineStore('admin', () => {
     loading.value = true
     error.value = null
     try {
-      const updatePayload: any = {}
+      const client = getClient()
+      const updatePayload: any = { updated_at: new Date().toISOString() }
       if (updateData.displayName !== undefined) updatePayload.display_name = updateData.displayName
       if (updateData.role !== undefined) updatePayload.role = updateData.role
-      // If the table has these columns, uncomment:
-      // if (updateData.isActive !== undefined) updatePayload.is_active = updateData.isActive
-      // if (updateData.permissions !== undefined) updatePayload.permissions = updateData.permissions
+      if (updateData.isActive !== undefined) updatePayload.is_active = updateData.isActive
+      if (updateData.permissions !== undefined) updatePayload.permissions = updateData.permissions
 
-      if (Object.keys(updatePayload).length === 0) return
+      if (Object.keys(updatePayload).length === 1) return // only updated_at, nothing else changed
 
-      const { error: updateError } = await supabase
+      const { error: updateError } = await client
         .from('admins')
         .update(updatePayload)
         .eq('id', uid)
@@ -154,13 +161,10 @@ export const useAdminStore = defineStore('admin', () => {
 
       const index = admins.value.findIndex(admin => admin.uid === uid)
       if (index !== -1) {
-        // Merge only the fields that exist in AdminUser type
-        const updatedAdmin = {
+        admins.value[index] = {
           ...admins.value[index],
-          ...updateData,
-          // No 'updatedAt' field in type, so we don't add it
+          ...updateData
         }
-        admins.value[index] = updatedAdmin
       }
       updateStats()
     } catch (err: any) {
@@ -176,7 +180,8 @@ export const useAdminStore = defineStore('admin', () => {
     loading.value = true
     error.value = null
     try {
-      const { error: deleteError } = await supabase
+      const client = getClient()
+      const { error: deleteError } = await client
         .from('admins')
         .delete()
         .eq('id', uid)
@@ -198,7 +203,8 @@ export const useAdminStore = defineStore('admin', () => {
     loading.value = true
     error.value = null
     try {
-      const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
+      const client = getClient()
+      const { error: resetError } = await client.auth.resetPasswordForEmail(email, {
         redirectTo: `${window.location.origin}/reset-password`
       })
       if (resetError) throw resetError
@@ -221,7 +227,8 @@ export const useAdminStore = defineStore('admin', () => {
       const tenantId = authStore.currentTenant
       if (!tenantId) return []
 
-      const { data, error: searchError } = await supabase
+      const client = getClient()
+      const { data, error: searchError } = await client
         .from('admins')
         .select('*')
         .eq('tenant_id', tenantId)
@@ -229,7 +236,7 @@ export const useAdminStore = defineStore('admin', () => {
         .limit(20)
 
       if (searchError) throw searchError
-      return (data || []).map(rowToAdmin)
+      return ((data as any[]) || []).map(rowToAdmin)
     } catch (err: any) {
       console.error('Error searching admins:', err)
       return []
@@ -238,12 +245,13 @@ export const useAdminStore = defineStore('admin', () => {
 
   const updateLastLogin = async (uid: string) => {
     try {
-      // If the table has a `last_login` column, uncomment:
-      // const { error: updateError } = await supabase
-      //   .from('admins')
-      //   .update({ last_login: new Date().toISOString() })
-      //   .eq('id', uid)
-      // if (updateError) throw updateError
+      const client = getClient()
+      const { error: updateError } = await client
+        .from('admins')
+        .update({ last_login: new Date().toISOString() })
+        .eq('id', uid)
+
+      if (updateError) throw updateError
 
       const index = admins.value.findIndex(admin => admin.uid === uid)
       if (index !== -1) {
