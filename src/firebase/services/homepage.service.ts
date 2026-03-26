@@ -1,4 +1,5 @@
-import { supabase } from '@/supabase/client'
+// src/services/homepageService.ts
+import { supabaseSafe } from '@/supabase/client'
 import { useAuthStore } from '@/stores/auth'
 
 export interface HeroBanner {
@@ -46,6 +47,9 @@ export interface HomepageData {
   settings: HomepageSettings
 }
 
+// Helper to get Supabase client (throws if null)
+const getClient = () => supabaseSafe.client
+
 export const homepageService = {
   // Get homepage data from Supabase
   async getHomepageData(): Promise<HomepageData> {
@@ -57,7 +61,8 @@ export const homepageService = {
     }
 
     try {
-      const { data, error } = await supabase
+      const client = getClient()
+      const { data, error } = await client
         .from('homepage')
         .select('sections')
         .eq('tenant_id', tenantId)
@@ -65,19 +70,19 @@ export const homepageService = {
 
       if (error) throw error
 
-      if (data?.sections) {
-        return data.sections as HomepageData
+      if (data && (data as any).sections) {
+        return (data as any).sections as HomepageData
       } else {
         // Create default homepage data
         const defaultData = await this.getDefaultData()
-        await supabase
+        await client
           .from('homepage')
           .upsert({
             tenant_id: tenantId,
             sections: defaultData,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
-          }, { onConflict: 'tenant_id' })
+          } as any, { onConflict: 'tenant_id' })
         return defaultData
       }
     } catch (error) {
@@ -206,15 +211,16 @@ export const homepageService = {
     const tenantId = authStore.currentTenant
     if (!tenantId) throw new Error('No tenant ID')
 
+    const client = getClient()
     // Get current sections
-    const { data: current, error: fetchError } = await supabase
+    const { data: current, error: fetchError } = await client
       .from('homepage')
       .select('sections')
       .eq('tenant_id', tenantId)
       .maybeSingle()
     if (fetchError) throw fetchError
 
-    const currentSections = current?.sections || {}
+    const currentSections = (current as any)?.sections || {}
     const currentHero = currentSections.heroBanner || {}
     const updatedHero = { ...currentHero, ...heroData }
 
@@ -242,15 +248,16 @@ export const homepageService = {
     const tenantId = authStore.currentTenant
     if (!tenantId) throw new Error('No tenant ID')
 
+    const client = getClient()
     // Get current sections
-    const { data: current, error: fetchError } = await supabase
+    const { data: current, error: fetchError } = await client
       .from('homepage')
       .select('sections')
       .eq('tenant_id', tenantId)
       .maybeSingle()
     if (fetchError) throw fetchError
 
-    const currentSections = current?.sections || {}
+    const currentSections = (current as any)?.sections || {}
     const currentSettings = currentSections.settings || {}
     const updatedSettings = { ...currentSettings, ...settings }
 
@@ -263,8 +270,9 @@ export const homepageService = {
     const tenantId = authStore.currentTenant
     if (!tenantId) throw new Error('No tenant ID')
 
+    const client = getClient()
     // Get current sections
-    const { data: current, error: fetchError } = await supabase
+    const { data: current, error: fetchError } = await client
       .from('homepage')
       .select('sections')
       .eq('tenant_id', tenantId)
@@ -272,19 +280,19 @@ export const homepageService = {
 
     if (fetchError) throw fetchError
 
-    const currentSections = current?.sections || {}
+    const currentSections = (current as any)?.sections || {}
     const updatedSections = {
       ...currentSections,
       [key]: value
     }
 
-    const { error: updateError } = await supabase
+    const { error: updateError } = await client
       .from('homepage')
       .upsert({
         tenant_id: tenantId,
         sections: updatedSections,
         updated_at: new Date().toISOString()
-      }, { onConflict: 'tenant_id' })
+      } as any, { onConflict: 'tenant_id' })
 
     if (updateError) throw updateError
   },
@@ -292,15 +300,16 @@ export const homepageService = {
   // Upload image to Supabase Storage
   async uploadImage(file: File, folder: string = 'homepage'): Promise<string> {
     try {
+      const client = getClient()
       const timestamp = Date.now()
       const fileName = `${folder}/${timestamp}_${file.name}`
-      const { error: uploadError } = await supabase.storage
+      const { error: uploadError } = await client.storage
         .from('images')
         .upload(fileName, file, { upsert: true })
 
       if (uploadError) throw uploadError
 
-      const { data: urlData } = supabase.storage.from('images').getPublicUrl(fileName)
+      const { data: urlData } = client.storage.from('images').getPublicUrl(fileName)
       return urlData.publicUrl
     } catch (error) {
       console.error('Error uploading image:', error)
@@ -314,15 +323,16 @@ export const homepageService = {
     const tenantId = authStore.currentTenant
     if (!tenantId) throw new Error('No tenant ID')
 
+    const client = getClient()
     const defaultData = await this.getDefaultData()
 
-    const { error } = await supabase
+    const { error } = await client
       .from('homepage')
       .upsert({
         tenant_id: tenantId,
         sections: defaultData,
         updated_at: new Date().toISOString()
-      }, { onConflict: 'tenant_id' })
+      } as any, { onConflict: 'tenant_id' })
 
     if (error) throw error
   }
