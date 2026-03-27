@@ -1,3 +1,4 @@
+// src/stores/language.ts
 import { defineStore } from 'pinia'
 import { ref, computed, watch } from 'vue'
 import type { Language } from '@/types'
@@ -452,7 +453,7 @@ export const useLanguageStore = defineStore('language', () => {
     seasonalCollection: { en: 'Seasonal Collection', ar: 'المجموعة الموسمية' },
     holidaySpecial: { en: 'Holiday Special', ar: 'العرض العطلي' },
     summerEssentials: { en: 'Summer Essentials', ar: 'مستلزمات الصيف' },
-    winterWarmers: { en: 'Winter Warmers', ar: 'دفء الشتاء' },
+    winterWarmer: { en: 'Winter Warmers', ar: 'دفء الشتاء' },
     giftIdeas: { en: 'Gift Ideas', ar: 'أفكار هدايا' },
     perfectGift: { en: 'Perfect Gift', ar: 'هدية مثالية' },
 
@@ -491,7 +492,7 @@ export const useLanguageStore = defineStore('language', () => {
     featuresTitle: { en: 'Everything You Need', ar: 'كل ما تحتاجه' },
     featuresSubtitle: { en: 'A complete solution for perfume brands to sell online with ease.', ar: 'حل متكامل للعلامات التجارية للعطور للبيع عبر الإنترنت بسهولة.' },
 
-    // Feature cards (updated first card)
+    // Feature cards
     featureMultiTenant: { en: 'Multiple Brands', ar: 'علامات تجارية متعددة' },
     featureMultiTenantDesc: { en: 'Add and manage dozens of perfume brands, each with its own identity and products.', ar: 'أضف وأدر العشرات من العلامات التجارية للعطور، لكل منها هويتها ومنتجاتها الخاصة.' },
     featureProductMgmt: { en: 'Product Management', ar: 'إدارة المنتجات' },
