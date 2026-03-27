@@ -106,9 +106,10 @@ export const useTenantStore = defineStore('tenant', () => {
           .maybeSingle()
           
         if (!fetchError && data) {
-          tenantId.value = data.id
-          tenantDomain.value = data.domain
-          tenantSlug.value = data.slug
+          const row = data as any
+          tenantId.value = row.id
+          tenantDomain.value = row.domain
+          tenantSlug.value = row.slug
           console.info('✅ Tenant resolved by slug:', tenantId.value)
           
           // Cache the result
