@@ -182,8 +182,10 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
 import { useAuthStore } from '@/stores/auth';
+import { useRouter } from 'vue-router';
 
 const authStore = useAuthStore();
+const router = useRouter();
 
 // Get root domain from environment (or default for localhost)
 const rootDomain = import.meta.env.VITE_ROOT_DOMAIN || 'localhost:5173';
@@ -236,42 +238,34 @@ const handleSubmit = async () => {
   error.value = null;
 
   try {
-    // Store the email in localStorage for auto-fill on login page
-    localStorage.setItem('pending_registration_email', form.value.email);
-    
-    // Call the store method which should call the API
+    // Call registerCompany - this now automatically logs in after registration
     const result = await authStore.registerCompany({
       email: form.value.email,
       password: form.value.password,
       displayName: form.value.displayName,
       companyName: form.value.companyName,
-      domain: form.value.slug  // Send slug as domain for now, API will generate slug
+      domain: form.value.slug
     });
 
-    // The result should contain the tenantId, uid, and slug
+    console.log('✅ Registration successful, logged in as:', result);
+    
+    // After successful registration and auto-login, redirect to the tenant admin dashboard
     if (result && result.slug) {
-      // Store the slug and redirect to login page with tenant parameter
       const protocol = window.location.protocol;
-      const encodedRedirect = encodeURIComponent(`/store/${result.slug}/admin/dashboard`);
-      const newUrl = `${protocol}//${rootDomain}/login?tenant=${result.slug}&redirect=${encodedRedirect}`;
+      const newUrl = `${protocol}//${rootDomain}/store/${result.slug}/admin/dashboard`;
       window.location.href = newUrl;
     } else if (result && result.domain) {
-      // Fallback: use slug from form
       const protocol = window.location.protocol;
-      const encodedRedirect = encodeURIComponent(`/store/${form.value.slug}/admin/dashboard`);
-      const newUrl = `${protocol}//${rootDomain}/login?tenant=${form.value.slug}&redirect=${encodedRedirect}`;
+      const newUrl = `${protocol}//${rootDomain}/store/${form.value.slug}/admin/dashboard`;
       window.location.href = newUrl;
     } else {
-      // Final fallback
       const protocol = window.location.protocol;
-      const encodedRedirect = encodeURIComponent(`/store/${form.value.slug}/admin/dashboard`);
-      const newUrl = `${protocol}//${rootDomain}/login?tenant=${form.value.slug}&redirect=${encodedRedirect}`;
+      const newUrl = `${protocol}//${rootDomain}/store/${form.value.slug}/admin/dashboard`;
       window.location.href = newUrl;
     }
   } catch (err: any) {
+    console.error('Registration error:', err);
     error.value = err.message || 'Registration failed. Please try again.';
-    // Clear the stored email if registration fails
-    localStorage.removeItem('pending_registration_email');
   } finally {
     isLoading.value = false;
   }
