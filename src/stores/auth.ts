@@ -653,10 +653,9 @@ export const useAuthStore = defineStore('auth', () => {
         }
         setAdminUser(fallbackAdmin)
         
-        // Also try to create the admin directly if it doesn't exist
+        // Also try to create the admin directly if it doesn't exist (using getTable to bypass type issues)
         try {
-          const { error: insertError } = await supabaseSafe.client
-            .from('admins')
+          const { error: insertError } = await getTable('admins')
             .insert({
               id: uid,
               tenant_id: tenantId,
