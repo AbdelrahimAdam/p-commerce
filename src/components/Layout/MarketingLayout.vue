@@ -1,4 +1,4 @@
-<!-- src/components/Layout/LandingLayout.vue -->
+<!-- src/components/Layout/MarketingLayout.vue -->
 <template>
   <div class="landing-layout" :class="{ 'rtl': isRTL }" dir="auto">
     <!-- Sticky Header -->
@@ -198,7 +198,7 @@ const closeMobileMenu = () => {
 
 const handleLanguageToggle = () => {
   toggleLanguage()
-  // Update document direction
+  // Update document direction - isRTL is a computed ref, so we access its value
   document.documentElement.dir = isRTL.value ? 'rtl' : 'ltr'
 }
 
@@ -215,6 +215,7 @@ const handleResize = () => {
 }
 
 // Update RTL attribute when language changes
+// IMPORTANT: isRTL is a computed ref, so we watch it directly (not .value)
 watch(isRTL, (newVal) => {
   document.documentElement.dir = newVal ? 'rtl' : 'ltr'
 }, { immediate: true })
@@ -308,4 +309,4 @@ onUnmounted(() => {
     transition-duration: 0.01ms !important;
   }
 }
-</style> 
+</style>
