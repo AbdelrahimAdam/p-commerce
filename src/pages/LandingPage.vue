@@ -1,18 +1,18 @@
 <template>
   <div class="landing-page bg-[#0f0f0f] text-white" :class="{ 'rtl': isRTL }" dir="auto">
-    <!-- Hero Section - Simplified -->
-    <section class="relative overflow-hidden min-h-[90vh] md:min-h-screen flex items-center">
+    <!-- Hero Section - Centered right below header -->
+    <section class="relative overflow-hidden min-h-[85vh] flex items-center">
       <div class="absolute inset-0">
         <img
           src="https://images.unsplash.com/photo-1594035910387-fea47794261f?auto=format&fit=crop&w=1600&q=80"
           class="w-full h-full object-cover opacity-30 scale-105"
-          alt="Luxury perfume collection"
+          alt="Luxury fragrance collection"
           loading="eager"
         />
       </div>
       <div class="absolute inset-0 bg-gradient-to-b from-black/60 via-black/80 to-black"></div>
 
-      <div class="container mx-auto px-6 relative z-10">
+      <div class="container mx-auto px-6 relative z-10 mt-16 md:mt-20">
         <div class="max-w-4xl mx-auto text-center">
           <h1 class="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold mb-6 leading-[1.2]">
             {{ t('heroTitle') }}
