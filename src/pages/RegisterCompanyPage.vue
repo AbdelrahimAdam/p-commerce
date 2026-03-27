@@ -182,10 +182,8 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
 import { useAuthStore } from '@/stores/auth';
-import { useRouter } from 'vue-router';
 
 const authStore = useAuthStore();
-const router = useRouter();
 
 // Get root domain from environment (or default for localhost)
 const rootDomain = import.meta.env.VITE_ROOT_DOMAIN || 'localhost:5173';
@@ -238,7 +236,10 @@ const handleSubmit = async () => {
   error.value = null;
 
   try {
-    // Call registerCompany - this now automatically logs in after registration
+    // Store the email in localStorage for auto-fill on login page (fallback)
+    localStorage.setItem('pending_registration_email', form.value.email);
+    
+    // Call the store method which should call the API and auto-login
     const result = await authStore.registerCompany({
       email: form.value.email,
       password: form.value.password,
@@ -266,6 +267,8 @@ const handleSubmit = async () => {
   } catch (err: any) {
     console.error('Registration error:', err);
     error.value = err.message || 'Registration failed. Please try again.';
+    // Clear the stored email if registration fails
+    localStorage.removeItem('pending_registration_email');
   } finally {
     isLoading.value = false;
   }
