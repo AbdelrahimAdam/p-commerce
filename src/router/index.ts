@@ -1,3 +1,4 @@
+// src/router/index.ts
 import { createRouter, createWebHistory } from 'vue-router'
 import { routes } from './routes'
 import { seoGuard } from './guards'
@@ -21,10 +22,12 @@ const publicRouteNames = [
   'wishlist',
   'not-found',
   'register-company',
-  'customer-login',      // Login page route name
-  'admin-login',         // Admin login route name
-  'forgot-password',     // Forgot password page
-  'reset-password'       // Reset password page
+  'customer-login',        // <-- ADD THIS (login page route name)
+  'admin-login',           // <-- ADD THIS (admin login page route name)
+  'forgot-password',       // <-- ADD THIS
+  'reset-password',        // <-- ADD THIS
+  'tenant-store',          // <-- Tenant store routes are public
+  'tenant-store-catchall'  // <-- Tenant store catchall is public
 ]
 
 // List of public path patterns (for fallback)
@@ -43,11 +46,12 @@ const publicPathPatterns = [
   '/contact',
   '/about',
   '/wishlist',
-  '/login',              // Customer login path
-  '/admin/login',        // Admin login path
-  '/register-company',   // Company registration
-  '/forgot-password',    // Forgot password
-  '/reset-password'      // Reset password
+  '/login',               // <-- ADD THIS
+  '/admin/login',         // Already there
+  '/register-company',
+  '/forgot-password',     // <-- ADD THIS
+  '/reset-password',      // <-- ADD THIS
+  '/store/'               // <-- Tenant store base path
 ]
 
 const router = createRouter({
@@ -125,6 +129,18 @@ router.beforeEach(async (to, from, next) => {
     return next()
   }
 
+  // Customer login page (special case - allow access if not logged in as admin)
+  if (to.name === 'customer-login') {
+    // If already logged in as admin, redirect to admin dashboard
+    if (authStore.isAuthenticated && (authStore.isAdmin || authStore.isSuperAdmin)) {
+      console.log('✅ Already logged in as admin, redirecting to dashboard')
+      return next({ name: 'admin-dashboard' })
+    }
+    // Allow access to login page
+    console.log('👤 Allowing access to login page')
+    return next()
+  }
+
   // Super-admin routes
   if (to.meta.requiresSuperAdmin) {
     if (!authStore.isAuthenticated || !authStore.isSuperAdmin) {
@@ -147,12 +163,12 @@ router.beforeEach(async (to, from, next) => {
     return next()
   }
 
-  // General authenticated routes (like /orders)
+  // General authenticated routes (like /account)
   if (to.meta.requiresAuth) {
     if (!authStore.isAuthenticated) {
       console.log('🚫 Authentication required for:', to.path)
       return next({
-        name: 'admin-login',
+        name: 'customer-login',
         query: { redirect: to.fullPath }
       })
     }
