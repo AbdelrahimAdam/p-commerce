@@ -24,7 +24,7 @@ interface SupabaseCustomer {
 // Define the admin data structure from Supabase
 interface SupabaseAdmin {
   id: string
-  user_id: string  // This links to auth.users
+  user_id: string
   email: string
   display_name: string | null
   role: string
@@ -59,7 +59,7 @@ export const useAuthStore = defineStore('auth', () => {
     if (name) {
       return name
         .split(' ')
-        .map(n => n[0])
+        .map((n: string) => n[0])
         .join('')
         .toUpperCase()
     }
@@ -90,11 +90,10 @@ export const useAuthStore = defineStore('auth', () => {
       try {
         console.log(`  [Attempt ${attempt}/${maxRetries}] Fetching admin for user_id: ${userId}`)
 
-        // CRITICAL: Use user_id column, not id!
         const { data, error: fetchError } = await supabase
           .from('admins')
           .select('*')
-          .eq('user_id', userId)  // Changed from 'id' to 'user_id'
+          .eq('user_id', userId)
           .maybeSingle()
 
         if (fetchError) {
@@ -103,7 +102,7 @@ export const useAuthStore = defineStore('auth', () => {
           console.log(`  ✅ Admin found on attempt ${attempt}!`)
           const adminData = data as unknown as SupabaseAdmin
           return {
-            uid: adminData.user_id,  // Use user_id as uid
+            uid: adminData.user_id,
             email: adminData.email,
             displayName: adminData.display_name || adminData.email,
             role: adminData.role as 'admin' | 'super-admin',
@@ -206,10 +205,8 @@ export const useAuthStore = defineStore('auth', () => {
       const userId = data.user.id
       console.log('✅ Authenticated, user ID:', userId)
 
-      // Wait a moment for the session to be available
       await wait(1000)
 
-      // Fetch admin with retry - now using user_id correctly
       console.log('🔍 Fetching admin profile with retry...')
       const adminData = await getAdminFromSupabase(userId, 15, 1000)
 
@@ -218,12 +215,11 @@ export const useAuthStore = defineStore('auth', () => {
         const updateData = { last_login: new Date().toISOString() }
         const { error: updateError } = await getTable('admins')
           .update(updateData)
-          .eq('user_id', userId)  // Also update using user_id
+          .eq('user_id', userId)
         if (updateError) console.warn('Failed to update admin last_login:', updateError)
         authNotification.loggedIn(adminData.displayName ?? 'Admin')
         console.log('✅ Admin authenticated:', adminData.email)
 
-        // Check if there's a pending tenant redirect from registration
         const pendingRedirect = localStorage.getItem('pending_redirect')
         const pendingTenant = localStorage.getItem('pending_tenant_slug')
 
@@ -238,7 +234,6 @@ export const useAuthStore = defineStore('auth', () => {
         return { ...adminData, role: 'admin' }
       }
 
-      // If no admin, try customer
       const customerData = await getCustomerFromSupabase(userId)
       if (customerData) {
         setCustomerUser(customerData, credentials.remember)
@@ -362,7 +357,253 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   // ========== CUSTOMER PROFILE UPDATE ACTIONS ==========
-  // ... (keep all existing customer methods unchanged) ...
+  const updateCustomerProfile = async (profileData: {
+    displayName?: string
+    phoneNumber?: string
+    newsletter?: boolean
+  }): Promise<void> => {
+    if (!customer.value) throw new Error('No customer logged in')
+    isLoading.value = true
+    error.value = null
+
+    try {
+      const supabase = supabaseSafe.client
+      const { data: { user: authUser } } = await supabase.auth.getUser()
+      if (!authUser) throw new Error('No authenticated user')
+
+      if (profileData.displayName && authUser.user_metadata?.displayName !== profileData.displayName) {
+        const { error: updateAuthError } = await supabase.auth.updateUser({
+          data: { displayName: profileData.displayName }
+        })
+        if (updateAuthError) throw updateAuthError
+      }
+
+      const updateData: Record<string, any> = { updated_at: new Date().toISOString() }
+      if (profileData.displayName) updateData.name = profileData.displayName
+      if (profileData.phoneNumber !== undefined) updateData.phone_number = profileData.phoneNumber
+      if (profileData.newsletter !== undefined) updateData.newsletter = profileData.newsletter
+
+      const { error: updateError } = await getTable('customers')
+        .update(updateData)
+        .eq('id', customer.value.uid)
+      if (updateError) throw updateError
+
+      if (profileData.displayName) customer.value.displayName = profileData.displayName
+      if (profileData.phoneNumber !== undefined) customer.value.phoneNumber = profileData.phoneNumber
+      if (profileData.newsletter !== undefined) customer.value.newsletter = profileData.newsletter
+
+      authNotification.loggedIn('Profile updated successfully')
+    } catch (err: any) {
+      console.error('❌ Error updating customer profile:', err)
+      error.value = err.message
+      authNotification.error('Failed to update profile')
+      throw err
+    } finally {
+      isLoading.value = false
+    }
+  }
+
+  const changeCustomerPassword = async (currentPassword: string, newPassword: string): Promise<void> => {
+    if (!customer.value) throw new Error('No customer logged in')
+    isLoading.value = true
+    error.value = null
+
+    try {
+      const supabase = supabaseSafe.client
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: customer.value.email,
+        password: currentPassword
+      })
+      if (signInError) {
+        if (signInError.message.includes('Invalid login')) {
+          error.value = 'Current password is incorrect'
+          throw new Error(error.value)
+        }
+        throw signInError
+      }
+
+      const { error: updateError } = await supabase.auth.updateUser({
+        password: newPassword
+      })
+      if (updateError) throw updateError
+
+      authNotification.loggedIn('Password updated successfully')
+    } catch (err: any) {
+      console.error('❌ Error changing password:', err)
+      if (!error.value) error.value = err.message || 'Failed to change password'
+      authNotification.error(error.value || '')
+      throw err
+    } finally {
+      isLoading.value = false
+    }
+  }
+
+  // Address management
+  const addCustomerAddress = async (address: Address): Promise<void> => {
+    if (!customer.value) throw new Error('No customer logged in')
+    isLoading.value = true
+    error.value = null
+
+    try {
+      const supabase = supabaseSafe.client
+      const { data, error: fetchError } = await supabase
+        .from('customers')
+        .select('addresses')
+        .eq('id', customer.value.uid)
+        .single()
+      if (fetchError) throw fetchError
+
+      const current = (data as any)?.addresses || []
+      const addressWithId = {
+        ...address,
+        id: `addr_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+      }
+      const newAddresses = [...current, addressWithId]
+
+      const updatePayload = { addresses: newAddresses, updated_at: new Date().toISOString() }
+      const { error: updateError } = await getTable('customers')
+        .update(updatePayload)
+        .eq('id', customer.value.uid)
+      if (updateError) throw updateError
+
+      customer.value.addresses = newAddresses
+      authNotification.loggedIn('Address added successfully')
+    } catch (err: any) {
+      console.error('❌ Error adding address:', err)
+      error.value = err.message
+      authNotification.error(error.value || '')
+      throw err
+    } finally {
+      isLoading.value = false
+    }
+  }
+
+  const updateCustomerAddress = async (addressId: string, updatedAddress: Partial<Address>): Promise<void> => {
+    if (!customer.value) throw new Error('No customer logged in')
+    isLoading.value = true
+    error.value = null
+
+    try {
+      const supabase = supabaseSafe.client
+      const { data, error: fetchError } = await supabase
+        .from('customers')
+        .select('addresses')
+        .eq('id', customer.value.uid)
+        .single()
+      if (fetchError) throw fetchError
+
+      const current = (data as any)?.addresses || []
+      const newAddresses = current.map((addr: Address) =>
+        addr.id === addressId ? { ...addr, ...updatedAddress, id: addressId } : addr
+      )
+
+      const updatePayload = { addresses: newAddresses, updated_at: new Date().toISOString() }
+      const { error: updateError } = await getTable('customers')
+        .update(updatePayload)
+        .eq('id', customer.value.uid)
+      if (updateError) throw updateError
+
+      customer.value.addresses = newAddresses
+      authNotification.loggedIn('Address updated successfully')
+    } catch (err: any) {
+      console.error('❌ Error updating address:', err)
+      error.value = err.message
+      authNotification.error(error.value || '')
+      throw err
+    } finally {
+      isLoading.value = false
+    }
+  }
+
+  const removeCustomerAddress = async (addressId: string): Promise<void> => {
+    if (!customer.value) throw new Error('No customer logged in')
+    isLoading.value = true
+    error.value = null
+
+    try {
+      const supabase = supabaseSafe.client
+      const { data, error: fetchError } = await supabase
+        .from('customers')
+        .select('addresses')
+        .eq('id', customer.value.uid)
+        .single()
+      if (fetchError) throw fetchError
+
+      const current = (data as any)?.addresses || []
+      const newAddresses = current.filter((addr: Address) => addr.id !== addressId)
+
+      const updatePayload = { addresses: newAddresses, updated_at: new Date().toISOString() }
+      const { error: updateError } = await getTable('customers')
+        .update(updatePayload)
+        .eq('id', customer.value.uid)
+      if (updateError) throw updateError
+
+      customer.value.addresses = newAddresses
+      authNotification.loggedIn('Address removed successfully')
+    } catch (err: any) {
+      console.error('❌ Error removing address:', err)
+      error.value = err.message
+      authNotification.error(error.value || '')
+      throw err
+    } finally {
+      isLoading.value = false
+    }
+  }
+
+  const setDefaultAddress = async (addressId: string): Promise<void> => {
+    if (!customer.value) throw new Error('No customer logged in')
+    isLoading.value = true
+    error.value = null
+
+    try {
+      const supabase = supabaseSafe.client
+      const { data, error: fetchError } = await supabase
+        .from('customers')
+        .select('addresses')
+        .eq('id', customer.value.uid)
+        .single()
+      if (fetchError) throw fetchError
+
+      const current = (data as any)?.addresses || []
+      const newAddresses = current.map((addr: Address) => ({
+        ...addr,
+        isDefault: addr.id === addressId
+      }))
+
+      const updatePayload = { addresses: newAddresses, updated_at: new Date().toISOString() }
+      const { error: updateError } = await getTable('customers')
+        .update(updatePayload)
+        .eq('id', customer.value.uid)
+      if (updateError) throw updateError
+
+      customer.value.addresses = newAddresses
+      authNotification.loggedIn('Default address updated')
+    } catch (err: any) {
+      console.error('❌ Error setting default address:', err)
+      error.value = err.message
+      authNotification.error(error.value || '')
+      throw err
+    } finally {
+      isLoading.value = false
+    }
+  }
+
+  const uploadProfilePhoto = async (_file: File): Promise<string> => {
+    if (!customer.value) throw new Error('No customer logged in')
+    isLoading.value = true
+    error.value = null
+    try {
+      showInfo('Info', 'Photo upload functionality coming soon')
+      return ''
+    } catch (err: any) {
+      console.error('❌ Error uploading photo:', err)
+      error.value = err.message
+      authNotification.error(error.value || '')
+      throw err
+    } finally {
+      isLoading.value = false
+    }
+  }
 
   // ========== COMPANY REGISTRATION (via serverless API) ==========
   const registerCompany = async (data: {
@@ -401,7 +642,6 @@ export const useAuthStore = defineStore('auth', () => {
 
       await wait(2000)
 
-      // Fetch admin with retry
       console.log('🔍 Fetching admin with retry...')
       const admin = await getAdminFromSupabase(uid, 15, 1000)
 
