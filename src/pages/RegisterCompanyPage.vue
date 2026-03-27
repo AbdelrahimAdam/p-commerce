@@ -27,7 +27,32 @@
               class="appearance-none relative block w-full px-4 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
               placeholder="Acme Inc."
               :disabled="isLoading"
+              @input="generateSlug"
             />
+          </div>
+
+          <!-- Store Slug (URL) -->
+          <div>
+            <label for="store-slug" class="block text-sm font-medium text-gray-700 mb-1">
+              Store URL <span class="text-red-500">*</span>
+            </label>
+            <div class="flex items-center">
+              <span class="inline-flex items-center px-3 py-3 border border-r-0 border-gray-300 bg-gray-50 text-gray-500 rounded-l-lg text-sm">
+                /store/
+              </span>
+              <input
+                id="store-slug"
+                v-model="form.slug"
+                type="text"
+                required
+                class="appearance-none relative block w-full px-4 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-r-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
+                placeholder="your-company"
+                :disabled="isLoading"
+              />
+            </div>
+            <p class="mt-1 text-xs text-gray-500">
+              Your store will be accessible at: <span class="font-mono">{{ rootDomain }}/store/{{ form.slug || 'your-company' }}</span>
+            </p>
           </div>
 
           <!-- Your Name -->
@@ -61,30 +86,6 @@
               placeholder="you@example.com"
               :disabled="isLoading"
             />
-          </div>
-
-          <!-- Subdomain -->
-          <div>
-            <label for="subdomain" class="block text-sm font-medium text-gray-700 mb-1">
-              Subdomain <span class="text-red-500">*</span>
-            </label>
-            <div class="flex items-center">
-              <input
-                id="subdomain"
-                v-model="form.subdomain"
-                type="text"
-                required
-                class="appearance-none relative block w-full px-4 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-l-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
-                placeholder="your-company"
-                :disabled="isLoading"
-              />
-              <span class="inline-flex items-center px-3 py-3 border border-l-0 border-gray-300 bg-gray-50 text-gray-500 rounded-r-lg text-sm">
-                .{{ rootDomain }}
-              </span>
-            </div>
-            <p class="mt-1 text-xs text-gray-500">
-              Your store will be accessible at <span class="font-mono">{{ form.subdomain || 'subdomain' }}.{{ rootDomain }}</span>
-            </p>
           </div>
 
           <!-- Password -->
@@ -191,7 +192,7 @@ const form = ref({
   companyName: '',
   displayName: '',
   email: '',
-  subdomain: '',
+  slug: '',
   password: '',
   confirmPassword: ''
 });
@@ -199,12 +200,24 @@ const form = ref({
 const isLoading = ref(false);
 const error = ref<string | null>(null);
 
+// Generate slug from company name
+const generateSlug = () => {
+  if (!form.value.companyName) return;
+  
+  const slug = form.value.companyName
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '');
+  
+  form.value.slug = slug;
+};
+
 const isFormValid = computed(() => {
   return (
     form.value.companyName.trim() !== '' &&
     form.value.displayName.trim() !== '' &&
     form.value.email.trim() !== '' &&
-    form.value.subdomain.trim() !== '' &&
+    form.value.slug.trim() !== '' &&
     form.value.password.length >= 6
   );
 });
@@ -229,19 +242,24 @@ const handleSubmit = async () => {
       password: form.value.password,
       displayName: form.value.displayName,
       companyName: form.value.companyName,
-      domain: form.value.subdomain
+      domain: form.value.slug  // Send slug as domain for now, API will generate slug
     });
 
-    // The result should contain the full domain and tenantId
-    if (result && result.domain) {
-      // Redirect to the new tenant's subdomain admin dashboard
-      const protocol = window.location.protocol; // "http:" or "https:"
-      const newUrl = `${protocol}//${result.domain}/admin/dashboard`;
+    // The result should contain the tenantId, uid, and slug
+    if (result && result.slug) {
+      // Redirect to path-based admin dashboard
+      const protocol = window.location.protocol;
+      const newUrl = `${protocol}//${rootDomain}/store/${result.slug}/admin/dashboard`;
+      window.location.href = newUrl;
+    } else if (result && result.domain) {
+      // Fallback: use domain if available
+      const protocol = window.location.protocol;
+      const newUrl = `${protocol}//${rootDomain}/store/${form.value.slug}/admin/dashboard`;
       window.location.href = newUrl;
     } else {
-      // Fallback: construct using the entered subdomain
+      // Final fallback
       const protocol = window.location.protocol;
-      const newUrl = `${protocol}//${form.value.subdomain}.${rootDomain}/admin/dashboard`;
+      const newUrl = `${protocol}//${rootDomain}/store/${form.value.slug}/admin/dashboard`;
       window.location.href = newUrl;
     }
   } catch (err: any) {
