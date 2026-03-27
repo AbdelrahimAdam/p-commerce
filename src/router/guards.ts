@@ -18,7 +18,11 @@ const publicRoutes = [
   'about',
   'wishlist',
   'not-found',
-  'register-company'          // <-- NEW: company registration page
+  'register-company',
+  'customer-login',        // <-- ADD THIS (login page)
+  'admin-login',           // <-- ADD THIS (admin login page)
+  'forgot-password',       // <-- ADD THIS
+  'reset-password'         // <-- ADD THIS
 ]
 
 // List of admin routes that require authentication
@@ -60,7 +64,7 @@ export const authGuard = async (
   // Check if this is an admin route
   if (adminRoutes.includes(to.name as string)) {
     console.log('🔐 Admin route - checking authentication')
-    
+
     // Check authentication status
     if (!authStore.isAuthenticated) {
       console.log('🔐 Not authenticated, checking auth...')
@@ -123,7 +127,7 @@ export const guestGuard = async (
   const authStore = useAuthStore()
 
   console.log('🛡️ Guest guard triggered for:', to.path)
-  
+
   // Check current authentication status
   if (!authStore.isAuthenticated) {
     await authStore.checkAuth()
@@ -148,7 +152,7 @@ export const adminGuard = async (
   const authStore = useAuthStore()
 
   console.log('🛡️ Admin guard triggered for:', to.path)
-  
+
   if (!authStore.isAuthenticated) {
     await authStore.checkAuth()
   }
