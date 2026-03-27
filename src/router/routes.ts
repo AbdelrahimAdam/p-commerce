@@ -7,7 +7,6 @@ export const routes: Array<RouteRecordRaw> = [
   {
     path: '/',
     name: 'home',
-    // ✅ Dynamic import – no static import needed
     component: () => import('@/components/Layout/RootRouter.vue'),
     meta: {
       title: {
@@ -21,6 +20,133 @@ export const routes: Array<RouteRecordRaw> = [
       requiresAuth: false,
       isPublic: true,
       layout: 'landing'
+    }
+  },
+
+  // ========== TENANT PATH-BASED ROUTES ==========
+  // Tenant store routes - for public storefront
+  {
+    path: '/store/:slug',
+    name: 'tenant-store',
+    component: () => import('@/components/Layout/RootRouter.vue'),
+    meta: {
+      requiresAuth: false,
+      isPublic: true,
+      layout: 'default'
+    }
+  },
+  {
+    path: '/store/:slug/:pathMatch(.*)*',
+    name: 'tenant-store-catchall',
+    component: () => import('@/components/Layout/RootRouter.vue'),
+    meta: {
+      requiresAuth: false,
+      isPublic: true,
+      layout: 'default'
+    }
+  },
+
+  // Tenant admin routes - for admin dashboard
+  {
+    path: '/store/:slug/admin',
+    name: 'tenant-admin',
+    component: () => import('@/components/Layout/AdminLayout.vue'),
+    meta: {
+      requiresAuth: true,
+      requiresAdmin: true,
+      isPublic: false,
+      layout: 'admin'
+    },
+    children: [
+      {
+        path: '',
+        name: 'tenant-admin-dashboard',
+        component: () => import('@/pages/Admin/DashboardPage.vue'),
+        meta: {
+          title: {
+            en: 'Admin Dashboard',
+            ar: 'لوحة تحكم المسؤول'
+          },
+          requiresAuth: true,
+          requiresAdmin: true
+        }
+      },
+      {
+        path: 'products',
+        name: 'tenant-admin-products',
+        component: () => import('@/pages/Admin/ProductsPage.vue'),
+        meta: {
+          title: {
+            en: 'Manage Products',
+            ar: 'إدارة المنتجات'
+          },
+          requiresAuth: true,
+          requiresAdmin: true
+        }
+      },
+      {
+        path: 'orders',
+        name: 'tenant-admin-orders',
+        component: () => import('@/pages/Admin/OrdersPage.vue'),
+        meta: {
+          title: {
+            en: 'Manage Orders',
+            ar: 'إدارة الطلبات'
+          },
+          requiresAuth: true,
+          requiresAdmin: true
+        }
+      },
+      {
+        path: 'customers',
+        name: 'tenant-admin-customers',
+        component: () => import('@/pages/Admin/CustomersPage.vue'),
+        meta: {
+          title: {
+            en: 'Manage Customers',
+            ar: 'إدارة العملاء'
+          },
+          requiresAuth: true,
+          requiresAdmin: true
+        }
+      },
+      {
+        path: 'brands',
+        name: 'tenant-admin-brands',
+        component: () => import('@/pages/Admin/BrandsPage.vue'),
+        meta: {
+          title: {
+            en: 'Manage Brands',
+            ar: 'إدارة الماركات'
+          },
+          requiresAuth: true,
+          requiresAdmin: true
+        }
+      },
+      {
+        path: 'profile',
+        name: 'tenant-admin-profile',
+        component: () => import('@/pages/Admin/ProfilePage.vue'),
+        meta: {
+          title: {
+            en: 'Profile Settings',
+            ar: 'إعدادات الملف الشخصي'
+          },
+          requiresAuth: true,
+          requiresAdmin: true
+        }
+      }
+    ]
+  },
+  {
+    path: '/store/:slug/admin/:pathMatch(.*)*',
+    name: 'tenant-admin-catchall',
+    component: () => import('@/components/Layout/AdminLayout.vue'),
+    meta: {
+      requiresAuth: true,
+      requiresAdmin: true,
+      isPublic: false,
+      layout: 'admin'
     }
   },
 
