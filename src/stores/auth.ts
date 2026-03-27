@@ -194,24 +194,24 @@ export const useAuthStore = defineStore('auth', () => {
         if (updateError) console.warn('Failed to update admin last_login:', updateError)
         authNotification.loggedIn(adminData.displayName ?? 'Admin')
         console.log('✅ Admin authenticated:', adminData.email)
-        
+
         // Check if there's a pending tenant redirect from registration
         const pendingRedirect = localStorage.getItem('pending_redirect')
         const pendingTenant = localStorage.getItem('pending_tenant_slug')
-        
+
         if (pendingRedirect && pendingTenant) {
           console.log('🔄 Found pending tenant redirect:', pendingRedirect)
           // Clear stored values
           localStorage.removeItem('pending_redirect')
           localStorage.removeItem('pending_tenant_slug')
-          
+
           // Set the tenant in the tenant store
           tenantStore.setTenantAfterRegistration(adminData.tenantId, '', pendingTenant)
-          
+
           // Return with role and pending redirect flag
           return { ...adminData, role: 'admin', pendingRedirect }
         }
-        
+
         return { ...adminData, role: 'admin' }
       }
 
@@ -418,7 +418,7 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  // Address management (unchanged - keep all existing address methods)
+  // Address management
   const addCustomerAddress = async (address: Address): Promise<void> => {
     if (!customer.value) throw new Error('No customer logged in')
     isLoading.value = true
@@ -905,45 +905,43 @@ export const useAuthStore = defineStore('auth', () => {
     sessionExpiry.value = null
   }
 
-  // src/stores/auth.ts - Add setAdminUser to the return object at the bottom
-
-return {
-  user,
-  customer,
-  isLoading,
-  error,
-  lastLogin,
-  sessionExpiry,
-  isAuthenticated,
-  isAdmin,
-  isSuperAdmin,
-  isCustomer,
-  userInitials,
-  currentUser,
-  sessionTimeLeft,
-  currentTenant,
-  login,
-  createSuperAdmin,
-  registerCompany,
-  customerLogin,
-  authenticate,
-  customerRegister,
-  updateCustomerProfile,
-  changeCustomerPassword,
-  addCustomerAddress,
-  updateCustomerAddress,
-  removeCustomerAddress,
-  setDefaultAddress,
-  uploadProfilePhoto,
-  resetPassword,
-  confirmPasswordReset,
-  logout,
-  checkAuth,
-  refreshSession,
-  clearError,
-  init,
-  resetAuthState,
-  setAdminUser, // Add this line
-  getAdminFromSupabase // Also expose this for the login page to use directly
-}    
+  return {
+    user,
+    customer,
+    isLoading,
+    error,
+    lastLogin,
+    sessionExpiry,
+    isAuthenticated,
+    isAdmin,
+    isSuperAdmin,
+    isCustomer,
+    userInitials,
+    currentUser,
+    sessionTimeLeft,
+    currentTenant,
+    login,
+    createSuperAdmin,
+    registerCompany,
+    customerLogin,
+    authenticate,
+    customerRegister,
+    updateCustomerProfile,
+    changeCustomerPassword,
+    addCustomerAddress,
+    updateCustomerAddress,
+    removeCustomerAddress,
+    setDefaultAddress,
+    uploadProfilePhoto,
+    resetPassword,
+    confirmPasswordReset,
+    logout,
+    checkAuth,
+    refreshSession,
+    clearError,
+    init,
+    resetAuthState,
+    setAdminUser,
+    getAdminFromSupabase
+  }
 })
