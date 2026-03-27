@@ -231,8 +231,7 @@ const fetchAdminWithRetry = async (userId: string, maxRetries: number = 15, init
     try {
       console.log(`  Attempt ${attempt}/${maxRetries}: Fetching admin...`)
       
-      // Use the auth store's getAdminFromSupabase method (which is internal)
-      // We need to call it through the store
+      // Use the auth store's getAdminFromSupabase method (now exposed)
       const admin = await (authStore as any).getAdminFromSupabase(userId)
       
       if (admin) {
@@ -335,7 +334,7 @@ const handleLogin = async () => {
     
     console.log('✅ Admin found:', admin.email)
     
-    // Set the admin user in the store using the public setAdminUser method
+    // Set the admin user in the store using the exposed setAdminUser method
     authStore.setAdminUser(admin)
     
     // Save email if remember me is checked
