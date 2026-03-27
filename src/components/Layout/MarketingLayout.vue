@@ -1,6 +1,6 @@
 <!-- src/components/Layout/MarketingLayout.vue -->
 <template>
-  <div class="landing-layout" :class="{ 'rtl': isRTL }" :dir="direction">
+  <div class="landing-layout" :class="{ 'rtl': isRTL }" :dir="dir">
     <!-- Sticky Header -->
     <header
       ref="headerRef"
@@ -28,9 +28,9 @@
               @click="handleLanguageToggle"
               class="text-sm font-medium transition-colors duration-200"
               :class="isScrolled ? 'text-gray-300 hover:text-amber-400' : 'text-gray-200 hover:text-white'"
-              :aria-label="currentLanguage === 'en' ? 'Switch to Arabic' : 'Switch to English'"
+              :aria-label="currentLang === 'en' ? 'Switch to Arabic' : 'Switch to English'"
             >
-              {{ currentLanguage === 'en' ? 'العربية' : 'English' }}
+              {{ currentLang === 'en' ? 'العربية' : 'English' }}
             </button>
             <router-link
               to="/login"
@@ -93,7 +93,7 @@
                 @click="handleMobileLanguageToggle"
                 class="text-left px-3 py-2.5 text-gray-300 hover:text-amber-400 hover:bg-gray-800/50 rounded-lg transition-colors duration-200"
               >
-                {{ currentLanguage === 'en' ? 'العربية' : 'English' }}
+                {{ currentLang === 'en' ? 'العربية' : 'English' }}
               </button>
               <router-link
                 to="/login"
@@ -166,7 +166,13 @@ import { ref, onMounted, onUnmounted, watch } from 'vue'
 import { useLanguageStore } from '@/stores/language'
 
 const languageStore = useLanguageStore()
-const { currentLanguage, toggleLanguage, t, isRTL, direction } = languageStore
+
+// Get store values - these are refs
+const currentLang = languageStore.currentLanguage
+const isRTL = languageStore.isRTL
+const direction = languageStore.direction
+const t = languageStore.t
+const toggleLanguage = languageStore.toggleLanguage
 
 const mobileMenuOpen = ref(false)
 const isScrolled = ref(false)
@@ -174,7 +180,6 @@ const isScrolled = ref(false)
 let scrollTimeout: ReturnType<typeof setTimeout>
 
 const handleScroll = () => {
-  // Throttle scroll events for better performance
   if (scrollTimeout) clearTimeout(scrollTimeout)
   scrollTimeout = setTimeout(() => {
     isScrolled.value = window.scrollY > 20
@@ -183,7 +188,6 @@ const handleScroll = () => {
 
 const toggleMobileMenu = () => {
   mobileMenuOpen.value = !mobileMenuOpen.value
-  // Prevent body scroll when menu is open
   if (mobileMenuOpen.value) {
     document.body.style.overflow = 'hidden'
   } else {
@@ -198,8 +202,9 @@ const closeMobileMenu = () => {
 
 const handleLanguageToggle = () => {
   toggleLanguage()
-  // Update document direction - use the direction computed property
+  // Access .value because these are refs
   document.documentElement.dir = direction.value
+  document.documentElement.lang = currentLang.value
 }
 
 const handleMobileLanguageToggle = () => {
@@ -207,17 +212,16 @@ const handleMobileLanguageToggle = () => {
   closeMobileMenu()
 }
 
-// Close mobile menu on window resize if screen becomes desktop
 const handleResize = () => {
   if (window.innerWidth >= 768 && mobileMenuOpen.value) {
     closeMobileMenu()
   }
 }
 
-// Update document attributes when language changes
-watch(currentLanguage, () => {
+// Watch currentLang for changes
+watch(currentLang, () => {
   document.documentElement.dir = direction.value
-  document.documentElement.lang = currentLanguage.value
+  document.documentElement.lang = currentLang.value
 }, { immediate: true })
 
 onMounted(() => {
@@ -226,7 +230,7 @@ onMounted(() => {
   handleScroll()
   // Set initial document attributes
   document.documentElement.dir = direction.value
-  document.documentElement.lang = currentLanguage.value
+  document.documentElement.lang = currentLang.value
 })
 
 onUnmounted(() => {
@@ -248,7 +252,7 @@ onUnmounted(() => {
 
 .flex-1 {
   flex: 1 1 0%;
-  min-height: 0; /* Fix for flex children overflow */
+  min-height: 0;
 }
 
 /* Smooth transitions */
