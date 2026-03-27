@@ -219,6 +219,45 @@ const form = reactive({
   remember: true // Default to true for better UX
 })
 
+// Helper to wait with exponential backoff
+const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
+
+// Helper to fetch admin with retry
+const fetchAdminWithRetry = async (userId: string, maxRetries: number = 10, initialDelay: number = 500): Promise<any> => {
+  let delay = initialDelay
+  
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      console.log(`  Attempt ${attempt}/${maxRetries}: Fetching admin...`)
+      
+      // Use the auth store's getAdminFromSupabase method
+      const admin = await (authStore as any).getAdminFromSupabase(userId)
+      
+      if (admin) {
+        console.log(`  ✅ Admin found on attempt ${attempt}!`)
+        return admin
+      }
+      
+      console.log(`  Admin not found on attempt ${attempt}`)
+      
+      if (attempt < maxRetries) {
+        console.log(`  Waiting ${delay}ms before next attempt...`)
+        await wait(delay)
+        delay = Math.min(delay * 1.5, 10000) // Exponential backoff, max 10 seconds
+      }
+    } catch (err) {
+      console.error(`Unexpected error on attempt ${attempt}:`, err)
+      if (attempt < maxRetries) {
+        await wait(delay)
+        delay = Math.min(delay * 1.5, 10000)
+      }
+    }
+  }
+  
+  console.error('Admin not found after', maxRetries, 'attempts')
+  return null
+}
+
 // Capture tenant and redirect from URL on mount
 onMounted(() => {
   // Get tenant slug from query parameters
@@ -267,12 +306,36 @@ const handleLogin = async () => {
   try {
     console.log('🔐 Attempting login for:', form.email)
     
-    const user = await authStore.authenticate({
+    // First, authenticate with Supabase
+    const supabase = (authStore as any).supabaseSafe.client
+    const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
       email: form.email,
-      password: form.password,
-      remember: form.remember
+      password: form.password
     })
-
+    
+    if (signInError || !signInData.user) {
+      throw new Error(signInError?.message || 'Invalid credentials')
+    }
+    
+    const userId = signInData.user.id
+    console.log('✅ Authenticated, user ID:', userId)
+    
+    // Wait a moment for the session to be available
+    await wait(2000)
+    
+    // Now fetch the admin with retry
+    console.log('🔍 Fetching admin profile with retry...')
+    const admin = await fetchAdminWithRetry(userId, 15, 500)
+    
+    if (!admin) {
+      throw new Error('User profile not found. Please wait a moment and try again.')
+    }
+    
+    console.log('✅ Admin found:', admin.email)
+    
+    // Set the admin user in the store
+    (authStore as any).setAdminUser(admin)
+    
     // Save email if remember me is checked
     if (form.remember) {
       localStorage.setItem('saved_email', form.email)
@@ -283,8 +346,6 @@ const handleLogin = async () => {
     // Clear pending registration email
     localStorage.removeItem('pending_registration_email')
     
-    console.log('✅ Login successful, user role:', user.role)
-
     // Check if there's a pending tenant redirect from registration
     const pendingRedirect = localStorage.getItem('pending_redirect')
     const pendingTenant = localStorage.getItem('pending_tenant_slug')
@@ -296,7 +357,7 @@ const handleLogin = async () => {
       localStorage.removeItem('pending_tenant_slug')
       
       // Wait a moment to ensure auth state is fully synced
-      await new Promise(resolve => setTimeout(resolve, 1000))
+      await wait(1000)
       
       // Redirect to the tenant dashboard
       window.location.href = pendingRedirect
@@ -304,7 +365,7 @@ const handleLogin = async () => {
     }
     
     // Redirect based on role (if no pending redirect)
-    if (user.role === 'admin' || user.role === 'super-admin') {
+    if (admin.role === 'admin' || admin.role === 'super-admin') {
       router.push('/admin')
     } else {
       const redirect = route.query.redirect as string || '/account'
