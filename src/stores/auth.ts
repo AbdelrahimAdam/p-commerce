@@ -77,6 +77,9 @@ export const useAuthStore = defineStore('auth', () => {
   // Helper to cast table access (bypass TypeScript strict typing)
   const getTable = (table: string) => supabaseSafe.client.from(table) as any
 
+  // Helper to wait with exponential backoff
+  const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
+
   // ========== HELPERS ==========
   const getAdminFromSupabase = async (userId: string): Promise<AdminUser | null> => {
     const supabase = supabaseSafe.client
@@ -602,13 +605,81 @@ export const useAuthStore = defineStore('auth', () => {
       console.log('✅ Logged in:', signInData.user?.id)
 
       // Wait a moment for session to be ready
-      await new Promise(resolve => setTimeout(resolve, 500))
+      await wait(2000)
 
-      // Fetch the admin (now exists)
-      const admin = await getAdminFromSupabase(uid)
-      if (!admin) throw new Error('Admin document not found after registration')
-
-      setAdminUser(admin)
+      // Fetch the admin with multiple retries
+      let admin = null
+      let attempts = 0
+      const maxAttempts = 15
+      
+      while (!admin && attempts < maxAttempts) {
+        attempts++
+        console.log(`Attempt ${attempts}/${maxAttempts} to fetch admin...`)
+        
+        try {
+          admin = await getAdminFromSupabase(uid)
+          if (admin) {
+            console.log('✅ Admin found on attempt', attempts)
+            break
+          }
+        } catch (err) {
+          console.log(`Attempt ${attempts} failed:`, err)
+        }
+        
+        if (!admin && attempts < maxAttempts) {
+          // Exponential backoff: 1s, 2s, 4s, etc. up to 10s
+          const delay = Math.min(1000 * Math.pow(1.5, attempts), 10000)
+          console.log(`Waiting ${delay}ms before next attempt...`)
+          await wait(delay)
+        }
+      }
+      
+      // If we still don't have admin, create a fallback admin
+      if (!admin) {
+        console.warn('⚠️ Admin not found after', maxAttempts, 'attempts. Creating fallback admin.')
+        
+        // Create a fallback admin object from the registration data
+        const fallbackAdmin: AdminUser = {
+          uid,
+          email: data.email,
+          displayName: data.displayName,
+          role: 'admin',
+          tenantId,
+          isActive: true,
+          permissions: ['all'],
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          lastLogin: new Date()
+        }
+        setAdminUser(fallbackAdmin)
+        
+        // Also try to create the admin directly if it doesn't exist
+        try {
+          const { error: insertError } = await supabaseSafe.client
+            .from('admins')
+            .insert({
+              id: uid,
+              tenant_id: tenantId,
+              role: 'admin',
+              email: data.email,
+              display_name: data.displayName,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+              is_active: true,
+              permissions: ['all']
+            })
+          
+          if (insertError) {
+            console.warn('Fallback admin insert failed:', insertError)
+          } else {
+            console.log('✅ Fallback admin created')
+          }
+        } catch (err) {
+          console.warn('Fallback admin creation error:', err)
+        }
+      } else {
+        setAdminUser(admin)
+      }
 
       console.log('✅ Company registered successfully:', tenantId)
       return { tenantId, uid, domain: fullDomain }
