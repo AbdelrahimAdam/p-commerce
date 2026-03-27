@@ -10,7 +10,7 @@ import { defineComponent, ref, computed, onMounted, shallowRef } from 'vue'
 import { useTenantStore } from '@/stores/tenant'
 
 export default defineComponent({
-  name: 'HomeRouter',
+  name: 'RootRouter',
   setup() {
     const tenantStore = useTenantStore()
     const isLoading = ref(true)
@@ -22,30 +22,47 @@ export default defineComponent({
       return hostname === rootDomain || hostname === 'localhost'
     })
 
+    const isTenantPath = computed(() => {
+      const pathname = window.location.pathname
+      return pathname.startsWith('/store/')
+    })
+
     onMounted(async () => {
       try {
-        // Only wait for tenant resolution if NOT on main domain
-        if (!isMainDomain.value) {
-          console.log('🌍 Subdomain detected - waiting for tenant resolution...')
-          await tenantStore.whenReady(5000)
-          console.log('✅ Tenant resolved:', tenantStore.tenantId)
-        } else {
-          console.log('🏠 Main domain detected - skipping tenant resolution')
-          // Mark tenant as initialized to prevent any waiting
+        // Check if we're on a tenant path (path-based routing)
+        if (isTenantPath.value) {
+          console.log('📁 Tenant path detected - resolving tenant from path...')
+          await tenantStore.resolveTenantFromDomain()
+          console.log('✅ Tenant resolved from path:', tenantStore.tenantId)
+        }
+        // Check if we're on a subdomain
+        else if (!isMainDomain.value) {
+          console.log('🌍 Subdomain detected - resolving tenant from domain...')
+          await tenantStore.resolveTenantFromDomain()
+          console.log('✅ Tenant resolved from domain:', tenantStore.tenantId)
+        } 
+        // Main domain - no tenant needed
+        else {
+          console.log('🏠 Main domain detected - no tenant resolution needed')
           tenantStore.setIsInitialized(true)
         }
       } catch (err) {
-        console.warn('Tenant resolution timed out or failed, falling back to store home')
+        console.warn('Tenant resolution failed:', err)
+        // For main domain, we can still proceed
+        if (isMainDomain.value) {
+          tenantStore.setIsInitialized(true)
+        }
       }
 
-      // Load the appropriate page component
-      if (isMainDomain.value) {
-        console.log('📄 Loading LandingPage for main domain')
-        const module = await import('@/pages/LandingPage.vue')
-        activeComponent.value = module.default
-      } else {
+      // Determine which component to load
+      // Always load HomePage for tenant paths and subdomains
+      if (isTenantPath.value || !isMainDomain.value) {
         console.log('🏪 Loading HomePage for tenant store')
         const module = await import('@/pages/HomePage.vue')
+        activeComponent.value = module.default
+      } else {
+        console.log('📄 Loading LandingPage for main domain')
+        const module = await import('@/pages/LandingPage.vue')
         activeComponent.value = module.default
       }
 
