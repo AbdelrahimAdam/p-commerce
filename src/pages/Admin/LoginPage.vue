@@ -220,21 +220,18 @@ const form = reactive({
   remember: true
 })
 
-// Helper to wait
 const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
 
-// Direct database query with exponential backoff using user_id column
 const fetchAdminDirect = async (userId: string): Promise<any> => {
   const supabase = supabaseSafe.client
   let attempts = 0
-  const maxAttempts = 30
-  let delay = 2000 // start with 2 seconds
+  const maxAttempts = 25
+  let delay = 1000
 
   while (attempts < maxAttempts) {
     attempts++
-    console.log(`🔍 Direct query attempt ${attempts}/${maxAttempts} for user_id: ${userId}`)
+    console.log(`🔍 Attempt ${attempts}/${maxAttempts} - Fetching admin for user_id: ${userId}`)
 
-    // Query using user_id column (matches auth user ID)
     const { data: admin, error } = await supabase
       .from('admins')
       .select('*')
@@ -244,7 +241,7 @@ const fetchAdminDirect = async (userId: string): Promise<any> => {
     if (error) {
       console.warn(`Attempt ${attempts} error:`, error.message)
     } else if (admin) {
-      console.log(`✅ Admin found on attempt ${attempts}`)
+      console.log(`✅ Admin found on attempt ${attempts}!`, admin)
       return admin
     } else {
       console.log(`Admin not found on attempt ${attempts}`)
@@ -253,7 +250,7 @@ const fetchAdminDirect = async (userId: string): Promise<any> => {
     if (attempts < maxAttempts) {
       console.log(`Waiting ${delay}ms before next attempt...`)
       await wait(delay)
-      delay = Math.min(delay * 1.5, 10000) // exponential backoff, max 10 seconds
+      delay = Math.min(delay * 1.5, 5000)
     }
   }
 
@@ -262,11 +259,9 @@ const fetchAdminDirect = async (userId: string): Promise<any> => {
 }
 
 onMounted(() => {
-  // Get tenant slug from query parameters
   tenantSlug.value = route.query.tenant as string || null
   redirectPath.value = route.query.redirect as string || null
 
-  // Get email from registration if stored
   pendingEmail.value = localStorage.getItem('pending_registration_email')
   if (pendingEmail.value) {
     form.email = pendingEmail.value
@@ -277,7 +272,6 @@ onMounted(() => {
     }, 100)
   }
 
-  // Store tenant slug for later use after login
   if (tenantSlug.value) {
     localStorage.setItem('pending_tenant_slug', tenantSlug.value)
     console.log('📁 Tenant slug stored:', tenantSlug.value)
@@ -287,7 +281,6 @@ onMounted(() => {
     console.log('🔀 Redirect path stored:', redirectPath.value)
   }
 
-  // Check if there's a stored email (for remember me)
   const savedEmail = localStorage.getItem('saved_email')
   if (savedEmail && !form.email) {
     form.email = savedEmail
@@ -304,7 +297,6 @@ const handleLogin = async () => {
 
     const supabase = supabaseSafe.client
 
-    // 1. Sign in
     const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
       email: form.email,
       password: form.password
@@ -317,12 +309,10 @@ const handleLogin = async () => {
     const userId = signInData.user.id
     console.log('✅ Authenticated, user ID:', userId)
 
-    // 2. Wait a moment for the session to be available
     console.log('⏳ Waiting 2 seconds for session consistency...')
     await wait(2000)
 
-    // 3. Directly fetch admin with retry (using user_id column)
-    console.log('🔍 Starting admin fetch with direct queries (user_id column)...')
+    console.log('🔍 Fetching admin by user_id:', userId)
     const admin = await fetchAdminDirect(userId)
 
     if (!admin) {
@@ -331,9 +321,8 @@ const handleLogin = async () => {
 
     console.log('✅ Admin found:', admin)
 
-    // 4. Convert to AdminUser and set in store
     const adminUser = {
-      uid: admin.user_id,                                    // user_id from admins table
+      uid: admin.user_id,
       email: admin.email,
       displayName: admin.display_name || admin.email,
       role: admin.role,
@@ -346,17 +335,14 @@ const handleLogin = async () => {
     }
     authStore.setAdminUser(adminUser)
 
-    // 5. Save email if remember me
     if (form.remember) {
       localStorage.setItem('saved_email', form.email)
     } else {
       localStorage.removeItem('saved_email')
     }
 
-    // Clear registration leftovers
     localStorage.removeItem('pending_registration_email')
 
-    // 6. Check for pending redirect (from registration)
     const pendingRedirect = localStorage.getItem('pending_redirect')
     const pendingTenant = localStorage.getItem('pending_tenant_slug')
 
@@ -369,7 +355,6 @@ const handleLogin = async () => {
       return
     }
 
-    // 7. Default redirect
     if (adminUser.role === 'admin' || adminUser.role === 'super-admin') {
       router.push('/admin')
     } else {
