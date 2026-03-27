@@ -1,6 +1,6 @@
 <!-- src/components/Layout/MarketingLayout.vue -->
 <template>
-  <div class="landing-layout" :class="{ 'rtl': isRTL }" :dir="dir">
+  <div class="landing-layout" :class="{ 'rtl': isRTL }" :dir="dirValue">
     <!-- Sticky Header -->
     <header
       ref="headerRef"
@@ -162,15 +162,15 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, watch } from 'vue'
+import { ref, onMounted, onUnmounted, watch, computed } from 'vue'
 import { useLanguageStore } from '@/stores/language'
 
 const languageStore = useLanguageStore()
 
-// Get store values - these are refs
-const currentLang = languageStore.currentLanguage
-const isRTL = languageStore.isRTL
-const direction = languageStore.direction
+// Create local refs for reactive values
+const currentLang = ref(languageStore.currentLanguage)
+const isRTL = computed(() => languageStore.isRTL)
+const dirValue = computed(() => languageStore.direction)
 const t = languageStore.t
 const toggleLanguage = languageStore.toggleLanguage
 
@@ -202,9 +202,11 @@ const closeMobileMenu = () => {
 
 const handleLanguageToggle = () => {
   toggleLanguage()
-  // Access .value because these are refs
-  document.documentElement.dir = direction.value
-  document.documentElement.lang = currentLang.value
+  // Update local ref
+  currentLang.value = languageStore.currentLanguage
+  // Update document attributes
+  document.documentElement.dir = languageStore.direction
+  document.documentElement.lang = languageStore.currentLanguage
 }
 
 const handleMobileLanguageToggle = () => {
@@ -218,10 +220,11 @@ const handleResize = () => {
   }
 }
 
-// Watch currentLang for changes
-watch(currentLang, () => {
-  document.documentElement.dir = direction.value
-  document.documentElement.lang = currentLang.value
+// Watch for language changes in the store
+watch(() => languageStore.currentLanguage, (newVal) => {
+  currentLang.value = newVal
+  document.documentElement.dir = languageStore.direction
+  document.documentElement.lang = newVal
 }, { immediate: true })
 
 onMounted(() => {
@@ -229,8 +232,9 @@ onMounted(() => {
   window.addEventListener('resize', handleResize)
   handleScroll()
   // Set initial document attributes
-  document.documentElement.dir = direction.value
-  document.documentElement.lang = currentLang.value
+  document.documentElement.dir = languageStore.direction
+  document.documentElement.lang = languageStore.currentLanguage
+  currentLang.value = languageStore.currentLanguage
 })
 
 onUnmounted(() => {
