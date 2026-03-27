@@ -1,6 +1,6 @@
 <!-- src/components/Layout/MarketingLayout.vue -->
 <template>
-  <div class="landing-layout" :class="{ 'rtl': isRTL }" dir="auto">
+  <div class="landing-layout" :class="{ 'rtl': isRTL }" :dir="direction">
     <!-- Sticky Header -->
     <header
       ref="headerRef"
@@ -166,7 +166,7 @@ import { ref, onMounted, onUnmounted, watch } from 'vue'
 import { useLanguageStore } from '@/stores/language'
 
 const languageStore = useLanguageStore()
-const { currentLanguage, toggleLanguage, t, isRTL } = languageStore
+const { currentLanguage, toggleLanguage, t, isRTL, direction } = languageStore
 
 const mobileMenuOpen = ref(false)
 const isScrolled = ref(false)
@@ -198,8 +198,8 @@ const closeMobileMenu = () => {
 
 const handleLanguageToggle = () => {
   toggleLanguage()
-  // Update document direction - isRTL is a computed ref, so we access its value
-  document.documentElement.dir = isRTL.value ? 'rtl' : 'ltr'
+  // Update document direction - use the direction computed property
+  document.documentElement.dir = direction.value
 }
 
 const handleMobileLanguageToggle = () => {
@@ -214,16 +214,19 @@ const handleResize = () => {
   }
 }
 
-// Update RTL attribute when language changes
-// IMPORTANT: isRTL is a computed ref, so we watch it directly (not .value)
-watch(isRTL, (newVal) => {
-  document.documentElement.dir = newVal ? 'rtl' : 'ltr'
+// Update document attributes when language changes
+watch(currentLanguage, () => {
+  document.documentElement.dir = direction.value
+  document.documentElement.lang = currentLanguage.value
 }, { immediate: true })
 
 onMounted(() => {
   window.addEventListener('scroll', handleScroll, { passive: true })
   window.addEventListener('resize', handleResize)
   handleScroll()
+  // Set initial document attributes
+  document.documentElement.dir = direction.value
+  document.documentElement.lang = currentLanguage.value
 })
 
 onUnmounted(() => {
