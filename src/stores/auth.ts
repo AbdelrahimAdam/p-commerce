@@ -591,8 +591,8 @@ export const useAuthStore = defineStore('auth', () => {
       const result = await response.json()
       if (!response.ok) throw new Error(result.error || 'Registration failed')
 
-      const { tenantId, uid, domain: fullDomain } = result
-      console.log('✅ API response:', { tenantId, uid, fullDomain })
+      const { tenantId, uid, domain: fullDomain, slug } = result
+      console.log('✅ API response:', { tenantId, uid, fullDomain, slug })
 
       // Now log in with the created user
       console.log('🔐 Logging in...')
@@ -611,11 +611,11 @@ export const useAuthStore = defineStore('auth', () => {
       let admin = null
       let attempts = 0
       const maxAttempts = 15
-      
+
       while (!admin && attempts < maxAttempts) {
         attempts++
         console.log(`Attempt ${attempts}/${maxAttempts} to fetch admin...`)
-        
+
         try {
           admin = await getAdminFromSupabase(uid)
           if (admin) {
@@ -625,7 +625,7 @@ export const useAuthStore = defineStore('auth', () => {
         } catch (err) {
           console.log(`Attempt ${attempts} failed:`, err)
         }
-        
+
         if (!admin && attempts < maxAttempts) {
           // Exponential backoff: 1s, 2s, 4s, etc. up to 10s
           const delay = Math.min(1000 * Math.pow(1.5, attempts), 10000)
@@ -633,11 +633,11 @@ export const useAuthStore = defineStore('auth', () => {
           await wait(delay)
         }
       }
-      
+
       // If we still don't have admin, create a fallback admin
       if (!admin) {
         console.warn('⚠️ Admin not found after', maxAttempts, 'attempts. Creating fallback admin.')
-        
+
         // Create a fallback admin object from the registration data
         const fallbackAdmin: AdminUser = {
           uid,
@@ -652,7 +652,7 @@ export const useAuthStore = defineStore('auth', () => {
           lastLogin: new Date()
         }
         setAdminUser(fallbackAdmin)
-        
+
         // Also try to create the admin directly if it doesn't exist (using getTable to bypass type issues)
         try {
           const { error: insertError } = await getTable('admins')
@@ -667,7 +667,7 @@ export const useAuthStore = defineStore('auth', () => {
               is_active: true,
               permissions: ['all']
             })
-          
+
           if (insertError) {
             console.warn('Fallback admin insert failed:', insertError)
           } else {
@@ -680,8 +680,14 @@ export const useAuthStore = defineStore('auth', () => {
         setAdminUser(admin)
       }
 
+      // Set the tenant in the tenant store with slug
+      if (tenantId && slug) {
+        const domainToSet = fullDomain || `${slug}.${import.meta.env.VITE_ROOT_DOMAIN}`
+        tenantStore.setTenantAfterRegistration(tenantId, domainToSet, slug)
+      }
+
       console.log('✅ Company registered successfully:', tenantId)
-      return { tenantId, uid, domain: fullDomain }
+      return { tenantId, uid, domain: fullDomain, slug }
     } catch (err: any) {
       console.error('❌ Registration error:', err)
       error.value = err.message || 'Registration failed'
