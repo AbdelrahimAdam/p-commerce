@@ -197,6 +197,7 @@ import { ref, reactive, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useLanguageStore } from '@/stores/language'
 import { useAuthStore } from '@/stores/auth'
+import { supabaseSafe } from '@/supabase/client'
 
 const router = useRouter()
 const route = useRoute()
@@ -223,14 +224,15 @@ const form = reactive({
 const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
 
 // Helper to fetch admin with retry
-const fetchAdminWithRetry = async (userId: string, maxRetries: number = 10, initialDelay: number = 500): Promise<any> => {
+const fetchAdminWithRetry = async (userId: string, maxRetries: number = 15, initialDelay: number = 500): Promise<any> => {
   let delay = initialDelay
   
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
       console.log(`  Attempt ${attempt}/${maxRetries}: Fetching admin...`)
       
-      // Use the auth store's getAdminFromSupabase method
+      // Use the auth store's getAdminFromSupabase method (which is internal)
+      // We need to call it through the store
       const admin = await (authStore as any).getAdminFromSupabase(userId)
       
       if (admin) {
@@ -307,7 +309,7 @@ const handleLogin = async () => {
     console.log('🔐 Attempting login for:', form.email)
     
     // First, authenticate with Supabase
-    const supabase = (authStore as any).supabaseSafe.client
+    const supabase = supabaseSafe.client
     const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
       email: form.email,
       password: form.password
@@ -333,8 +335,8 @@ const handleLogin = async () => {
     
     console.log('✅ Admin found:', admin.email)
     
-    // Set the admin user in the store
-    (authStore as any).setAdminUser(admin)
+    // Set the admin user in the store using the public setAdminUser method
+    authStore.setAdminUser(admin)
     
     // Save email if remember me is checked
     if (form.remember) {
