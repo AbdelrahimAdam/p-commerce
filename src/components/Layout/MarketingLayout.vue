@@ -1,13 +1,13 @@
 <!-- src/components/Layout/LandingLayout.vue -->
 <template>
-  <div class="landing-layout">
-    <!-- Sticky Header (transparent on top, solid on scroll) -->
+  <div class="landing-layout" :class="{ 'rtl': isRTL }" dir="auto">
+    <!-- Sticky Header -->
     <header
       ref="headerRef"
       :class="[
         'fixed top-0 left-0 right-0 z-50 transition-all duration-300',
         isScrolled
-          ? 'bg-gray-900/95 backdrop-blur-sm shadow-lg'
+          ? 'bg-gray-900/95 backdrop-blur-md shadow-lg border-b border-gray-800/50'
           : 'bg-transparent'
       ]"
     >
@@ -16,31 +16,32 @@
           <!-- Logo -->
           <router-link
             to="/"
-            class="text-2xl md:text-3xl font-bold tracking-tight"
-            :class="isScrolled ? 'text-amber-400' : 'text-white'"
+            class="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight transition-colors duration-200"
+            :class="isScrolled ? 'text-amber-400' : 'text-white hover:text-amber-400'"
           >
             P.COMMERCE
           </router-link>
 
           <!-- Desktop Navigation -->
-          <div class="hidden md:flex items-center space-x-6">
+          <div class="hidden md:flex items-center gap-6">
             <button
-              @click="toggleLanguage"
-              class="text-sm transition-colors"
+              @click="handleLanguageToggle"
+              class="text-sm font-medium transition-colors duration-200"
               :class="isScrolled ? 'text-gray-300 hover:text-amber-400' : 'text-gray-200 hover:text-white'"
+              :aria-label="currentLanguage === 'en' ? 'Switch to Arabic' : 'Switch to English'"
             >
               {{ currentLanguage === 'en' ? 'العربية' : 'English' }}
             </button>
             <router-link
               to="/login"
-              class="transition-colors"
+              class="text-sm font-medium transition-colors duration-200"
               :class="isScrolled ? 'text-gray-300 hover:text-amber-400' : 'text-gray-200 hover:text-white'"
             >
               {{ t('login') }}
             </router-link>
             <router-link
               to="/register-company"
-              class="bg-amber-500 text-gray-900 px-5 py-2 rounded-lg hover:bg-amber-400 transition-colors shadow-sm font-semibold"
+              class="bg-amber-500 text-gray-900 px-5 py-2 rounded-lg hover:bg-amber-400 transition-all duration-200 shadow-sm font-semibold transform hover:scale-105"
             >
               {{ t('startStore') }}
             </router-link>
@@ -48,10 +49,11 @@
 
           <!-- Mobile Menu Button -->
           <button
-            @click="mobileMenuOpen = !mobileMenuOpen"
-            class="md:hidden p-2 rounded-lg focus:outline-none transition-colors"
+            @click="toggleMobileMenu"
+            class="md:hidden p-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 transition-colors duration-200"
             :class="isScrolled ? 'text-gray-300 hover:bg-gray-800' : 'text-white hover:bg-white/10'"
             aria-label="Toggle menu"
+            :aria-expanded="mobileMenuOpen"
           >
             <svg
               v-if="!mobileMenuOpen"
@@ -59,6 +61,7 @@
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
+              aria-hidden="true"
             >
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
             </svg>
@@ -68,6 +71,7 @@
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
+              aria-hidden="true"
             >
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
             </svg>
@@ -83,25 +87,25 @@
           leave-from-class="transform translate-y-0 opacity-100"
           leave-to-class="transform -translate-y-2 opacity-0"
         >
-          <div v-if="mobileMenuOpen" class="md:hidden py-4 border-t border-gray-800">
-            <div class="flex flex-col space-y-3">
+          <div v-if="mobileMenuOpen" class="md:hidden py-4 border-t border-gray-800/50">
+            <div class="flex flex-col space-y-2">
               <button
-                @click="toggleLanguage"
-                class="text-left px-2 py-2 text-gray-300 hover:text-amber-400 hover:bg-gray-800 rounded-lg transition-colors"
+                @click="handleMobileLanguageToggle"
+                class="text-left px-3 py-2.5 text-gray-300 hover:text-amber-400 hover:bg-gray-800/50 rounded-lg transition-colors duration-200"
               >
                 {{ currentLanguage === 'en' ? 'العربية' : 'English' }}
               </button>
               <router-link
                 to="/login"
-                class="px-2 py-2 text-gray-300 hover:text-amber-400 hover:bg-gray-800 rounded-lg transition-colors"
-                @click="mobileMenuOpen = false"
+                class="px-3 py-2.5 text-gray-300 hover:text-amber-400 hover:bg-gray-800/50 rounded-lg transition-colors duration-200"
+                @click="closeMobileMenu"
               >
                 {{ t('login') }}
               </router-link>
               <router-link
                 to="/register-company"
-                class="px-2 py-2 text-amber-400 font-medium hover:bg-gray-800 rounded-lg transition-colors"
-                @click="mobileMenuOpen = false"
+                class="px-3 py-2.5 text-amber-400 font-medium hover:bg-gray-800/50 rounded-lg transition-colors duration-200"
+                @click="closeMobileMenu"
               >
                 {{ t('startStore') }}
               </router-link>
@@ -111,56 +115,121 @@
       </div>
     </header>
 
-    <!-- Main Content (adds padding-top to avoid being hidden under fixed header) -->
-    <main class="flex-1 pt-16 md:pt-20">
+    <!-- Main Content -->
+    <main class="flex-1">
       <slot />
     </main>
 
-    <!-- Footer (dark theme, matching landing page) -->
-    <footer class="bg-gray-900 text-gray-400 py-8 border-t border-gray-800">
+    <!-- Footer -->
+    <footer class="bg-gray-900/95 backdrop-blur-sm text-gray-400 py-8 border-t border-gray-800/50">
       <div class="container mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="flex flex-col md:flex-row justify-between items-center gap-4 text-center md:text-left">
+        <div class="flex flex-col md:flex-row justify-between items-center gap-6 text-center md:text-left">
           <div class="text-sm">
             &copy; {{ new Date().getFullYear() }} P.COMMERCE. {{ t('allRightsReserved') }}
           </div>
-          <div class="flex space-x-6 text-sm">
-            <router-link to="/privacy" class="hover:text-white transition-colors">
+          <div class="flex flex-wrap justify-center gap-4 md:gap-6 text-sm">
+            <router-link to="/privacy" class="hover:text-white transition-colors duration-200">
               {{ t('privacyPolicy') }}
             </router-link>
-            <router-link to="/terms" class="hover:text-white transition-colors">
+            <router-link to="/terms" class="hover:text-white transition-colors duration-200">
               {{ t('termsOfService') }}
             </router-link>
-            <router-link to="/contact" class="hover:text-white transition-colors">
+            <router-link to="/contact" class="hover:text-white transition-colors duration-200">
               {{ t('contactUs') }}
             </router-link>
           </div>
         </div>
       </div>
     </footer>
+
+    <!-- Backdrop for mobile menu -->
+    <transition
+      enter-active-class="transition duration-200 ease-out"
+      enter-from-class="opacity-0"
+      enter-to-class="opacity-100"
+      leave-active-class="transition duration-150 ease-in"
+      leave-from-class="opacity-100"
+      leave-to-class="opacity-0"
+    >
+      <div
+        v-if="mobileMenuOpen"
+        class="fixed inset-0 bg-black/50 backdrop-blur-sm z-40 md:hidden"
+        @click="closeMobileMenu"
+        aria-hidden="true"
+      />
+    </transition>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted, onUnmounted, watch } from 'vue'
 import { useLanguageStore } from '@/stores/language'
 
 const languageStore = useLanguageStore()
-const { currentLanguage, toggleLanguage, t } = languageStore
+const { currentLanguage, toggleLanguage, t, isRTL } = languageStore
 
 const mobileMenuOpen = ref(false)
 const isScrolled = ref(false)
 
+let scrollTimeout: ReturnType<typeof setTimeout>
+
 const handleScroll = () => {
-  isScrolled.value = window.scrollY > 20
+  // Throttle scroll events for better performance
+  if (scrollTimeout) clearTimeout(scrollTimeout)
+  scrollTimeout = setTimeout(() => {
+    isScrolled.value = window.scrollY > 20
+  }, 10)
 }
 
+const toggleMobileMenu = () => {
+  mobileMenuOpen.value = !mobileMenuOpen.value
+  // Prevent body scroll when menu is open
+  if (mobileMenuOpen.value) {
+    document.body.style.overflow = 'hidden'
+  } else {
+    document.body.style.overflow = ''
+  }
+}
+
+const closeMobileMenu = () => {
+  mobileMenuOpen.value = false
+  document.body.style.overflow = ''
+}
+
+const handleLanguageToggle = () => {
+  toggleLanguage()
+  // Update document direction
+  document.documentElement.dir = isRTL.value ? 'rtl' : 'ltr'
+}
+
+const handleMobileLanguageToggle = () => {
+  handleLanguageToggle()
+  closeMobileMenu()
+}
+
+// Close mobile menu on window resize if screen becomes desktop
+const handleResize = () => {
+  if (window.innerWidth >= 768 && mobileMenuOpen.value) {
+    closeMobileMenu()
+  }
+}
+
+// Update RTL attribute when language changes
+watch(isRTL, (newVal) => {
+  document.documentElement.dir = newVal ? 'rtl' : 'ltr'
+}, { immediate: true })
+
 onMounted(() => {
-  window.addEventListener('scroll', handleScroll)
+  window.addEventListener('scroll', handleScroll, { passive: true })
+  window.addEventListener('resize', handleResize)
   handleScroll()
 })
 
 onUnmounted(() => {
   window.removeEventListener('scroll', handleScroll)
+  window.removeEventListener('resize', handleResize)
+  document.body.style.overflow = ''
+  if (scrollTimeout) clearTimeout(scrollTimeout)
 })
 </script>
 
@@ -169,18 +238,74 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   min-height: 100vh;
-  background-color: #0f0f0f; /* match landing page background */
+  background: #0f0f0f;
+  position: relative;
 }
 
-/* Ensure the main content expands to push footer down */
 .flex-1 {
   flex: 1 1 0%;
+  min-height: 0; /* Fix for flex children overflow */
 }
 
-/* Smooth transitions for header */
-.transition-all {
-  transition-property: all;
+/* Smooth transitions */
+.transition-all,
+.transition-colors,
+.transition-transform {
   transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-  transition-duration: 300ms;
+}
+
+/* RTL Support */
+.rtl {
+  direction: rtl;
+}
+
+.rtl .flex,
+.rtl .flex-col,
+.rtl .flex-row {
+  direction: rtl;
+}
+
+.rtl .space-x-6 > :not([hidden]) ~ :not([hidden]) {
+  --tw-space-x-reverse: 1;
+}
+
+.rtl .text-left {
+  text-align: right;
+}
+
+/* Mobile menu backdrop */
+.backdrop-blur-sm {
+  backdrop-filter: blur(8px);
+}
+
+/* Focus styles for accessibility */
+*:focus-visible {
+  outline: 2px solid #fbbf24;
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+/* Touch-friendly tap targets on mobile */
+@media (max-width: 768px) {
+  .px-3 {
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+  }
+  
+  .py-2\.5 {
+    padding-top: 0.625rem;
+    padding-bottom: 0.625rem;
+  }
+}
+
+/* Reduce motion for accessibility */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 </style>
