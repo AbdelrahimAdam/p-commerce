@@ -183,12 +183,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, reactive, onMounted } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import { useLanguageStore } from '@/stores/language'
 import { useAuthStore } from '@/stores/auth'
 
 const router = useRouter()
+const route = useRoute()
 const languageStore = useLanguageStore()
 const authStore = useAuthStore()
 
@@ -197,11 +198,36 @@ const { t } = languageStore
 const loading = ref(false)
 const showPassword = ref(false)
 const error = ref('')
+const tenantSlug = ref<string | null>(null)
+const redirectPath = ref<string | null>(null)
 
 const form = reactive({
   email: '',
   password: '',
   remember: false
+})
+
+// Capture tenant and redirect from URL on mount
+onMounted(() => {
+  // Get tenant slug from query parameters
+  tenantSlug.value = route.query.tenant as string || null
+  redirectPath.value = route.query.redirect as string || null
+  
+  // Store tenant slug for later use after login
+  if (tenantSlug.value) {
+    localStorage.setItem('pending_tenant_slug', tenantSlug.value)
+  }
+  
+  // Store redirect path
+  if (redirectPath.value) {
+    localStorage.setItem('pending_redirect', redirectPath.value)
+  }
+  
+  // Check if there's a stored email (for convenience)
+  const savedEmail = localStorage.getItem('saved_email')
+  if (savedEmail) {
+    form.email = savedEmail
+  }
 })
 
 const handleLogin = async () => {
@@ -215,12 +241,33 @@ const handleLogin = async () => {
       remember: form.remember
     })
 
-    // Redirect based on role
-    if (user.role === 'admin') {
+    // Save email if remember me is checked
+    if (form.remember) {
+      localStorage.setItem('saved_email', form.email)
+    } else {
+      localStorage.removeItem('saved_email')
+    }
+
+    // Check if there's a pending tenant redirect
+    const pendingRedirect = localStorage.getItem('pending_redirect')
+    const pendingTenant = localStorage.getItem('pending_tenant_slug')
+    
+    if (pendingRedirect && pendingTenant) {
+      // Clear stored values
+      localStorage.removeItem('pending_redirect')
+      localStorage.removeItem('pending_tenant_slug')
+      
+      // Redirect to the tenant dashboard
+      window.location.href = pendingRedirect
+      return
+    }
+    
+    // Redirect based on role (if no pending redirect)
+    if (user.role === 'admin' || user.role === 'super-admin') {
       router.push('/admin')
     } else {
-      const redirectPath = router.currentRoute.value.query.redirect as string || '/account'
-      router.push(redirectPath)
+      const redirect = route.query.redirect as string || '/account'
+      router.push(redirect)
     }
   } catch (err: any) {
     console.error('Login error:', err)
