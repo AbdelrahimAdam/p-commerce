@@ -247,19 +247,22 @@ const handleSubmit = async () => {
 
     // The result should contain the tenantId, uid, and slug
     if (result && result.slug) {
-      // Redirect to path-based admin dashboard
+      // Store the slug and redirect to login page with tenant parameter
       const protocol = window.location.protocol;
-      const newUrl = `${protocol}//${rootDomain}/store/${result.slug}/admin/dashboard`;
+      const encodedRedirect = encodeURIComponent(`/store/${result.slug}/admin/dashboard`);
+      const newUrl = `${protocol}//${rootDomain}/login?tenant=${result.slug}&redirect=${encodedRedirect}`;
       window.location.href = newUrl;
     } else if (result && result.domain) {
-      // Fallback: use domain if available
+      // Fallback: use slug from form
       const protocol = window.location.protocol;
-      const newUrl = `${protocol}//${rootDomain}/store/${form.value.slug}/admin/dashboard`;
+      const encodedRedirect = encodeURIComponent(`/store/${form.value.slug}/admin/dashboard`);
+      const newUrl = `${protocol}//${rootDomain}/login?tenant=${form.value.slug}&redirect=${encodedRedirect}`;
       window.location.href = newUrl;
     } else {
       // Final fallback
       const protocol = window.location.protocol;
-      const newUrl = `${protocol}//${rootDomain}/store/${form.value.slug}/admin/dashboard`;
+      const encodedRedirect = encodeURIComponent(`/store/${form.value.slug}/admin/dashboard`);
+      const newUrl = `${protocol}//${rootDomain}/login?tenant=${form.value.slug}&redirect=${encodedRedirect}`;
       window.location.href = newUrl;
     }
   } catch (err: any) {
