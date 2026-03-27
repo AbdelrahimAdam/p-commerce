@@ -212,18 +212,9 @@ const handleSubmit = async () => {
     localStorage.setItem('pending_registration_email', form.value.email)
     localStorage.setItem('pending_registration_slug', form.value.slug)
     
-    // Wait for the trigger to complete (increased wait time)
+    // Wait for the trigger to complete
     console.log('⏳ Waiting 5 seconds for trigger to create tenant and admin...')
     await new Promise(resolve => setTimeout(resolve, 5000))
-    
-    // Verify metadata was stored correctly
-    const { data: userData } = await supabase
-      .from('auth.users')
-      .select('raw_user_meta_data')
-      .eq('id', signUpData.user.id)
-      .single()
-    
-    console.log('✅ Stored metadata:', userData?.raw_user_meta_data)
     
     // Construct correct redirect URL
     const protocol = window.location.protocol
