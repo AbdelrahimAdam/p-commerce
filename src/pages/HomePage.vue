@@ -235,6 +235,7 @@ import { useRouter } from 'vue-router'
 import { useLanguageStore } from '@/stores/language'
 import { useHomepageStore } from '@/stores/homepage'
 import { useBrandsStore } from '@/stores/brands'
+import { useTenantStore } from '@/stores/tenant'
 import type { Brand } from '@/types'
 
 // ========== PROPS ==========
@@ -251,7 +252,8 @@ const router = useRouter()
 const languageStore = useLanguageStore()
 const homepageStore = useHomepageStore()
 const brandsStore = useBrandsStore()
-const { t } = languageStore // removed formatDate
+const tenantStore = useTenantStore()
+const { t } = languageStore
 
 // =================== COMPUTED ===================
 const homepageData = computed(() => homepageStore.homepageData || {})
@@ -320,7 +322,7 @@ watch(activeOffers, (_newOffers) => {
 
 // =================== LIFECYCLE ===================
 onMounted(async () => {
-  console.log('🏠 HomePage.vue mounted - Initializing...')
+  console.log('🏠 HomePage.vue mounted - Tenant:', tenantStore.tenantId, 'Slug:', tenantStore.tenantSlug)
   document.documentElement.style.scrollBehavior = 'smooth'
   
   // Subscribe to homepage updates
@@ -328,12 +330,13 @@ onMounted(async () => {
     console.log('📡 Homepage store update notification:', {
       source: data.source,
       offers: data.activeOffers?.length,
-      timestamp: data.lastUpdated
+      timestamp: data.lastUpdated,
+      tenant: tenantStore.tenantId
     })
   })
   
   try {
-    console.log('📥 Loading homepage data...')
+    console.log('📥 Loading homepage data for tenant:', tenantStore.tenantId || tenantStore.tenantSlug)
     await Promise.all([
       homepageStore.loadHomepageData(),
       brandsStore.initialize()
@@ -346,6 +349,7 @@ onMounted(async () => {
       displayBrands: displayBrands.value.length,
       offers: activeOffers.value.length,
       darkMode: isDarkMode.value,
+      tenant: tenantStore.tenantId,
       brandsStoreError: brandsStore.error
     })
     
