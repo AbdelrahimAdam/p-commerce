@@ -132,7 +132,7 @@
 import { ref, computed } from 'vue'
 import { supabaseSafe } from '@/supabase/client'
 
-const rootDomain = import.meta.env.VITE_ROOT_DOMAIN || 'localhost:5173'
+const rootDomain = import.meta.env.VITE_ROOT_DOMAIN || 'p-commerce-peach.vercel.app'
 
 const form = ref({
   companyName: '',
@@ -174,11 +174,16 @@ const handleSubmit = async () => {
   error.value = null
 
   try {
-    console.log('🚀 Starting registration...')
     const supabase = supabaseSafe.client
     
-    // Sign up - trigger will create tenant and admin
-    const { error: signUpError } = await supabase.auth.signUp({
+    console.log('📝 Registering with metadata:', {
+      displayName: form.value.displayName,
+      companyName: form.value.companyName,
+      slug: form.value.slug
+    })
+    
+    // Sign up with metadata - THIS IS CRITICAL
+    const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
       email: form.value.email,
       password: form.value.password,
       options: {
@@ -191,30 +196,47 @@ const handleSubmit = async () => {
       }
     })
 
-    if (signUpError) throw signUpError
+    if (signUpError) {
+      console.error('Sign up error:', signUpError)
+      throw signUpError
+    }
     
-    console.log('✅ User created successfully!')
-    console.log('📧 Please check your email to confirm your account')
+    if (!signUpData.user) {
+      throw new Error('User creation failed')
+    }
     
-    // Store the email and slug for the login page
+    console.log('✅ User created successfully')
+    console.log('User ID:', signUpData.user.id)
+    
+    // Store email and slug for login page
     localStorage.setItem('pending_registration_email', form.value.email)
     localStorage.setItem('pending_registration_slug', form.value.slug)
     
-    // Show success message
-    error.value = null // Clear any previous errors
+    // Wait for the trigger to complete (increased wait time)
+    console.log('⏳ Waiting 5 seconds for trigger to create tenant and admin...')
+    await new Promise(resolve => setTimeout(resolve, 5000))
     
-    // Redirect to login page with tenant and redirect params
+    // Verify metadata was stored correctly
+    const { data: userData } = await supabase
+      .from('auth.users')
+      .select('raw_user_meta_data')
+      .eq('id', signUpData.user.id)
+      .single()
+    
+    console.log('✅ Stored metadata:', userData?.raw_user_meta_data)
+    
+    // Construct correct redirect URL
+    const protocol = window.location.protocol
     const encodedRedirect = encodeURIComponent(`/store/${form.value.slug}/admin/dashboard`)
-    const loginUrl = `/login?tenant=${form.value.slug}&redirect=${encodedRedirect}&registered=true`
+    const loginUrl = `${protocol}//${rootDomain}/login?tenant=${form.value.slug}&redirect=${encodedRedirect}&registered=true`
     
-    // Short delay to show success message, then redirect
-    setTimeout(() => {
-      window.location.href = loginUrl
-    }, 1500)
+    console.log('🔀 Redirecting to:', loginUrl)
+    window.location.href = loginUrl
     
   } catch (err: any) {
-    console.error('❌ Registration error:', err)
+    console.error('Registration error:', err)
     error.value = err.message || 'Registration failed. Please try again.'
+  } finally {
     isLoading.value = false
   }
 }
