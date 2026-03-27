@@ -236,6 +236,9 @@ const handleSubmit = async () => {
   error.value = null;
 
   try {
+    // Store the email in localStorage for auto-fill on login page
+    localStorage.setItem('pending_registration_email', form.value.email);
+    
     // Call the store method which should call the API
     const result = await authStore.registerCompany({
       email: form.value.email,
@@ -267,6 +270,8 @@ const handleSubmit = async () => {
     }
   } catch (err: any) {
     error.value = err.message || 'Registration failed. Please try again.';
+    // Clear the stored email if registration fails
+    localStorage.removeItem('pending_registration_email');
   } finally {
     isLoading.value = false;
   }
