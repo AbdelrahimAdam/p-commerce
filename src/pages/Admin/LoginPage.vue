@@ -96,6 +96,16 @@
             </router-link>
           </div>
 
+          <!-- Info Message (from registration) -->
+          <div v-if="infoMessage" class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <div class="flex items-center gap-3">
+              <svg class="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+              </svg>
+              <p class="text-sm text-blue-700">{{ infoMessage }}</p>
+            </div>
+          </div>
+
           <!-- Error Message -->
           <div v-if="error" class="bg-red-50 border border-red-200 rounded-lg p-4">
             <div class="flex items-center gap-3">
@@ -198,13 +208,15 @@ const { t } = languageStore
 const loading = ref(false)
 const showPassword = ref(false)
 const error = ref('')
+const infoMessage = ref('')
 const tenantSlug = ref<string | null>(null)
 const redirectPath = ref<string | null>(null)
+const pendingEmail = ref<string | null>(null)
 
 const form = reactive({
   email: '',
   password: '',
-  remember: false
+  remember: true // Default to true for better UX
 })
 
 // Capture tenant and redirect from URL on mount
@@ -213,19 +225,36 @@ onMounted(() => {
   tenantSlug.value = route.query.tenant as string || null
   redirectPath.value = route.query.redirect as string || null
   
+  // Get email from registration if stored
+  pendingEmail.value = localStorage.getItem('pending_registration_email')
+  
+  // If there's a pending email from registration, auto-fill it
+  if (pendingEmail.value) {
+    form.email = pendingEmail.value
+    infoMessage.value = t('pleaseLoginToCompleteRegistration')
+    
+    // Auto-focus password field
+    setTimeout(() => {
+      const passwordInput = document.querySelector('input[type="password"]') as HTMLInputElement
+      if (passwordInput) passwordInput.focus()
+    }, 100)
+  }
+  
   // Store tenant slug for later use after login
   if (tenantSlug.value) {
     localStorage.setItem('pending_tenant_slug', tenantSlug.value)
+    console.log('📁 Tenant slug stored:', tenantSlug.value)
   }
   
   // Store redirect path
   if (redirectPath.value) {
     localStorage.setItem('pending_redirect', redirectPath.value)
+    console.log('🔀 Redirect path stored:', redirectPath.value)
   }
   
-  // Check if there's a stored email (for convenience)
+  // Check if there's a stored email (for remember me)
   const savedEmail = localStorage.getItem('saved_email')
-  if (savedEmail) {
+  if (savedEmail && !form.email) {
     form.email = savedEmail
   }
 })
@@ -233,8 +262,11 @@ onMounted(() => {
 const handleLogin = async () => {
   loading.value = true
   error.value = ''
+  infoMessage.value = ''
 
   try {
+    console.log('🔐 Attempting login for:', form.email)
+    
     const user = await authStore.authenticate({
       email: form.email,
       password: form.password,
@@ -247,15 +279,24 @@ const handleLogin = async () => {
     } else {
       localStorage.removeItem('saved_email')
     }
+    
+    // Clear pending registration email
+    localStorage.removeItem('pending_registration_email')
+    
+    console.log('✅ Login successful, user role:', user.role)
 
-    // Check if there's a pending tenant redirect
+    // Check if there's a pending tenant redirect from registration
     const pendingRedirect = localStorage.getItem('pending_redirect')
     const pendingTenant = localStorage.getItem('pending_tenant_slug')
     
     if (pendingRedirect && pendingTenant) {
+      console.log('🔄 Found pending redirect to:', pendingRedirect)
       // Clear stored values
       localStorage.removeItem('pending_redirect')
       localStorage.removeItem('pending_tenant_slug')
+      
+      // Wait a moment to ensure auth state is fully synced
+      await new Promise(resolve => setTimeout(resolve, 1000))
       
       // Redirect to the tenant dashboard
       window.location.href = pendingRedirect
