@@ -6,6 +6,7 @@ import { supabaseSafe } from '@/supabase/client'
 interface CachedTenant {
   tenantId: string
   tenantDomain: string
+  tenantSlug: string
   expiry: number
 }
 
@@ -15,6 +16,7 @@ const getClient = () => supabaseSafe.client
 export const useTenantStore = defineStore('tenant', () => {
   const tenantId = ref<string | null>(null)
   const tenantDomain = ref<string | null>(null)
+  const tenantSlug = ref<string | null>(null)
   const isLoading = ref(false)
   const error = ref<string | null>(null)
   const isInitialized = ref(false)
@@ -41,105 +43,178 @@ export const useTenantStore = defineStore('tenant', () => {
     error.value = null
 
     const hostname = window.location.hostname
-    const cacheKey = `tenant_${hostname}`
+    const pathname = window.location.pathname
+    const rootDomain = import.meta.env.VITE_ROOT_DOMAIN || 'p-commerce-peach.vercel.app'
+    
+    console.log('🔍 resolveTenantFromDomain started, hostname:', hostname, 'path:', pathname)
 
-    try {
-      console.log('🔍 resolveTenantFromDomain started, hostname:', hostname)
+    // Check if we're on a tenant path like /store/slug or /slug/admin
+    let tenantSlugFromPath: string | null = null
+    
+    // Try /store/:slug pattern
+    const storeMatch = pathname.match(/^\/store\/([^\/]+)/)
+    if (storeMatch) {
+      tenantSlugFromPath = storeMatch[1]
+      console.log('📁 Tenant slug from /store/ pattern:', tenantSlugFromPath)
+    }
+    // Try /:slug/admin pattern (for admin dashboard)
+    else if (pathname.match(/^\/([^\/]+)\/admin/)) {
+      const slugMatch = pathname.match(/^\/([^\/]+)\/admin/)
+      tenantSlugFromPath = slugMatch ? slugMatch[1] : null
+      console.log('📁 Tenant slug from /:slug/admin pattern:', tenantSlugFromPath)
+    }
+    // Try direct /:slug pattern
+    else if (pathname.match(/^\/([^\/]+)$/)) {
+      const slugMatch = pathname.match(/^\/([^\/]+)$/)
+      tenantSlugFromPath = slugMatch ? slugMatch[1] : null
+      console.log('📁 Tenant slug from direct pattern:', tenantSlugFromPath)
+    }
 
-      const cachedStr = localStorage.getItem(cacheKey)
-      if (cachedStr) {
-        try {
-          const cached: CachedTenant = JSON.parse(cachedStr)
-          if (cached.expiry && Date.now() < cached.expiry) {
-            tenantId.value = cached.tenantId
-            tenantDomain.value = cached.tenantDomain
-            console.info('🟢 Tenant loaded from cache:', tenantId.value)
-            isInitialized.value = true
-            resolveReady()
-            return
-          } else {
+    // If this is the root domain, try path-based tenant resolution
+    if (hostname === rootDomain || hostname === 'localhost') {
+      // Check if we have a tenant slug in the path
+      if (tenantSlugFromPath) {
+        console.log('🔍 Looking up tenant by slug:', tenantSlugFromPath)
+        
+        // Check cache first
+        const cacheKey = `tenant_slug_${tenantSlugFromPath}`
+        const cachedStr = localStorage.getItem(cacheKey)
+        if (cachedStr) {
+          try {
+            const cached: CachedTenant = JSON.parse(cachedStr)
+            if (cached.expiry && Date.now() < cached.expiry) {
+              tenantId.value = cached.tenantId
+              tenantDomain.value = cached.tenantDomain
+              tenantSlug.value = cached.tenantSlug
+              console.info('🟢 Tenant loaded from cache by slug:', tenantId.value)
+              isInitialized.value = true
+              resolveReady()
+              return
+            } else {
+              localStorage.removeItem(cacheKey)
+            }
+          } catch {
             localStorage.removeItem(cacheKey)
           }
-        } catch {
-          localStorage.removeItem(cacheKey)
         }
-      }
-
-      const client = getClient()
-      let { data, error: fetchError } = await client
-        .from('tenants')
-        .select('id, domain, name, settings')
-        .eq('domain', hostname)
-        .limit(1)
-
-      if (fetchError) {
-        if (retryCount < MAX_RETRIES && fetchError.message && 
-            (fetchError.message.toLowerCase().includes('network') || 
-             fetchError.message.toLowerCase().includes('unavailable'))) {
-          console.warn(`⚠️ Supabase error, retrying (${retryCount + 1}/${MAX_RETRIES})...`)
-          await sleep(RETRY_DELAY_MS)
-          return resolveTenantFromDomain(retryCount + 1)
-        }
-        throw fetchError
-      }
-
-      const rows = data as any[]
-      if (!rows || rows.length === 0) {
-        // Fallback: get first tenant (for local development)
-        console.warn(`No tenant for domain "${hostname}", trying fallback...`)
-        const { data: fallbackData, error: fallbackError } = await client
+        
+        const client = getClient()
+        const { data, error: fetchError } = await client
           .from('tenants')
-          .select('id, domain, name, settings')
-          .limit(1)
-
-        if (fallbackError) throw fallbackError
-
-        const fallbackRows = fallbackData as any[]
-        if (fallbackRows && fallbackRows.length > 0) {
-          const row = fallbackRows[0]
-          tenantId.value = row.id
-          tenantDomain.value = row.domain
-          console.info('🟢 Tenant resolved from fallback:', tenantId.value)
+          .select('id, domain, name, settings, slug')
+          .eq('slug', tenantSlugFromPath)
+          .maybeSingle()
+          
+        if (!fetchError && data) {
+          tenantId.value = data.id
+          tenantDomain.value = data.domain
+          tenantSlug.value = data.slug
+          console.info('✅ Tenant resolved by slug:', tenantId.value)
+          
+          // Cache the result
           const cacheData: CachedTenant = {
             tenantId: tenantId.value!,
             tenantDomain: tenantDomain.value!,
+            tenantSlug: tenantSlug.value!,
             expiry: Date.now() + CACHE_EXPIRY
           }
           localStorage.setItem(cacheKey, JSON.stringify(cacheData))
+          
           isInitialized.value = true
           resolveReady()
           return
+        } else {
+          console.warn('Tenant not found for slug:', tenantSlugFromPath)
         }
-
-        error.value = `No tenant configured for domain "${hostname}"`
-        tenantId.value = null
-        tenantDomain.value = null
-        console.warn(error.value)
-        rejectReady(new Error(error.value))
-        return
       }
-
-      const row = rows[0]
-      const resolvedDomain: string = row.domain ?? ''
-      if (!resolvedDomain) throw new Error('Tenant domain is missing in database')
-
-      tenantId.value = row.id
-      tenantDomain.value = resolvedDomain
-      console.info('✅ Tenant resolved from Supabase:', tenantId.value)
-
-      const cacheData: CachedTenant = {
-        tenantId: tenantId.value!,
-        tenantDomain: tenantDomain.value!,
-        expiry: Date.now() + CACHE_EXPIRY
-      }
-      localStorage.setItem(cacheKey, JSON.stringify(cacheData))
-
+      
+      // No tenant slug, this is the main landing page
+      console.log('🏠 Main domain - no tenant')
+      tenantId.value = null
+      tenantDomain.value = null
+      tenantSlug.value = null
+      isInitialized.value = true
       resolveReady()
+      return
+    }
+
+    // If we're on a subdomain, use domain-based lookup
+    const cacheKey = `tenant_${hostname}`
+    
+    // Check cache for domain
+    const cachedStr = localStorage.getItem(cacheKey)
+    if (cachedStr) {
+      try {
+        const cached: CachedTenant = JSON.parse(cachedStr)
+        if (cached.expiry && Date.now() < cached.expiry) {
+          tenantId.value = cached.tenantId
+          tenantDomain.value = cached.tenantDomain
+          tenantSlug.value = cached.tenantSlug
+          console.info('🟢 Tenant loaded from cache by domain:', tenantId.value)
+          isInitialized.value = true
+          resolveReady()
+          return
+        } else {
+          localStorage.removeItem(cacheKey)
+        }
+      } catch {
+        localStorage.removeItem(cacheKey)
+      }
+    }
+
+    const client = getClient()
+    let { data, error: fetchError } = await client
+      .from('tenants')
+      .select('id, domain, name, settings, slug')
+      .eq('domain', hostname)
+      .limit(1)
+
+    if (fetchError) {
+      if (retryCount < MAX_RETRIES && fetchError.message && 
+          (fetchError.message.toLowerCase().includes('network') || 
+           fetchError.message.toLowerCase().includes('unavailable'))) {
+        console.warn(`⚠️ Supabase error, retrying (${retryCount + 1}/${MAX_RETRIES})...`)
+        await sleep(RETRY_DELAY_MS)
+        return resolveTenantFromDomain(retryCount + 1)
+      }
+      throw fetchError
+    }
+
+    const rows = data as any[]
+    if (!rows || rows.length === 0) {
+      console.warn(`No tenant for domain "${hostname}"`)
+      error.value = `No tenant configured for domain "${hostname}"`
+      tenantId.value = null
+      tenantDomain.value = null
+      tenantSlug.value = null
+      rejectReady(new Error(error.value))
+      return
+    }
+
+    const row = rows[0]
+    const resolvedDomain: string = row.domain ?? ''
+    if (!resolvedDomain) throw new Error('Tenant domain is missing in database')
+
+    tenantId.value = row.id
+    tenantDomain.value = resolvedDomain
+    tenantSlug.value = row.slug
+    console.info('✅ Tenant resolved from Supabase by domain:', tenantId.value)
+
+    const cacheData: CachedTenant = {
+      tenantId: tenantId.value!,
+      tenantDomain: tenantDomain.value!,
+      tenantSlug: tenantSlug.value!,
+      expiry: Date.now() + CACHE_EXPIRY
+    }
+    localStorage.setItem(cacheKey, JSON.stringify(cacheData))
+
+    resolveReady()
     } catch (err: any) {
       console.error('❌ Tenant resolution failed:', err)
       error.value = err?.message || 'Failed to resolve tenant'
       tenantId.value = null
       tenantDomain.value = null
+      tenantSlug.value = null
       rejectReady(err)
     } finally {
       isLoading.value = false
@@ -147,9 +222,10 @@ export const useTenantStore = defineStore('tenant', () => {
     }
   }
 
-  const setTenantAfterRegistration = (id: string, domain: string) => {
+  const setTenantAfterRegistration = (id: string, domain: string, slug: string) => {
     tenantId.value = id
     tenantDomain.value = domain
+    tenantSlug.value = slug
     isInitialized.value = true
     isLoading.value = false
 
@@ -157,9 +233,15 @@ export const useTenantStore = defineStore('tenant', () => {
     const cacheData: CachedTenant = {
       tenantId: tenantId.value!,
       tenantDomain: tenantDomain.value!,
+      tenantSlug: tenantSlug.value!,
       expiry: Date.now() + CACHE_EXPIRY
     }
     localStorage.setItem(cacheKey, JSON.stringify(cacheData))
+    
+    // Also cache by slug
+    const slugCacheKey = `tenant_slug_${slug}`
+    localStorage.setItem(slugCacheKey, JSON.stringify(cacheData))
+    
     console.info('🟢 Tenant set after registration:', id)
     resolveReady()
   }
@@ -205,7 +287,6 @@ export const useTenantStore = defineStore('tenant', () => {
   const setIsInitialized = (value: boolean) => {
     isInitialized.value = value
     if (value) {
-      // If we're setting initialized without a tenant, resolve the promise
       resolveReady()
     }
   }
@@ -213,6 +294,7 @@ export const useTenantStore = defineStore('tenant', () => {
   return {
     tenantId,
     tenantDomain,
+    tenantSlug,
     isLoading,
     error,
     isInitialized,
