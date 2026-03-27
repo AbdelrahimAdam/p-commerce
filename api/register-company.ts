@@ -2,6 +2,14 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { createClient } from '@supabase/supabase-js'
 
+// Helper function to generate slug from company name
+const generateSlug = (companyName: string): string => {
+  return companyName
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '')
+}
+
 // Helper function to wait with exponential backoff
 const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
 
@@ -18,13 +26,13 @@ const fetchAdminWithRetry = async (
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
       console.log(`  Attempt ${attempt}/${maxRetries}: Fetching admin...`)
-      
+
       const { data: admin, error: fetchError } = await supabaseAdmin
         .from('admins')
         .select('*')
         .eq('id', userId)
         .maybeSingle()
-      
+
       if (fetchError) {
         console.log(`  Fetch error on attempt ${attempt}:`, fetchError.message)
         lastError = fetchError
@@ -34,7 +42,7 @@ const fetchAdminWithRetry = async (
       } else {
         console.log(`  Admin not found on attempt ${attempt}`)
       }
-      
+
       if (attempt < maxRetries) {
         console.log(`  Waiting ${delay}ms before next attempt...`)
         await wait(delay)
@@ -49,7 +57,7 @@ const fetchAdminWithRetry = async (
       }
     }
   }
-  
+
   console.error('Admin not found after', maxRetries, 'attempts, last error:', lastError)
   return null
 }
@@ -93,12 +101,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(400).json({ error: 'Password must be at least 6 characters' })
     }
 
-    // Domain validation
-    const domainRegex = /^[a-z0-9.-]+$/
-    if (!domainRegex.test(domain)) {
-      return res.status(400).json({
-        error: 'Domain must contain only lowercase letters, numbers, hyphens, and dots'
-      })
+    // Generate slug from company name
+    const slug = generateSlug(companyName)
+    
+    // Validate slug
+    if (!slug || slug.length < 2) {
+      return res.status(400).json({ error: 'Company name is too short or invalid' })
     }
 
     // Get environment variables
@@ -109,7 +117,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     console.log('Environment check:', {
       supabaseUrl: !!supabaseUrl,
       serviceRoleKey: !!serviceRoleKey,
-      rootDomain: !!rootDomain
+      rootDomain: !!rootDomain,
+      slug
     })
 
     if (!supabaseUrl || !serviceRoleKey || !rootDomain) {
@@ -132,7 +141,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const tenantId = `tenant_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`
     const now = new Date().toISOString()
 
-    console.log('Generated IDs:', { tenantId, fullDomain })
+    console.log('Generated IDs:', { tenantId, fullDomain, slug })
+
+    // Check slug availability
+    console.log('Checking slug availability...')
+    const { data: existingSlug } = await supabaseAdmin
+      .from('tenants')
+      .select('id')
+      .eq('slug', slug)
+      .maybeSingle()
+
+    if (existingSlug) {
+      return res.status(400).json({
+        error: 'Store URL already exists. Please choose a different company name.',
+        slug: slug
+      })
+    }
 
     // Check domain availability
     console.log('Checking domain availability...')
@@ -157,6 +181,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         id: tenantId,
         name: companyName,
         domain: fullDomain,
+        slug: slug,
         owner_id: null,
         created_at: now,
         updated_at: now
@@ -170,7 +195,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         code: tenantError.code 
       })
     }
-    console.log('✅ Tenant created')
+    console.log('✅ Tenant created with slug:', slug)
 
     // STEP 2: Create the auth user
     console.log('Step 2: Creating auth user...')
@@ -215,7 +240,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       is_active: true,
       permissions: ['all']
     }
-    
+
     const { error: adminError } = await supabaseAdmin
       .from('admins')
       .insert(adminData)
@@ -261,13 +286,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       console.log('✅ Admin verified:', verifiedAdmin.id)
     }
 
-    // Success! Return the result
+    // Success! Return the result with slug
     console.log('🎉 Registration completed successfully!')
     return res.status(200).json({
       success: true,
       tenantId,
       uid: userId,
       domain: fullDomain,
+      slug: slug,
       adminVerified: !!verifiedAdmin
     })
 
