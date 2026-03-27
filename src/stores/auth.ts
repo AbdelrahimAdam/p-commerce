@@ -194,6 +194,24 @@ export const useAuthStore = defineStore('auth', () => {
         if (updateError) console.warn('Failed to update admin last_login:', updateError)
         authNotification.loggedIn(adminData.displayName ?? 'Admin')
         console.log('✅ Admin authenticated:', adminData.email)
+        
+        // Check if there's a pending tenant redirect from registration
+        const pendingRedirect = localStorage.getItem('pending_redirect')
+        const pendingTenant = localStorage.getItem('pending_tenant_slug')
+        
+        if (pendingRedirect && pendingTenant) {
+          console.log('🔄 Found pending tenant redirect:', pendingRedirect)
+          // Clear stored values
+          localStorage.removeItem('pending_redirect')
+          localStorage.removeItem('pending_tenant_slug')
+          
+          // Set the tenant in the tenant store
+          tenantStore.setTenantAfterRegistration(adminData.tenantId, '', pendingTenant)
+          
+          // Return with role and pending redirect flag
+          return { ...adminData, role: 'admin', pendingRedirect }
+        }
+        
         return { ...adminData, role: 'admin' }
       }
 
@@ -400,7 +418,7 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  // Address management
+  // Address management (unchanged - keep all existing address methods)
   const addCustomerAddress = async (address: Address): Promise<void> => {
     if (!customer.value) throw new Error('No customer logged in')
     isLoading.value = true
