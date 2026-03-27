@@ -217,45 +217,63 @@ const pendingEmail = ref<string | null>(null)
 const form = reactive({
   email: '',
   password: '',
-  remember: true // Default to true for better UX
+  remember: true
 })
 
-// Helper to wait with exponential backoff
+// Helper to wait
 const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
 
-// Helper to fetch admin with retry
-const fetchAdminWithRetry = async (userId: string, maxRetries: number = 15, initialDelay: number = 500): Promise<any> => {
+// Helper to fetch admin with direct database queries
+const fetchAdminWithRetry = async (userId: string, maxRetries: number = 20, initialDelay: number = 2000): Promise<any> => {
   let delay = initialDelay
+  const supabase = supabaseSafe.client
   
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
-      console.log(`  Attempt ${attempt}/${maxRetries}: Fetching admin...`)
+      console.log(`  [Attempt ${attempt}/${maxRetries}] Direct database query for admin...`)
       
-      // Use the auth store's getAdminFromSupabase method (now exposed)
-      const admin = await (authStore as any).getAdminFromSupabase(userId)
+      // Direct database query - bypass store method
+      const { data: adminData, error: adminError } = await supabase
+        .from('admins')
+        .select('*')
+        .eq('id', userId)
+        .maybeSingle()
       
-      if (admin) {
-        console.log(`  ✅ Admin found on attempt ${attempt}!`)
-        return admin
+      if (adminData) {
+        console.log(`  ✅ Admin found on attempt ${attempt}!`, adminData)
+        return adminData
       }
       
-      console.log(`  Admin not found on attempt ${attempt}`)
+      if (adminError) {
+        console.log(`  Attempt ${attempt} error:`, adminError.message)
+      } else {
+        console.log(`  Admin not found on attempt ${attempt}`)
+        
+        // Also check if any admin exists (for debugging)
+        if (attempt === 1) {
+          const { data: allAdmins } = await supabase
+            .from('admins')
+            .select('id, email')
+            .limit(5)
+          console.log('  Existing admins:', allAdmins)
+        }
+      }
       
       if (attempt < maxRetries) {
         console.log(`  Waiting ${delay}ms before next attempt...`)
         await wait(delay)
-        delay = Math.min(delay * 1.5, 10000) // Exponential backoff, max 10 seconds
+        delay = Math.min(delay * 1.2, 5000)
       }
     } catch (err) {
       console.error(`Unexpected error on attempt ${attempt}:`, err)
       if (attempt < maxRetries) {
         await wait(delay)
-        delay = Math.min(delay * 1.5, 10000)
+        delay = Math.min(delay * 1.2, 5000)
       }
     }
   }
   
-  console.error('Admin not found after', maxRetries, 'attempts')
+  console.error('❌ Admin not found after', maxRetries, 'attempts')
   return null
 }
 
@@ -307,8 +325,9 @@ const handleLogin = async () => {
   try {
     console.log('🔐 Attempting login for:', form.email)
     
-    // First, authenticate with Supabase
     const supabase = supabaseSafe.client
+    
+    // Sign in
     const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
       email: form.email,
       password: form.password
@@ -322,19 +341,29 @@ const handleLogin = async () => {
     console.log('✅ Authenticated, user ID:', userId)
     
     // Wait a moment for the session to be available
-    await wait(2000)
+    console.log('⏳ Waiting 3 seconds for session to stabilize...')
+    await wait(3000)
     
-    // Now fetch the admin with retry
-    console.log('🔍 Fetching admin profile with retry...')
-    const admin = await fetchAdminWithRetry(userId, 15, 500)
+    // Now fetch the admin with direct database queries
+    console.log('🔍 Fetching admin profile with direct database queries...')
+    const admin = await fetchAdminWithRetry(userId, 20, 2000)
     
     if (!admin) {
+      // Final check - query the user's metadata to see if tenant_id was set
+      const { data: userData } = await supabase
+        .from('auth.users')
+        .select('raw_user_meta_data')
+        .eq('id', userId)
+        .single()
+      
+      console.log('User metadata:', userData?.raw_user_meta_data)
+      
       throw new Error('User profile not found. Please wait a moment and try again.')
     }
     
-    console.log('✅ Admin found:', admin.email)
+    console.log('✅ Admin found:', admin)
     
-    // Set the admin user in the store using the exposed setAdminUser method
+    // Set the admin user in the store
     authStore.setAdminUser(admin)
     
     // Save email if remember me is checked
@@ -353,19 +382,15 @@ const handleLogin = async () => {
     
     if (pendingRedirect && pendingTenant) {
       console.log('🔄 Found pending redirect to:', pendingRedirect)
-      // Clear stored values
       localStorage.removeItem('pending_redirect')
       localStorage.removeItem('pending_tenant_slug')
       
-      // Wait a moment to ensure auth state is fully synced
       await wait(1000)
-      
-      // Redirect to the tenant dashboard
       window.location.href = pendingRedirect
       return
     }
     
-    // Redirect based on role (if no pending redirect)
+    // Redirect based on role
     if (admin.role === 'admin' || admin.role === 'super-admin') {
       router.push('/admin')
     } else {
