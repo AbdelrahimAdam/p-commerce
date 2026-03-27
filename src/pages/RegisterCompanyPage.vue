@@ -23,7 +23,7 @@
               required
               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
               placeholder="Acme Inc."
-              :disabled="loading"
+              :disabled="isLoading"
               @input="generateSlug"
             />
           </div>
@@ -49,7 +49,7 @@
               required
               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
               placeholder="John Doe"
-              :disabled="loading"
+              :disabled="isLoading"
             />
           </div>
 
@@ -64,7 +64,7 @@
               required
               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
               placeholder="you@example.com"
-              :disabled="loading"
+              :disabled="isLoading"
             />
           </div>
 
@@ -80,7 +80,7 @@
               minlength="6"
               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
               placeholder="••••••••"
-              :disabled="loading"
+              :disabled="isLoading"
             />
             <p class="mt-1 text-xs text-gray-500">At least 6 characters</p>
           </div>
@@ -96,7 +96,7 @@
               required
               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
               placeholder="••••••••"
-              :disabled="loading"
+              :disabled="isLoading"
             />
           </div>
         </div>
@@ -111,10 +111,10 @@
 
         <button
           type="submit"
-          :disabled="loading || !isFormValid || passwordMismatch"
+          :disabled="isLoading || !isFormValid || passwordMismatch"
           class="w-full py-3 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 disabled:opacity-50 transition-colors"
         >
-          <span v-if="!loading">Register Company</span>
+          <span v-if="!isLoading">Register Company</span>
           <span v-else>Registering...</span>
         </button>
       </form>
@@ -180,7 +180,7 @@ const handleSubmit = async () => {
     
     // Sign up with Supabase - the database trigger will handle tenant and admin creation
     const supabase = supabaseSafe.client
-    const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+    const { error: signUpError } = await supabase.auth.signUp({
       email: form.value.email,
       password: form.value.password,
       options: {
