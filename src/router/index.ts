@@ -20,7 +20,11 @@ const publicRouteNames = [
   'about',
   'wishlist',
   'not-found',
-  'register-company'          // <-- NEW: company registration page
+  'register-company',
+  'customer-login',      // Login page route name
+  'admin-login',         // Admin login route name
+  'forgot-password',     // Forgot password page
+  'reset-password'       // Reset password page
 ]
 
 // List of public path patterns (for fallback)
@@ -39,8 +43,11 @@ const publicPathPatterns = [
   '/contact',
   '/about',
   '/wishlist',
-  '/admin/login',
-  '/register-company'         // <-- NEW: path pattern for safety
+  '/login',              // Customer login path
+  '/admin/login',        // Admin login path
+  '/register-company',   // Company registration
+  '/forgot-password',    // Forgot password
+  '/reset-password'      // Reset password
 ]
 
 const router = createRouter({
@@ -88,7 +95,7 @@ router.beforeEach(async (to, from, next) => {
   const isPublicPath = publicPathPatterns.some(pattern => 
     to.path === pattern || to.path.startsWith(pattern + '/')
   )
-  
+
   if (isPublicPath) {
     console.log('🌍 Public route detected by path pattern:', to.path)
     return next()
@@ -97,7 +104,7 @@ router.beforeEach(async (to, from, next) => {
   // ============================================
   // 🔐 PROTECTED ROUTES - REQUIRE AUTHENTICATION
   // ============================================
-  
+
   // Check authentication status
   if (!authStore.isAuthenticated) {
     console.log('🔐 Checking authentication status...')
