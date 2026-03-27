@@ -223,22 +223,23 @@ const form = reactive({
 // Helper to wait
 const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
 
-// Direct database query with exponential backoff – same as registration page
+// Direct database query with exponential backoff using user_id column
 const fetchAdminDirect = async (userId: string): Promise<any> => {
   const supabase = supabaseSafe.client
   let attempts = 0
-  const maxAttempts = 20
-  let delay = 1000 // start with 1 second
+  const maxAttempts = 30
+  let delay = 2000 // start with 2 seconds
 
   while (attempts < maxAttempts) {
     attempts++
-    console.log(`🔍 Direct query attempt ${attempts}/${maxAttempts} for user ${userId}`)
+    console.log(`🔍 Direct query attempt ${attempts}/${maxAttempts} for user_id: ${userId}`)
 
+    // Query using user_id column (matches auth user ID)
     const { data: admin, error } = await supabase
       .from('admins')
       .select('*')
-      .eq('id', userId)
-      .maybeSingle() // use maybeSingle to avoid error when no row
+      .eq('user_id', userId)
+      .maybeSingle()
 
     if (error) {
       console.warn(`Attempt ${attempts} error:`, error.message)
@@ -252,7 +253,7 @@ const fetchAdminDirect = async (userId: string): Promise<any> => {
     if (attempts < maxAttempts) {
       console.log(`Waiting ${delay}ms before next attempt...`)
       await wait(delay)
-      delay = Math.min(delay * 1.5, 5000) // exponential backoff, max 5 seconds
+      delay = Math.min(delay * 1.5, 10000) // exponential backoff, max 10 seconds
     }
   }
 
@@ -320,8 +321,8 @@ const handleLogin = async () => {
     console.log('⏳ Waiting 2 seconds for session consistency...')
     await wait(2000)
 
-    // 3. Directly fetch admin with retry
-    console.log('🔍 Starting admin fetch with direct queries...')
+    // 3. Directly fetch admin with retry (using user_id column)
+    console.log('🔍 Starting admin fetch with direct queries (user_id column)...')
     const admin = await fetchAdminDirect(userId)
 
     if (!admin) {
@@ -332,7 +333,7 @@ const handleLogin = async () => {
 
     // 4. Convert to AdminUser and set in store
     const adminUser = {
-      uid: admin.id,
+      uid: admin.user_id,                                    // user_id from admins table
       email: admin.email,
       displayName: admin.display_name || admin.email,
       role: admin.role,
@@ -382,5 +383,3 @@ const handleLogin = async () => {
   }
 }
 </script>
-
-     
