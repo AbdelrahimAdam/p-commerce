@@ -131,9 +131,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { supabaseSafe } from '@/supabase/client'
-import { useAuthStore } from '@/stores/auth'
 
-const authStore = useAuthStore()
 const rootDomain = import.meta.env.VITE_ROOT_DOMAIN || 'localhost:5173'
 
 const form = ref({
@@ -176,10 +174,10 @@ const handleSubmit = async () => {
   error.value = null
 
   try {
-    console.log('🚀 Starting registration with trigger...')
-    
-    // Sign up with Supabase - the database trigger will handle tenant and admin creation
+    console.log('🚀 Starting registration...')
     const supabase = supabaseSafe.client
+    
+    // Sign up - trigger will create tenant and admin
     const { error: signUpError } = await supabase.auth.signUp({
       email: form.value.email,
       password: form.value.password,
@@ -193,55 +191,30 @@ const handleSubmit = async () => {
       }
     })
 
-    if (signUpError) {
-      console.error('Sign up error:', signUpError)
-      throw signUpError
-    }
+    if (signUpError) throw signUpError
     
-    console.log('✅ User created, waiting for database trigger...')
+    console.log('✅ User created successfully!')
+    console.log('📧 Please check your email to confirm your account')
     
-    // Wait 3 seconds for the trigger to run
-    await new Promise(resolve => setTimeout(resolve, 3000))
+    // Store the email and slug for the login page
+    localStorage.setItem('pending_registration_email', form.value.email)
+    localStorage.setItem('pending_registration_slug', form.value.slug)
     
-    // Now sign in
-    console.log('🔐 Signing in...')
-    const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-      email: form.value.email,
-      password: form.value.password
-    })
+    // Show success message
+    error.value = null // Clear any previous errors
     
-    if (signInError) {
-      console.error('Sign in error:', signInError)
-      throw signInError
-    }
+    // Redirect to login page with tenant and redirect params
+    const encodedRedirect = encodeURIComponent(`/store/${form.value.slug}/admin/dashboard`)
+    const loginUrl = `/login?tenant=${form.value.slug}&redirect=${encodedRedirect}&registered=true`
     
-    console.log('✅ Logged in, user ID:', signInData.user?.id)
-    
-    // Wait a bit more for the trigger to complete
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    
-    // Fetch the admin that was created by the trigger
-    const admin = await authStore.getAdminFromSupabase(signInData.user.id)
-    
-    if (admin) {
-      console.log('✅ Admin found, setting user...')
-      authStore.setAdminUser(admin)
-      console.log('✅ Redirecting to dashboard...')
-      
-      // Redirect to admin dashboard
-      const newUrl = `${window.location.protocol}//${rootDomain}/store/${form.value.slug}/admin/dashboard`
-      window.location.href = newUrl
-    } else {
-      console.warn('⚠️ Admin not found after trigger, redirecting to login')
-      // If admin not found, redirect to login with tenant slug
-      const newUrl = `${window.location.protocol}//${rootDomain}/login?tenant=${form.value.slug}&redirect=/store/${form.value.slug}/admin/dashboard`
-      window.location.href = newUrl
-    }
+    // Short delay to show success message, then redirect
+    setTimeout(() => {
+      window.location.href = loginUrl
+    }, 1500)
     
   } catch (err: any) {
     console.error('❌ Registration error:', err)
     error.value = err.message || 'Registration failed. Please try again.'
-  } finally {
     isLoading.value = false
   }
 }
