@@ -81,31 +81,58 @@ export const useAuthStore = defineStore('auth', () => {
   const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
 
   // ========== HELPERS ==========
-  const getAdminFromSupabase = async (userId: string): Promise<AdminUser | null> => {
+  const getAdminFromSupabase = async (userId: string, maxRetries: number = 15, initialDelay: number = 1000): Promise<AdminUser | null> => {
     const supabase = supabaseSafe.client
-    const { data, error: fetchError } = await supabase
-      .from('admins')
-      .select('*')
-      .eq('id', userId)
-      .single()
-
-    if (fetchError || !data) return null
-
-    const adminData = data as unknown as SupabaseAdmin
-    return {
-      uid: adminData.id,
-      email: adminData.email,
-      displayName: adminData.display_name || adminData.email,
-      role: adminData.role as 'admin' | 'super-admin',
-      tenantId: adminData.tenant_id,
-      isActive: adminData.is_active !== false,
-      permissions: adminData.permissions || ['all'],
-      photoURL: adminData.photo_url || undefined,
-      phoneNumber: adminData.phone_number || undefined,
-      createdAt: new Date(adminData.created_at),
-      updatedAt: new Date(adminData.updated_at),
-      lastLogin: adminData.last_login ? new Date(adminData.last_login) : new Date()
+    let delay = initialDelay
+    
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        console.log(`  [Attempt ${attempt}/${maxRetries}] Fetching admin for user: ${userId}`)
+        
+        const { data, error: fetchError } = await supabase
+          .from('admins')
+          .select('*')
+          .eq('id', userId)
+          .maybeSingle()
+        
+        if (fetchError) {
+          console.log(`  Attempt ${attempt} error:`, fetchError.message)
+        } else if (data) {
+          console.log(`  ✅ Admin found on attempt ${attempt}!`)
+          const adminData = data as unknown as SupabaseAdmin
+          return {
+            uid: adminData.id,
+            email: adminData.email,
+            displayName: adminData.display_name || adminData.email,
+            role: adminData.role as 'admin' | 'super-admin',
+            tenantId: adminData.tenant_id,
+            isActive: adminData.is_active !== false,
+            permissions: adminData.permissions || ['all'],
+            photoURL: adminData.photo_url || undefined,
+            phoneNumber: adminData.phone_number || undefined,
+            createdAt: new Date(adminData.created_at),
+            updatedAt: new Date(adminData.updated_at),
+            lastLogin: adminData.last_login ? new Date(adminData.last_login) : new Date()
+          }
+        } else {
+          console.log(`  Admin not found on attempt ${attempt}`)
+        }
+        
+        if (attempt < maxRetries) {
+          console.log(`  Waiting ${delay}ms before next attempt...`)
+          await wait(delay)
+          delay = Math.min(delay * 1.2, 5000) // Increase delay up to 5 seconds max
+        }
+      } catch (err) {
+        console.error(`  Error on attempt ${attempt}:`, err)
+        if (attempt === maxRetries) return null
+        await wait(delay)
+        delay = Math.min(delay * 1.2, 5000)
+      }
     }
+    
+    console.error(`❌ Admin not found after ${maxRetries} attempts`)
+    return null
   }
 
   const getCustomerFromSupabase = async (userId: string): Promise<CustomerUser | null> => {
@@ -175,15 +202,14 @@ export const useAuthStore = defineStore('auth', () => {
       })
       if (signInError || !data.user) throw new Error(signInError?.message || 'Invalid credentials')
       const userId = data.user.id
+      console.log('✅ Authenticated, user ID:', userId)
 
       // Wait a moment for the session to be available
-      await new Promise(resolve => setTimeout(resolve, 500))
+      await wait(1000)
 
-      // Fetch admin and customer (RLS will filter appropriately)
-      const [adminData, customerData] = await Promise.all([
-        getAdminFromSupabase(userId),
-        getCustomerFromSupabase(userId)
-      ])
+      // Fetch admin with retry
+      console.log('🔍 Fetching admin profile with retry...')
+      const adminData = await getAdminFromSupabase(userId, 15, 1000)
 
       if (adminData) {
         setAdminUser(adminData)
@@ -201,20 +227,17 @@ export const useAuthStore = defineStore('auth', () => {
 
         if (pendingRedirect && pendingTenant) {
           console.log('🔄 Found pending tenant redirect:', pendingRedirect)
-          // Clear stored values
           localStorage.removeItem('pending_redirect')
           localStorage.removeItem('pending_tenant_slug')
-
-          // Set the tenant in the tenant store
           tenantStore.setTenantAfterRegistration(adminData.tenantId, '', pendingTenant)
-
-          // Return with role and pending redirect flag
           return { ...adminData, role: 'admin', pendingRedirect }
         }
 
         return { ...adminData, role: 'admin' }
       }
 
+      // If no admin, try customer
+      const customerData = await getCustomerFromSupabase(userId)
       if (customerData) {
         setCustomerUser(customerData, credentials.remember)
         const updateData = {
@@ -418,7 +441,7 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  // Address management
+  // Address management (keep all existing address methods - unchanged)
   const addCustomerAddress = async (address: Address): Promise<void> => {
     if (!customer.value) throw new Error('No customer logged in')
     isLoading.value = true
@@ -599,7 +622,6 @@ export const useAuthStore = defineStore('auth', () => {
     try {
       console.log('🚀 Calling registration API...')
 
-      // Call the serverless function
       const response = await fetch('/api/register-company', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -612,7 +634,6 @@ export const useAuthStore = defineStore('auth', () => {
       const { tenantId, uid, domain: fullDomain, slug } = result
       console.log('✅ API response:', { tenantId, uid, fullDomain, slug })
 
-      // Now log in with the created user
       console.log('🔐 Logging in...')
       const supabase = supabaseSafe.client
       const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
@@ -622,41 +643,14 @@ export const useAuthStore = defineStore('auth', () => {
       if (signInError) throw signInError
       console.log('✅ Logged in:', signInData.user?.id)
 
-      // Wait a moment for session to be ready
       await wait(2000)
 
-      // Fetch the admin with multiple retries
-      let admin = null
-      let attempts = 0
-      const maxAttempts = 15
+      // Fetch admin with retry using the enhanced function
+      console.log('🔍 Fetching admin with retry...')
+      const admin = await getAdminFromSupabase(uid, 15, 1000)
 
-      while (!admin && attempts < maxAttempts) {
-        attempts++
-        console.log(`Attempt ${attempts}/${maxAttempts} to fetch admin...`)
-
-        try {
-          admin = await getAdminFromSupabase(uid)
-          if (admin) {
-            console.log('✅ Admin found on attempt', attempts)
-            break
-          }
-        } catch (err) {
-          console.log(`Attempt ${attempts} failed:`, err)
-        }
-
-        if (!admin && attempts < maxAttempts) {
-          // Exponential backoff: 1s, 2s, 4s, etc. up to 10s
-          const delay = Math.min(1000 * Math.pow(1.5, attempts), 10000)
-          console.log(`Waiting ${delay}ms before next attempt...`)
-          await wait(delay)
-        }
-      }
-
-      // If we still don't have admin, create a fallback admin
       if (!admin) {
-        console.warn('⚠️ Admin not found after', maxAttempts, 'attempts. Creating fallback admin.')
-
-        // Create a fallback admin object from the registration data
+        console.warn('⚠️ Admin not found after retries. Creating fallback admin.')
         const fallbackAdmin: AdminUser = {
           uid,
           email: data.email,
@@ -670,35 +664,10 @@ export const useAuthStore = defineStore('auth', () => {
           lastLogin: new Date()
         }
         setAdminUser(fallbackAdmin)
-
-        // Also try to create the admin directly if it doesn't exist (using getTable to bypass type issues)
-        try {
-          const { error: insertError } = await getTable('admins')
-            .insert({
-              id: uid,
-              tenant_id: tenantId,
-              role: 'admin',
-              email: data.email,
-              display_name: data.displayName,
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString(),
-              is_active: true,
-              permissions: ['all']
-            })
-
-          if (insertError) {
-            console.warn('Fallback admin insert failed:', insertError)
-          } else {
-            console.log('✅ Fallback admin created')
-          }
-        } catch (err) {
-          console.warn('Fallback admin creation error:', err)
-        }
       } else {
         setAdminUser(admin)
       }
 
-      // Set the tenant in the tenant store with slug
       if (tenantId && slug) {
         const domainToSet = fullDomain || `${slug}.${import.meta.env.VITE_ROOT_DOMAIN}`
         tenantStore.setTenantAfterRegistration(tenantId, domainToSet, slug)
