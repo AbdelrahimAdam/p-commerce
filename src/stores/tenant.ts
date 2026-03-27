@@ -209,17 +209,6 @@ export const useTenantStore = defineStore('tenant', () => {
     localStorage.setItem(cacheKey, JSON.stringify(cacheData))
 
     resolveReady()
-    } catch (err: any) {
-      console.error('❌ Tenant resolution failed:', err)
-      error.value = err?.message || 'Failed to resolve tenant'
-      tenantId.value = null
-      tenantDomain.value = null
-      tenantSlug.value = null
-      rejectReady(err)
-    } finally {
-      isLoading.value = false
-      isInitialized.value = true
-    }
   }
 
   const setTenantAfterRegistration = (id: string, domain: string, slug: string) => {
