@@ -1,4 +1,4 @@
-// src/stores/homepage.ts – UPDATED with tenant-specific safe queries
+// src/stores/homepage.ts – FIXED with correct tenant store properties
 import { defineStore } from 'pinia'
 import { ref, reactive, onUnmounted } from 'vue'
 import { supabaseSafe } from '@/supabase/client'
@@ -100,6 +100,19 @@ export const useHomepageStore = defineStore('homepage', () => {
   const getCacheKey = (tenantId: string) => `homepage_cache_${tenantId}_v2`
   const getCacheTimestampKey = (tenantId: string) => `homepage_cache_timestamp_${tenantId}_v2`
   const CACHE_DURATION = 10 * 60 * 1000 // 10 minutes
+
+  // Helper to get current tenant ID
+  const getCurrentTenantId = (): string | null => {
+    // Try to get from tenant store first
+    if (tenantStore.tenantId) {
+      return tenantStore.tenantId
+    }
+    // Fallback to auth store's current tenant
+    if (authStore.currentTenant) {
+      return authStore.currentTenant
+    }
+    return null
+  }
 
   // =================== HELPERS ===================
   const checkPermission = (): boolean => {
@@ -257,7 +270,7 @@ export const useHomepageStore = defineStore('homepage', () => {
       error.value = ''
       
       // Get current tenant from tenant store
-      const tenantId = tenantStore.currentTenantId || authStore.currentTenant
+      const tenantId = tenantStore.tenantId || authStore.currentTenant
       
       if (!tenantId) {
         console.log('No tenant found – using default homepage data')
@@ -318,7 +331,7 @@ export const useHomepageStore = defineStore('homepage', () => {
       error.value = err.message || 'Failed to load homepage data'
       
       // Fall back to cached or default data on error
-      const tenantId = tenantStore.currentTenantId || authStore.currentTenant
+      const tenantId = tenantStore.tenantId || authStore.currentTenant
       if (tenantId) {
         const cachedData = getCachedData(tenantId)
         if (cachedData) {
@@ -336,7 +349,7 @@ export const useHomepageStore = defineStore('homepage', () => {
   }
 
   const updateHomepageData = async (updates: Partial<HomepageData>): Promise<boolean> => {
-    const tenantId = tenantStore.currentTenantId || authStore.currentTenant
+    const tenantId = tenantStore.tenantId || authStore.currentTenant
     if (!tenantId) {
       throw new Error('No tenant – cannot update homepage')
     }
@@ -396,7 +409,7 @@ export const useHomepageStore = defineStore('homepage', () => {
   }
 
   const resetToDefaults = async (): Promise<boolean> => {
-    const tenantId = tenantStore.currentTenantId || authStore.currentTenant
+    const tenantId = tenantStore.tenantId || authStore.currentTenant
     if (!tenantId) {
       error.value = 'No tenant – cannot reset'
       return false
@@ -426,7 +439,7 @@ export const useHomepageStore = defineStore('homepage', () => {
   }
 
   const checkConnection = async (): Promise<{ connected: boolean; lastUpdate?: string }> => {
-    const tenantId = tenantStore.currentTenantId || authStore.currentTenant
+    const tenantId = tenantStore.tenantId || authStore.currentTenant
     if (!tenantId) {
       return { connected: false }
     }
@@ -452,7 +465,7 @@ export const useHomepageStore = defineStore('homepage', () => {
 
   const initializeHomepageData = async (): Promise<boolean> => {
     // Creates a default homepage document for the current tenant if not exists
-    const tenantId = tenantStore.currentTenantId || authStore.currentTenant
+    const tenantId = tenantStore.tenantId || authStore.currentTenant
     if (!tenantId) {
       error.value = 'No tenant – cannot initialize homepage data'
       return false
