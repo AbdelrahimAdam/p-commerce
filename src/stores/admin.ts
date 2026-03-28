@@ -1,19 +1,22 @@
-// src/stores/admin.ts
+// src/stores/admin.ts – UPDATED with safe queries
 import { defineStore } from 'pinia'
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { supabaseSafe, getTable } from '@/supabase/client'
 import type { AdminUser, CreateAdminDto, UpdateAdminDto } from '@/types/admin'
 import { useAuthStore } from './auth'
+import { useTenantStore } from './tenant'
 
 // Helper to get Supabase client (throws if null)
 const getClient = () => supabaseSafe.client
 
 export const useAdminStore = defineStore('admin', () => {
   const authStore = useAuthStore()
+  const tenantStore = useTenantStore()
 
   const admins = ref<AdminUser[]>([])
   const loading = ref(false)
   const error = ref<string | null>(null)
+  const isInitialized = ref(false)
   const stats = ref({
     total: 0,
     superAdmins: 0,
@@ -21,7 +24,18 @@ export const useAdminStore = defineStore('admin', () => {
     inactiveAdmins: 0
   })
 
-  // Convert Supabase row to AdminUser (matches type exactly)
+  // Check if we're on an admin page
+  const isAdminPage = computed(() => {
+    const path = window.location.pathname
+    return path.startsWith('/admin') && !path.startsWith('/admin/login')
+  })
+
+  // Check if user is authenticated as admin
+  const isAuthenticatedAdmin = computed(() => {
+    return authStore.isAdmin && authStore.isAuthenticated
+  })
+
+  // Convert Supabase row to AdminUser
   const rowToAdmin = (row: any): AdminUser => ({
     uid: row.id,
     email: row.email,
@@ -44,10 +58,16 @@ export const useAdminStore = defineStore('admin', () => {
   }
 
   const fetchAdmins = async () => {
+    // Only fetch if we're on an admin page and user is authenticated
+    if (!isAdminPage.value || !isAuthenticatedAdmin.value) {
+      console.log('🔒 Admin fetch skipped - not on admin page or not authenticated')
+      return
+    }
+
     loading.value = true
     error.value = null
     try {
-      const tenantId = authStore.currentTenant
+      const tenantId = tenantStore.tenantId || authStore.currentTenant
       if (!tenantId) {
         admins.value = []
         updateStats()
@@ -65,20 +85,29 @@ export const useAdminStore = defineStore('admin', () => {
 
       admins.value = ((data as any[]) || []).map(rowToAdmin)
       updateStats()
+      isInitialized.value = true
     } catch (err: any) {
       error.value = err.message || 'Failed to fetch admins'
       console.error('Error fetching admins:', err)
-      throw err
+      // Don't throw on public pages
+      if (isAdminPage.value) {
+        throw err
+      }
     } finally {
       loading.value = false
     }
   }
 
   const createAdmin = async (adminData: CreateAdminDto): Promise<AdminUser> => {
+    // Only allow on admin pages with authentication
+    if (!isAdminPage.value || !isAuthenticatedAdmin.value) {
+      throw new Error('Permission denied: Not authorized')
+    }
+
     loading.value = true
     error.value = null
     try {
-      const tenantId = adminData.tenantId || authStore.currentTenant
+      const tenantId = adminData.tenantId || tenantStore.tenantId || authStore.currentTenant
       if (!tenantId) throw new Error('Tenant ID is required')
 
       const client = getClient()
@@ -96,7 +125,7 @@ export const useAdminStore = defineStore('admin', () => {
 
       const userId = signUpData.user.id
 
-      // Insert into admins table – use getTable to bypass strict typing
+      // Insert into admins table
       const dbInsert = {
         id: userId,
         tenant_id: tenantId,
@@ -139,6 +168,11 @@ export const useAdminStore = defineStore('admin', () => {
   }
 
   const updateAdmin = async (uid: string, updateData: UpdateAdminDto) => {
+    // Only allow on admin pages with authentication
+    if (!isAdminPage.value || !isAuthenticatedAdmin.value) {
+      throw new Error('Permission denied: Not authorized')
+    }
+
     loading.value = true
     error.value = null
     try {
@@ -150,7 +184,6 @@ export const useAdminStore = defineStore('admin', () => {
 
       if (Object.keys(updatePayload).length === 1) return // only updated_at, nothing else changed
 
-      // Use getTable to bypass strict typing
       const { error: updateError } = await getTable('admins')
         .update(updatePayload)
         .eq('id', uid)
@@ -175,10 +208,14 @@ export const useAdminStore = defineStore('admin', () => {
   }
 
   const deleteAdmin = async (uid: string) => {
+    // Only allow on admin pages with authentication
+    if (!isAdminPage.value || !isAuthenticatedAdmin.value) {
+      throw new Error('Permission denied: Not authorized')
+    }
+
     loading.value = true
     error.value = null
     try {
-      // Use getTable to bypass strict typing
       const { error: deleteError } = await getTable('admins')
         .delete()
         .eq('id', uid)
@@ -197,6 +234,11 @@ export const useAdminStore = defineStore('admin', () => {
   }
 
   const resetAdminPassword = async (email: string) => {
+    // Only allow on admin pages with authentication
+    if (!isAdminPage.value || !isAuthenticatedAdmin.value) {
+      throw new Error('Permission denied: Not authorized')
+    }
+
     loading.value = true
     error.value = null
     try {
@@ -220,8 +262,14 @@ export const useAdminStore = defineStore('admin', () => {
 
   const searchAdmins = async (searchTerm: string): Promise<AdminUser[]> => {
     if (!searchTerm.trim()) return []
+    
+    // Only search on admin pages with authentication
+    if (!isAdminPage.value || !isAuthenticatedAdmin.value) {
+      return []
+    }
+    
     try {
-      const tenantId = authStore.currentTenant
+      const tenantId = tenantStore.tenantId || authStore.currentTenant
       if (!tenantId) return []
 
       const client = getClient()
@@ -241,8 +289,12 @@ export const useAdminStore = defineStore('admin', () => {
   }
 
   const updateLastLogin = async (uid: string) => {
+    // Only update on admin pages with authentication
+    if (!isAdminPage.value || !isAuthenticatedAdmin.value) {
+      return
+    }
+    
     try {
-      // Use getTable to bypass strict typing
       const { error: updateError } = await getTable('admins')
         .update({ last_login: new Date().toISOString() })
         .eq('id', uid)
@@ -262,11 +314,19 @@ export const useAdminStore = defineStore('admin', () => {
     return admins.value.find(admin => admin.uid === uid) || null
   }
 
+  const initialize = async () => {
+    // Only initialize if on admin page and authenticated
+    if (isAdminPage.value && isAuthenticatedAdmin.value) {
+      await fetchAdmins()
+    }
+  }
+
   return {
     admins,
     loading,
     error,
     stats,
+    isInitialized,
     fetchAdmins,
     createAdmin,
     updateAdmin,
@@ -275,6 +335,7 @@ export const useAdminStore = defineStore('admin', () => {
     fetchAdminStats,
     searchAdmins,
     updateLastLogin,
-    getAdminById
+    getAdminById,
+    initialize
   }
 })
