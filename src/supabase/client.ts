@@ -1,5 +1,5 @@
 // src/supabase/client.ts
-import { createClient, SupabaseClient, SupabaseClientOptions } from '@supabase/supabase-js'
+import { createClient, SupabaseClient, SupabaseClientOptions, AuthSessionResponse } from '@supabase/supabase-js'
 import type { Product, Category, AdminUser } from '@/types'
 
 // Define your Database type using your existing types
@@ -173,8 +173,8 @@ export const isAuthenticated = async (): Promise<boolean> => {
   const client = getSupabaseClient()
   if (!client) return false
   
-  const { data: { session } } = await client.auth.getSession()
-  return !!session
+  const response = await client.auth.getSession()
+  return !!response.data.session
 }
 
 /**
@@ -204,7 +204,7 @@ export const safeQuery = async <T>(
     return { data: options?.fallbackData || null, error: { message: 'Supabase not available' }, isAuthenticated: false }
   }
   
-  const { session } = await client.auth.getSession()
+  const { data: { session } } = await client.auth.getSession()
   const hasAuth = !!session
   
   // If auth is required and user is not authenticated, return fallback
@@ -354,8 +354,8 @@ export const supabaseSafe = {
   async isAuthenticated(): Promise<boolean> {
     const client = getSupabaseClient()
     if (!client) return false
-    const { data: { session } } = await client.auth.getSession()
-    return !!session
+    const response = await client.auth.getSession()
+    return !!response.data.session
   },
 
   /**
@@ -391,7 +391,8 @@ export const supabaseSafe = {
       return { data: fallbackData || null, error: { message: 'Supabase not available' }, isAuthenticated: false }
     }
     
-    const { data: { session } } = await client.auth.getSession()
+    const response = await client.auth.getSession()
+    const session = response.data.session
     const hasAuth = !!session
     
     if (!hasAuth) {
