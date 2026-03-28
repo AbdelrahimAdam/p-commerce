@@ -21,14 +21,28 @@ export interface Database {
         Insert: Omit<AdminUser, 'uid' | 'createdAt'>
         Update: Partial<AdminUser>
       }
-      // Add other tables as needed
+      admins: {
+        Row: any
+        Insert: any
+        Update: any
+      }
+      customers: {
+        Row: any
+        Insert: any
+        Update: any
+      }
+      tenants: {
+        Row: any
+        Insert: any
+        Update: any
+      }
       orders: {
-        Row: any // Define later
+        Row: any
         Insert: any
         Update: any
       }
       wishlist: {
-        Row: any // Define later
+        Row: any
         Insert: any
         Update: any
       }
@@ -153,6 +167,62 @@ export const isSupabaseConfigured = (): boolean => {
 export const getTable = (table: string) => supabaseSafe.client.from(table) as any
 
 /**
+ * Check if user is authenticated
+ */
+export const isAuthenticated = async (): Promise<boolean> => {
+  const client = getSupabaseClient()
+  if (!client) return false
+  
+  const { data: { session } } = await client.auth.getSession()
+  return !!session
+}
+
+/**
+ * Get current user session
+ */
+export const getCurrentSession = async () => {
+  const client = getSupabaseClient()
+  if (!client) return { session: null, user: null }
+  
+  const { data: { session } } = await client.auth.getSession()
+  return { 
+    session, 
+    user: session?.user || null 
+  }
+}
+
+/**
+ * Safe query helper - only runs if authenticated
+ */
+export const safeQuery = async <T>(
+  queryFn: (client: SupabaseClient<Database>) => Promise<{ data: T | null; error: any }>,
+  options?: { requireAuth?: boolean; fallbackData?: T | null }
+): Promise<{ data: T | null; error: any; isAuthenticated: boolean }> => {
+  const client = getSupabaseClient()
+  
+  if (!client) {
+    return { data: options?.fallbackData || null, error: { message: 'Supabase not available' }, isAuthenticated: false }
+  }
+  
+  const { session } = await client.auth.getSession()
+  const hasAuth = !!session
+  
+  // If auth is required and user is not authenticated, return fallback
+  if (options?.requireAuth && !hasAuth) {
+    console.log('🔒 Auth required but user not authenticated - returning fallback data')
+    return { data: options?.fallbackData || null, error: null, isAuthenticated: false }
+  }
+  
+  try {
+    const result = await queryFn(client)
+    return { ...result, isAuthenticated: hasAuth }
+  } catch (error) {
+    console.error('Query failed:', error)
+    return { data: null, error, isAuthenticated: hasAuth }
+  }
+}
+
+/**
  * Safe wrapper for Supabase operations
  * Provides null-safe access to supabase client with your types
  */
@@ -223,6 +293,18 @@ export const supabaseSafe = {
   },
 
   /**
+   * Safe from helper - returns null if not authenticated
+   * Use this for public pages
+   */
+  safeFrom(table: keyof Database['public']['Tables']) {
+    const client = getSupabaseClient()
+    if (!client) {
+      return null
+    }
+    return client.from(table as string)
+  },
+
+  /**
    * Auth helper - returns auth object or throws
    */
   get auth() {
@@ -264,6 +346,66 @@ export const supabaseSafe = {
       throw new Error('Supabase client is not available')
     }
     return client.rpc(fn, params)
+  },
+
+  /**
+   * Check if user is authenticated
+   */
+  async isAuthenticated(): Promise<boolean> {
+    const client = getSupabaseClient()
+    if (!client) return false
+    const { data: { session } } = await client.auth.getSession()
+    return !!session
+  },
+
+  /**
+   * Get current user
+   */
+  async getCurrentUser() {
+    const client = getSupabaseClient()
+    if (!client) return null
+    const { data: { user } } = await client.auth.getUser()
+    return user
+  },
+
+  /**
+   * Get current session
+   */
+  async getCurrentSession() {
+    const client = getSupabaseClient()
+    if (!client) return null
+    const { data: { session } } = await client.auth.getSession()
+    return session
+  },
+
+  /**
+   * Query with auth check - automatically handles unauthenticated state
+   * Use this for queries that should only run when user is logged in
+   */
+  async queryWithAuth<T>(
+    queryFn: (client: SupabaseClient<Database>) => Promise<{ data: T | null; error: any }>,
+    fallbackData?: T | null
+  ): Promise<{ data: T | null; error: any; isAuthenticated: boolean }> {
+    const client = getSupabaseClient()
+    if (!client) {
+      return { data: fallbackData || null, error: { message: 'Supabase not available' }, isAuthenticated: false }
+    }
+    
+    const { data: { session } } = await client.auth.getSession()
+    const hasAuth = !!session
+    
+    if (!hasAuth) {
+      console.log('🔒 User not authenticated - skipping protected query')
+      return { data: fallbackData || null, error: null, isAuthenticated: false }
+    }
+    
+    try {
+      const result = await queryFn(client)
+      return { ...result, isAuthenticated: true }
+    } catch (error) {
+      console.error('Query failed:', error)
+      return { data: null, error, isAuthenticated: true }
+    }
   }
 }
 
