@@ -1,8 +1,9 @@
-// src/stores/homepage.ts – SUPABASE VERSION
+// src/stores/homepage.ts – UPDATED with tenant-specific safe queries
 import { defineStore } from 'pinia'
 import { ref, reactive, onUnmounted } from 'vue'
 import { supabaseSafe } from '@/supabase/client'
 import { useAuthStore } from '@/stores/auth'
+import { useTenantStore } from '@/stores/tenant'
 
 // =================== TYPE DEFINITIONS ===================
 
@@ -61,6 +62,7 @@ const getClient = () => supabaseSafe.client
 
 export const useHomepageStore = defineStore('homepage', () => {
   const authStore = useAuthStore()
+  const tenantStore = useTenantStore()
 
   // =================== DEFAULT DATA ===================
   const defaultLocalData: HomepageData = {
@@ -79,7 +81,7 @@ export const useHomepageStore = defineStore('homepage', () => {
       isDarkMode: false,
       defaultLanguage: 'ar'
     },
-    tenantId: authStore.currentTenant ?? undefined,
+    tenantId: undefined,
     lastUpdated: new Date().toISOString(),
     source: 'default'
   }
@@ -88,13 +90,15 @@ export const useHomepageStore = defineStore('homepage', () => {
   const homepageData = reactive<HomepageData>({ ...defaultLocalData })
   const isLoading = ref(false)
   const error = ref<string>('')
+  const currentTenantId = ref<string | null>(null)
 
   let subscription: ReturnType<ReturnType<typeof getClient>['channel']> | null = null
   const isListening = ref(false)
   const listeners = new Set<ListenerCallback>()
 
-  const CACHE_KEY = 'homepage_cache_v2'
-  const CACHE_TIMESTAMP_KEY = 'homepage_cache_timestamp_v2'
+  // Cache keys that are tenant-specific
+  const getCacheKey = (tenantId: string) => `homepage_cache_${tenantId}_v2`
+  const getCacheTimestampKey = (tenantId: string) => `homepage_cache_timestamp_${tenantId}_v2`
   const CACHE_DURATION = 10 * 60 * 1000 // 10 minutes
 
   // =================== HELPERS ===================
@@ -105,30 +109,60 @@ export const useHomepageStore = defineStore('homepage', () => {
     return true
   }
 
-  const getCachedData = (): HomepageData | null => {
+  const getCachedData = (tenantId: string): HomepageData | null => {
     try {
-      const cached = localStorage.getItem(CACHE_KEY)
-      const timestamp = localStorage.getItem(CACHE_TIMESTAMP_KEY)
+      const cacheKey = getCacheKey(tenantId)
+      const timestampKey = getCacheTimestampKey(tenantId)
+      const cached = localStorage.getItem(cacheKey)
+      const timestamp = localStorage.getItem(timestampKey)
+      
       if (cached && timestamp) {
         const cacheAge = Date.now() - parseInt(timestamp)
-        if (cacheAge < CACHE_DURATION) return JSON.parse(cached)
-        localStorage.removeItem(CACHE_KEY)
-        localStorage.removeItem(CACHE_TIMESTAMP_KEY)
+        if (cacheAge < CACHE_DURATION) {
+          const parsed = JSON.parse(cached)
+          return parsed
+        }
+        // Cache expired, clear it
+        localStorage.removeItem(cacheKey)
+        localStorage.removeItem(timestampKey)
       }
-    } catch (err) { /* ignore */ }
+    } catch (err) {
+      console.warn('Failed to read cache:', err)
+    }
     return null
   }
 
-  const saveToCache = (data: HomepageData) => {
+  const saveToCache = (tenantId: string, data: HomepageData) => {
     try {
-      localStorage.setItem(CACHE_KEY, JSON.stringify({ ...data, source: 'cache' }))
-      localStorage.setItem(CACHE_TIMESTAMP_KEY, Date.now().toString())
-    } catch (err) { /* ignore */ }
+      const cacheKey = getCacheKey(tenantId)
+      const timestampKey = getCacheTimestampKey(tenantId)
+      localStorage.setItem(cacheKey, JSON.stringify({ ...data, source: 'cache', tenantId }))
+      localStorage.setItem(timestampKey, Date.now().toString())
+    } catch (err) {
+      console.warn('Failed to save cache:', err)
+    }
   }
 
-  const clearCache = () => {
-    localStorage.removeItem(CACHE_KEY)
-    localStorage.removeItem(CACHE_TIMESTAMP_KEY)
+  const clearCache = (tenantId?: string) => {
+    try {
+      if (tenantId) {
+        localStorage.removeItem(getCacheKey(tenantId))
+        localStorage.removeItem(getCacheTimestampKey(tenantId))
+      } else {
+        // Clear all homepage caches
+        const keys = Object.keys(localStorage)
+        keys.forEach(key => {
+          if (key.startsWith('homepage_cache_')) {
+            localStorage.removeItem(key)
+          }
+          if (key.startsWith('homepage_cache_timestamp_')) {
+            localStorage.removeItem(key)
+          }
+        })
+      }
+    } catch (err) {
+      console.warn('Failed to clear cache:', err)
+    }
   }
 
   const notifyListeners = (data: HomepageData) => {
@@ -136,14 +170,19 @@ export const useHomepageStore = defineStore('homepage', () => {
   }
 
   // =================== SUPABASE REAL‑TIME LISTENER ===================
-  const setupSupabaseListener = async (): Promise<void> => {
-    const tenantId = authStore.currentTenant
+  const setupSupabaseListener = async (tenantId: string): Promise<void> => {
     if (!tenantId) {
       console.warn('No tenant ID – cannot setup homepage listener')
       return
     }
 
-    if (subscription) return
+    if (subscription) {
+      // Clean up existing subscription if tenant changed
+      const client = getClient()
+      client.removeChannel(subscription)
+      subscription = null
+      isListening.value = false
+    }
 
     try {
       const client = getClient()
@@ -162,20 +201,22 @@ export const useHomepageStore = defineStore('homepage', () => {
             if (payload.eventType === 'DELETE') {
               // Document deleted – fallback to cached or default
               console.log('Homepage document deleted for tenant', tenantId)
-              const cached = getCachedData()
+              const cached = getCachedData(tenantId)
               if (cached) {
                 Object.assign(homepageData, cached)
                 notifyListeners(cached)
               } else {
-                Object.assign(homepageData, defaultLocalData)
-                notifyListeners(defaultLocalData)
+                const defaultData = { ...defaultLocalData, tenantId }
+                Object.assign(homepageData, defaultData)
+                notifyListeners(defaultData)
               }
             } else if (payload.new) {
               const data = payload.new as any
               const sections = data.sections as HomepageData
               if (sections) {
-                Object.assign(homepageData, { ...sections, source: 'supabase' })
-                saveToCache(homepageData)
+                const newData = { ...sections, source: 'supabase', tenantId }
+                Object.assign(homepageData, newData)
+                saveToCache(tenantId, homepageData)
                 notifyListeners(homepageData)
                 if (homepageData.settings?.isDarkMode) {
                   document.documentElement.classList.add('dark')
@@ -192,7 +233,7 @@ export const useHomepageStore = defineStore('homepage', () => {
             isListening.value = true
             console.log('📡 Homepage listener active for tenant', tenantId)
           } else if (status === 'CHANNEL_ERROR') {
-            console.error('Homepage channel error')
+            console.error('Homepage channel error for tenant', tenantId)
             isListening.value = false
           }
         })
@@ -214,58 +255,80 @@ export const useHomepageStore = defineStore('homepage', () => {
     try {
       isLoading.value = true
       error.value = ''
-      if (forceRefresh) clearCache()
+      
+      // Get current tenant from tenant store
+      const tenantId = tenantStore.currentTenantId || authStore.currentTenant
+      
+      if (!tenantId) {
+        console.log('No tenant found – using default homepage data')
+        Object.assign(homepageData, { ...defaultLocalData, tenantId: undefined })
+        notifyListeners(homepageData)
+        return
+      }
 
-      const cachedData = getCachedData()
+      // Update current tenant ID
+      currentTenantId.value = tenantId
+
+      if (forceRefresh) {
+        clearCache(tenantId)
+      }
+
+      // Try to get cached data first
+      const cachedData = getCachedData(tenantId)
       if (cachedData && !forceRefresh) {
+        console.log('📦 Using cached homepage data for tenant:', tenantId)
         Object.assign(homepageData, cachedData)
         notifyListeners(cachedData)
       }
 
-      const tenantId = authStore.currentTenant
-      if (!tenantId) {
-        console.log('No tenant – using cached/default homepage data')
-        if (!cachedData) {
-          Object.assign(homepageData, defaultLocalData)
-          saveToCache(homepageData)
-          notifyListeners(homepageData)
-        }
-        return
-      }
-
+      // Fetch fresh data from Supabase (public read is allowed)
       const client = getClient()
-      // Fetch from Supabase
       const { data, error: fetchError } = await client
         .from('homepage')
         .select('sections')
         .eq('tenant_id', tenantId)
         .maybeSingle()
 
-      if (fetchError) throw fetchError
+      if (fetchError) {
+        console.error('Error fetching homepage:', fetchError)
+        throw fetchError
+      }
 
       if (data && (data as any).sections) {
         const sections = (data as any).sections as HomepageData
-        Object.assign(homepageData, { ...sections, source: 'supabase' })
-        saveToCache(homepageData)
+        const freshData = { ...sections, source: 'supabase' as const, tenantId }
+        Object.assign(homepageData, freshData)
+        saveToCache(tenantId, homepageData)
         notifyListeners(homepageData)
+        console.log('✅ Loaded homepage data from Supabase for tenant:', tenantId)
       } else {
-        // No document exists yet – keep cached/default
-        if (!cachedData) {
-          Object.assign(homepageData, defaultLocalData)
-          saveToCache(homepageData)
-          notifyListeners(homepageData)
-        }
+        // No document exists yet – use default data for this tenant
+        console.log('No homepage document found for tenant, using defaults:', tenantId)
+        const defaultData = { ...defaultLocalData, tenantId, source: 'default' as const }
+        Object.assign(homepageData, defaultData)
+        saveToCache(tenantId, homepageData)
+        notifyListeners(homepageData)
       }
 
       // Set up real‑time listener after fetching initial data
-      await setupSupabaseListener()
+      await setupSupabaseListener(tenantId)
+      
     } catch (err: any) {
-      error.value = 'Failed to load homepage data'
-      console.error(err)
-      const cachedData = getCachedData()
-      if (cachedData) {
-        Object.assign(homepageData, cachedData)
-        notifyListeners(cachedData)
+      console.error('Failed to load homepage data:', err)
+      error.value = err.message || 'Failed to load homepage data'
+      
+      // Fall back to cached or default data on error
+      const tenantId = tenantStore.currentTenantId || authStore.currentTenant
+      if (tenantId) {
+        const cachedData = getCachedData(tenantId)
+        if (cachedData) {
+          Object.assign(homepageData, cachedData)
+          notifyListeners(cachedData)
+        } else {
+          const defaultData = { ...defaultLocalData, tenantId }
+          Object.assign(homepageData, defaultData)
+          notifyListeners(defaultData)
+        }
       }
     } finally {
       isLoading.value = false
@@ -273,7 +336,7 @@ export const useHomepageStore = defineStore('homepage', () => {
   }
 
   const updateHomepageData = async (updates: Partial<HomepageData>): Promise<boolean> => {
-    const tenantId = authStore.currentTenant
+    const tenantId = tenantStore.currentTenantId || authStore.currentTenant
     if (!tenantId) {
       throw new Error('No tenant – cannot update homepage')
     }
@@ -305,12 +368,14 @@ export const useHomepageStore = defineStore('homepage', () => {
 
       // Update local state
       Object.assign(homepageData, newData)
-      clearCache()
-      saveToCache(newData)
+      clearCache(tenantId)
+      saveToCache(tenantId, newData)
       notifyListeners(newData)
 
+      console.log('✅ Homepage updated for tenant:', tenantId)
       return true
     } catch (err: any) {
+      console.error('Failed to update homepage:', err)
       throw new Error(`Failed to update homepage: ${err.message}`)
     } finally {
       isLoading.value = false
@@ -331,7 +396,7 @@ export const useHomepageStore = defineStore('homepage', () => {
   }
 
   const resetToDefaults = async (): Promise<boolean> => {
-    const tenantId = authStore.currentTenant
+    const tenantId = tenantStore.currentTenantId || authStore.currentTenant
     if (!tenantId) {
       error.value = 'No tenant – cannot reset'
       return false
@@ -361,7 +426,7 @@ export const useHomepageStore = defineStore('homepage', () => {
   }
 
   const checkConnection = async (): Promise<{ connected: boolean; lastUpdate?: string }> => {
-    const tenantId = authStore.currentTenant
+    const tenantId = tenantStore.currentTenantId || authStore.currentTenant
     if (!tenantId) {
       return { connected: false }
     }
@@ -385,10 +450,9 @@ export const useHomepageStore = defineStore('homepage', () => {
     }
   }
 
-  const initializeFirebaseData = async (): Promise<boolean> => {
-    // This function name is kept for compatibility, but it's now Supabase.
-    // It creates a default homepage document for the current tenant if not exists.
-    const tenantId = authStore.currentTenant
+  const initializeHomepageData = async (): Promise<boolean> => {
+    // Creates a default homepage document for the current tenant if not exists
+    const tenantId = tenantStore.currentTenantId || authStore.currentTenant
     if (!tenantId) {
       error.value = 'No tenant – cannot initialize homepage data'
       return false
@@ -430,6 +494,7 @@ export const useHomepageStore = defineStore('homepage', () => {
 
       if (insertError) throw insertError
 
+      console.log('✅ Homepage initialized for tenant:', tenantId)
       return true
     } catch (err: any) {
       error.value = 'Failed to initialize homepage data: ' + err.message
@@ -455,6 +520,7 @@ export const useHomepageStore = defineStore('homepage', () => {
     isLoading,
     error,
     isListening,
+    currentTenantId,
 
     // ACTIONS
     loadHomepageData,
@@ -466,6 +532,6 @@ export const useHomepageStore = defineStore('homepage', () => {
     forceRefresh,
     clearCache,
     checkConnection,
-    initializeFirebaseData
+    initializeHomepageData
   }
 })
