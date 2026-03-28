@@ -174,15 +174,15 @@ const handleSubmit = async () => {
   error.value = null
 
   try {
-    const supabase = supabaseSafe.client
-    
     console.log('📝 Registering with metadata:', {
       displayName: form.value.displayName,
       companyName: form.value.companyName,
       slug: form.value.slug
     })
     
-    // Sign up with metadata - the trigger will handle tenant and admin creation
+    const supabase = supabaseSafe.client
+    
+    // Sign up with metadata - trigger will handle tenant and admin creation
     const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
       email: form.value.email,
       password: form.value.password,
@@ -208,26 +208,31 @@ const handleSubmit = async () => {
     console.log('✅ User created successfully')
     console.log('User ID:', signUpData.user.id)
     
-    // Wait for the trigger to complete (3 seconds is usually enough)
+    // Wait for the trigger to complete
     console.log('⏳ Waiting for trigger to create tenant and admin...')
-    await new Promise(resolve => setTimeout(resolve, 3000))
+    await new Promise(resolve => setTimeout(resolve, 5000))
     
-    // Verify the admin record was created
-    const { data: adminCheck, error: adminError } = await supabase
-      .from('admins')
-      .select('*')
-      .eq('user_id', signUpData.user.id)
-      .maybeSingle()
+    // Use safe query to verify admin record was created (only if authenticated)
+    const result = await supabaseSafe.queryWithAuth(
+      async (client) => {
+        return await client
+          .from('admins')
+          .select('*')
+          .eq('user_id', signUpData.user.id)
+          .maybeSingle()
+      },
+      null
+    )
     
-    if (adminError) {
-      console.error('Error checking admin:', adminError)
-    } else if (adminCheck) {
-      console.log('✅ Admin record verified:', adminCheck)
+    if (result.data) {
+      console.log('✅ Admin record verified:', result.data)
+    } else if (result.isAuthenticated) {
+      console.warn('⚠️ Admin record not found, but continuing')
     } else {
-      console.warn('⚠️ Admin record not found yet, but will continue')
+      console.log('Not authenticated yet, continuing...')
     }
     
-    // Store email for login page
+    // Store email and slug for login page
     localStorage.setItem('pending_registration_email', form.value.email)
     localStorage.setItem('pending_registration_slug', form.value.slug)
     
