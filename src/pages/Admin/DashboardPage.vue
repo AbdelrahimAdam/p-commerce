@@ -1,8 +1,29 @@
 <!-- src/pages/Admin/DashboardPage.vue -->
 <template>
   <div class="admin-dashboard">
+    <!-- Auth Loading State -->
+    <div v-if="authLoading" class="flex items-center justify-center p-8">
+      <div class="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary-500"></div>
+      <span class="ml-3 text-gray-600">{{ t('Checking authentication...') }}</span>
+    </div>
+
+    <!-- Not Authorized -->
+    <div v-else-if="!isAuthorized" class="flex items-center justify-center p-8">
+      <div class="text-center">
+        <svg class="w-16 h-16 mx-auto text-red-500 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                d="M12 15v2m0 0v2m0-2h2m-2 0H9m3-4a3 3 0 10-6 0 3 3 0 006 0z"/>
+        </svg>
+        <h2 class="text-xl font-bold text-gray-900 mb-2">{{ t('Access Denied') }}</h2>
+        <p class="text-gray-600 mb-4">{{ t('You do not have permission to access this page.') }}</p>
+        <router-link to="/admin/login" class="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700">
+          {{ t('Go to Login') }}
+        </router-link>
+      </div>
+    </div>
+
     <!-- Loading State -->
-    <div v-if="homepageStore.isLoading" class="flex items-center justify-center p-8">
+    <div v-else-if="homepageStore.isLoading" class="flex items-center justify-center p-8">
       <div class="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary-500"></div>
       <span class="ml-3 text-gray-600">{{ t('Loading dashboard...') }}</span>
     </div>
@@ -14,7 +35,7 @@
 
     <!-- Main Dashboard Content -->
     <div v-else class="space-y-6">
-      <!-- Stats Cards Grid (homepage only) -->
+      <!-- Stats Cards Grid -->
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         <!-- Hero Banner Card -->
         <div class="bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow p-4">
@@ -58,7 +79,7 @@
           </div>
         </div>
 
-        <!-- Dark Mode Status (example) -->
+        <!-- Dark Mode Status -->
         <div class="bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow p-4">
           <div class="flex items-center justify-between">
             <div>
@@ -80,7 +101,7 @@
         </div>
       </div>
 
-      <!-- Management Sections Grid (homepage only) -->
+      <!-- Management Sections Grid -->
       <div class="grid lg:grid-cols-2 gap-4">
         <!-- Hero Banner Management -->
         <div class="bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow overflow-hidden">
@@ -284,38 +305,55 @@ const languageStore = useLanguageStore()
 const homepageStore = useHomepageStore()
 const authStore = useAuthStore()
 
-// Admin guard
-if (!authStore.isAdmin) {
-  router.push('/admin')
-}
-
 const { t, formatDate } = languageStore
 
-// =================== COMPUTED ===================
+const authLoading = ref(true)
+const isAuthorized = ref(false)
+
 const homepageData = computed(() => homepageStore.homepageData)
 const heroBanner = computed({
   get: () => homepageData.value?.heroBanner || { imageUrl: '', linkText: '', linkUrl: '' },
-  set: (_val) => { /* empty setter for v-model compatibility */ }
+  set: () => {}
 })
 const activeOffers = computed(() => homepageData.value?.activeOffers || [])
 const settings = computed(() => homepageData.value?.settings || { isDarkMode: false, defaultLanguage: 'ar' })
 
-// =================== STATE ===================
 const showAddOfferModal = ref(false)
 const editingOfferData = ref<any>(null)
 const bannerFileInput = ref<HTMLInputElement | null>(null)
 
-// =================== METHODS ===================
+const checkAuth = async () => {
+  authLoading.value = true
+  try {
+    if (authStore.isLoading) {
+      await new Promise(resolve => setTimeout(resolve, 1000))
+    }
+    
+    const authenticated = authStore.isAuthenticated
+    const admin = authStore.isAdmin
+    
+    if (!authenticated) {
+      router.replace('/admin/login')
+      return
+    }
+    
+    if (!admin) {
+      router.replace('/admin/login')
+      return
+    }
+    
+    isAuthorized.value = true
+  } catch (error) {
+    console.error('Auth check error:', error)
+    router.replace('/admin/login')
+  } finally {
+    authLoading.value = false
+  }
+}
 
-// --- Initial Load ---
-onMounted(async () => {
-  await homepageStore.loadHomepageData()
-})
-
-// --- Hero Banner ---
 const handleImageError = (event: Event) => {
   const img = event.target as HTMLImageElement
-  img.src = '' // fallback placeholder
+  img.src = ''
 }
 
 const handleBannerImageUpload = async (event: Event) => {
@@ -340,7 +378,6 @@ const updateHeroBanner = async () => {
   }
 }
 
-// --- Offers ---
 const openAddOfferModal = () => {
   editingOfferData.value = null
   showAddOfferModal.value = true
@@ -360,10 +397,8 @@ const handleOfferSave = async (offerData: any) => {
   try {
     let updatedOffers
     if (editingOfferData.value) {
-      // edit
       updatedOffers = activeOffers.value.map(o => o.id === offerData.id ? offerData : o)
     } else {
-      // new
       const newId = Date.now().toString()
       updatedOffers = [...activeOffers.value, { ...offerData, id: newId }]
     }
@@ -389,7 +424,6 @@ const handleOfferImageError = (offer: any) => {
   offer.imageUrl = ''
 }
 
-// --- Quick Actions ---
 const toggleDarkMode = async () => {
   try {
     await homepageStore.toggleDarkMode()
@@ -413,7 +447,6 @@ const reloadData = async () => {
   alert(t('Data reloaded successfully!'))
 }
 
-// --- Utilities ---
 const fileToBase64 = (file: File): Promise<string> => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader()
@@ -422,6 +455,13 @@ const fileToBase64 = (file: File): Promise<string> => {
     reader.readAsDataURL(file)
   })
 }
+
+onMounted(async () => {
+  await checkAuth()
+  if (isAuthorized.value) {
+    await homepageStore.loadHomepageData()
+  }
+})
 </script>
 
 <style scoped>
@@ -429,7 +469,6 @@ const fileToBase64 = (file: File): Promise<string> => {
   -webkit-tap-highlight-color: transparent;
 }
 
-/* Custom scrollbar for overflow areas */
 .max-h-80::-webkit-scrollbar {
   width: 6px;
 }
@@ -445,13 +484,11 @@ const fileToBase64 = (file: File): Promise<string> => {
   background: #555;
 }
 
-/* Ensure buttons have adequate touch targets */
 button {
   min-height: 44px;
   min-width: 44px;
 }
 
-/* Make buttons smaller on desktop? No, keep consistency */
 @media (min-width: 768px) {
   button {
     min-height: 40px;
@@ -459,12 +496,10 @@ button {
   }
 }
 
-/* Smooth transitions */
 .transition-all {
   transition: all 0.3s ease-in-out;
 }
 
-/* Better button hover effects */
 button:hover {
   transform: translateY(-1px);
   transition: transform 0.2s ease;
@@ -473,7 +508,6 @@ button:active {
   transform: translateY(0);
 }
 
-/* Improve image loading */
 img {
   transition: opacity 0.3s ease;
   background-color: #f3f4f6;
@@ -482,20 +516,17 @@ img[src=""], img:not([src]) {
   opacity: 0;
 }
 
-/* Image hover effects */
 img:hover {
   transform: scale(1.02);
   transition: transform 0.3s ease;
 }
 
-/* Focus styles for inputs */
 input:focus,
 button:focus {
   outline: none;
   ring: 2px solid #4f46e5;
 }
 
-/* Upload button styles */
 input[type="file"] {
   position: absolute;
   width: 1px;
@@ -508,7 +539,6 @@ input[type="file"] {
   border: 0;
 }
 
-/* Status message animations */
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(-10px); }
   to { opacity: 1; transform: translateY(0); }
@@ -518,7 +548,6 @@ input[type="file"] {
   animation: fadeIn 0.3s ease-out;
 }
 
-/* Mobile optimizations */
 @media (max-width: 768px) {
   .grid-cols-1 {
     gap: 1rem;
