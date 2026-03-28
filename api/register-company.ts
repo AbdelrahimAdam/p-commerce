@@ -120,13 +120,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const serviceRoleKey = process.env.VITE_SUPABASE_SERVICE_ROLE_KEY
     const rootDomain = process.env.VITE_ROOT_DOMAIN
 
-    console.log('Environment check:', {
-      supabaseUrl: !!supabaseUrl,
-      serviceRoleKey: !!serviceRoleKey,
-      rootDomain: !!rootDomain,
-      slug
-    })
-
     if (!supabaseUrl || !serviceRoleKey || !rootDomain) {
       return res.status(500).json({ 
         error: 'Missing environment variables',
@@ -142,7 +135,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       auth: { autoRefreshToken: false, persistSession: false }
     })
 
-    // Generate UUID for tenant (matches the working format)
+    // Generate UUID for tenant
     const tenantId = generateUUID()
     const fullDomain = `${domain}.${rootDomain}`
     const now = new Date().toISOString()
@@ -150,7 +143,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     console.log('Generated IDs:', { tenantId, fullDomain, slug })
 
     // Check slug availability
-    console.log('Checking slug availability...')
     const { data: existingSlug } = await supabaseAdmin
       .from('tenants')
       .select('id')
@@ -165,7 +157,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     // Check domain availability
-    console.log('Checking domain availability...')
     const { data: existingTenant } = await supabaseAdmin
       .from('tenants')
       .select('id')
@@ -179,8 +170,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       })
     }
 
-    // STEP 1: Create the tenant with UUID
-    console.log('Step 1: Creating tenant with UUID...')
+    // STEP 1: Create the tenant
+    console.log('Step 1: Creating tenant...')
     const { error: tenantError } = await supabaseAdmin
       .from('tenants')
       .insert({
@@ -197,8 +188,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       console.error('Tenant error:', tenantError)
       return res.status(400).json({ 
         error: 'Failed to create tenant', 
-        details: tenantError.message,
-        code: tenantError.code 
+        details: tenantError.message 
       })
     }
     console.log('✅ Tenant created with UUID:', tenantId)
@@ -212,13 +202,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       user_metadata: {
         displayName,
         tenant_id: tenantId,
-        role: 'admin'
+        role: 'admin',
+        companyName,
+        slug
       }
     })
 
     if (userError) {
       console.error('User error:', userError)
-      // Rollback: delete tenant
       await supabaseAdmin.from('tenants').delete().eq('id', tenantId)
       return res.status(400).json({ 
         error: 'Failed to create user', 
@@ -233,27 +224,37 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
     console.log('✅ User created:', userId)
 
-    // STEP 3: Create the admin record with the same UUID tenant_id
+    // STEP 3: Create the admin record - THIS IS THE CRITICAL PART
     console.log('Step 3: Creating admin record...')
-    const adminData = {
+    console.log('Admin data to insert:', {
       id: userId,
       user_id: userId,
       tenant_id: tenantId,
       role: 'admin',
       email: email,
       display_name: displayName,
-      created_at: now,
-      updated_at: now,
       is_active: true,
       permissions: ['all']
-    }
+    })
 
     const { error: adminError } = await supabaseAdmin
       .from('admins')
-      .insert(adminData)
+      .insert({
+        id: userId,
+        user_id: userId,      // ← CRITICAL: Must match auth user ID
+        tenant_id: tenantId,  // ← CRITICAL: Must match tenant ID
+        role: 'admin',
+        email: email,
+        display_name: displayName,
+        created_at: now,
+        updated_at: now,
+        is_active: true,
+        permissions: ['all']
+      })
 
     if (adminError) {
-      console.error('Admin error:', adminError)
+      console.error('❌ Admin error:', adminError)
+      console.error('Admin error details:', adminError.message, adminError.code)
       // Rollback: delete user and tenant
       await supabaseAdmin.auth.admin.deleteUser(userId)
       await supabaseAdmin.from('tenants').delete().eq('id', tenantId)
@@ -263,10 +264,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         code: adminError.code
       })
     }
-    console.log('✅ Admin record inserted with tenant_id:', tenantId)
+    console.log('✅ Admin record inserted successfully')
 
     // Wait a moment for the database to be consistent
-    console.log('⏳ Waiting for database consistency...')
     await wait(2000)
 
     // STEP 4: Update tenant with owner_id
@@ -282,17 +282,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       console.log('✅ Tenant owner updated')
     }
 
-    // STEP 5: Fetch the admin with retry to confirm it exists
+    // STEP 5: Verify admin exists
     console.log('Step 5: Verifying admin exists...')
     const verifiedAdmin = await fetchAdminWithRetry(supabaseAdmin, userId, 10, 500)
 
     if (!verifiedAdmin) {
-      console.warn('⚠️ Admin record created but not yet readable. Returning success anyway.')
+      console.warn('⚠️ Admin record created but not yet readable')
     } else {
       console.log('✅ Admin verified:', verifiedAdmin.id)
     }
 
-    // Success! Return the result with slug
     console.log('🎉 Registration completed successfully!')
     return res.status(200).json({
       success: true,
@@ -307,8 +306,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     console.error('❌ FATAL ERROR:', error)
     return res.status(500).json({ 
       error: 'Internal server error', 
-      details: error.message,
-      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+      details: error.message
     })
   }
 }
