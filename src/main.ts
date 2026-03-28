@@ -37,6 +37,12 @@ function isRootDomain(): boolean {
   return hostname === rootDomain || hostname === 'localhost'
 }
 
+// Helper to check if current route is an admin page (excluding login)
+function isAdminPage(): boolean {
+  const path = window.location.pathname
+  return path.startsWith('/admin') && !path.startsWith('/admin/login')
+}
+
 // Create the Vue app
 const vueApp = createApp(App)
 const pinia = createPinia()
@@ -111,7 +117,25 @@ console.log('🌐 Languages: English & Arabic')
       i18n.global.locale.value = 'en'
     }
 
-    // Only load data stores if we're on a subdomain (tenant exists)
+    // ----- Step 4: Conditionally initialize admin store (ONLY on admin pages) -----
+    if (isAdminPage() && authStore.isAuthenticated && authStore.isAdmin) {
+      console.log('🔐 Admin page detected - initializing admin store...')
+      const { useAdminStore } = await import('@/stores/admin')
+      const adminStore = useAdminStore()
+      await adminStore.initialize()
+      console.log('✅ Admin store initialized')
+    } else if (isAdminPage()) {
+      console.log('🔐 Admin page detected but user not authenticated as admin')
+      // Optionally redirect to login if needed
+      if (!authStore.isAuthenticated) {
+        console.log('Redirecting to admin login...')
+        // router.push('/admin/login')
+      }
+    } else {
+      console.log('🏠 Non-admin page - skipping admin store initialization')
+    }
+
+    // ----- Step 5: Load other data stores (only if not root domain) -----
     if (!isRoot) {
       // Initialize data stores in parallel (these depend on tenant)
       await Promise.all([
@@ -121,10 +145,16 @@ console.log('🌐 Languages: English & Arabic')
       ])
     } else {
       console.log('🏠 Root domain - skipping data store initialization (landing page)')
+      // Still load homepage data for root domain (public landing page)
+      if (homepageStore.loadHomepageData) {
+        await homepageStore.loadHomepageData()
+      }
     }
 
     // Restore cart (depends on auth to sync with server) - works for both root and subdomains
-    cartStore.restoreCart?.()
+    if (cartStore.restoreCart) {
+      cartStore.restoreCart()
+    }
 
     // ----- Final status -----
     console.log('✅ All stores initialized successfully')
@@ -151,6 +181,45 @@ console.log('🌐 Languages: English & Arabic')
 })()
 
 // ------------------------------------------------------------------
+// Watch for route changes to initialize admin store when needed
+// ------------------------------------------------------------------
+if (typeof window !== 'undefined') {
+  let currentPath = window.location.pathname
+  
+  // Watch for route changes (using MutationObserver as a simple alternative)
+  const observer = new MutationObserver(() => {
+    const newPath = window.location.pathname
+    if (newPath !== currentPath) {
+      currentPath = newPath
+      
+      // Check if we're entering an admin page
+      if (isAdminPage()) {
+        // Dynamically import and initialize admin store
+        import('@/stores/auth').then(async ({ useAuthStore }) => {
+          const authStore = useAuthStore()
+          
+          if (authStore.isAuthenticated && authStore.isAdmin) {
+            console.log('🔐 Entered admin page - initializing admin store...')
+            const { useAdminStore } = await import('@/stores/admin')
+            const adminStore = useAdminStore()
+            if (!adminStore.isInitialized) {
+              await adminStore.initialize()
+            }
+          }
+        })
+      }
+    }
+  })
+  
+  observer.observe(document.body, {
+    subtree: true,
+    childList: true,
+    attributes: true,
+    attributeFilter: ['data-router-view']
+  })
+}
+
+// ------------------------------------------------------------------
 // Global error handlers (unchanged)
 // ------------------------------------------------------------------
 window.addEventListener('error', (event) => {
@@ -173,10 +242,12 @@ if (import.meta.env.DEV) {
       const { useAuthStore } = await import('@/stores/auth')
       const { useBrandsStore } = await import('@/stores/brands')
       const { useProductsStore } = await import('@/stores/products')
+      const { useAdminStore } = await import('@/stores/admin')
       ;(window as any).stores = {
         auth: useAuthStore(),
         brands: useBrandsStore(),
-        products: useProductsStore()
+        products: useProductsStore(),
+        admin: useAdminStore()
       }
     } catch (error) {
       // Silently fail
