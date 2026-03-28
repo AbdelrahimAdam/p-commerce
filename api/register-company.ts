@@ -1,6 +1,7 @@
 // api/register-company.ts
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { createClient } from '@supabase/supabase-js'
+import crypto from 'crypto'
 
 // Helper function to generate slug from company name
 const generateSlug = (companyName: string): string => {
@@ -8,6 +9,11 @@ const generateSlug = (companyName: string): string => {
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-|-$/g, '')
+}
+
+// Helper function to generate UUID
+const generateUUID = (): string => {
+  return crypto.randomUUID()
 }
 
 // Helper function to wait with exponential backoff
@@ -30,7 +36,7 @@ const fetchAdminWithRetry = async (
       const { data: admin, error: fetchError } = await supabaseAdmin
         .from('admins')
         .select('*')
-        .eq('id', userId)
+        .eq('user_id', userId)
         .maybeSingle()
 
       if (fetchError) {
@@ -46,7 +52,7 @@ const fetchAdminWithRetry = async (
       if (attempt < maxRetries) {
         console.log(`  Waiting ${delay}ms before next attempt...`)
         await wait(delay)
-        delay = Math.min(delay * 1.5, 10000) // Exponential backoff, max 10 seconds
+        delay = Math.min(delay * 1.5, 10000)
       }
     } catch (err) {
       console.error(`Unexpected error on attempt ${attempt}:`, err)
@@ -103,7 +109,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // Generate slug from company name
     const slug = generateSlug(companyName)
-    
+
     // Validate slug
     if (!slug || slug.length < 2) {
       return res.status(400).json({ error: 'Company name is too short or invalid' })
@@ -136,9 +142,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       auth: { autoRefreshToken: false, persistSession: false }
     })
 
-    // Generate IDs
+    // Generate UUID for tenant (matches the working format)
+    const tenantId = generateUUID()
     const fullDomain = `${domain}.${rootDomain}`
-    const tenantId = `tenant_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`
     const now = new Date().toISOString()
 
     console.log('Generated IDs:', { tenantId, fullDomain, slug })
@@ -173,8 +179,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       })
     }
 
-    // STEP 1: Create the tenant FIRST (without owner_id)
-    console.log('Step 1: Creating tenant...')
+    // STEP 1: Create the tenant with UUID
+    console.log('Step 1: Creating tenant with UUID...')
     const { error: tenantError } = await supabaseAdmin
       .from('tenants')
       .insert({
@@ -195,7 +201,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         code: tenantError.code 
       })
     }
-    console.log('✅ Tenant created with slug:', slug)
+    console.log('✅ Tenant created with UUID:', tenantId)
 
     // STEP 2: Create the auth user
     console.log('Step 2: Creating auth user...')
@@ -227,13 +233,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
     console.log('✅ User created:', userId)
 
-    // STEP 3: Create the admin record
+    // STEP 3: Create the admin record with the same UUID tenant_id
     console.log('Step 3: Creating admin record...')
     const adminData = {
       id: userId,
+      user_id: userId,
       tenant_id: tenantId,
       role: 'admin',
-      email,
+      email: email,
       display_name: displayName,
       created_at: now,
       updated_at: now,
@@ -256,7 +263,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         code: adminError.code
       })
     }
-    console.log('✅ Admin record inserted')
+    console.log('✅ Admin record inserted with tenant_id:', tenantId)
 
     // Wait a moment for the database to be consistent
     console.log('⏳ Waiting for database consistency...')
@@ -271,7 +278,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     if (updateError) {
       console.error('Update error (non-critical):', updateError)
-      // This is not critical, continue
     } else {
       console.log('✅ Tenant owner updated')
     }
