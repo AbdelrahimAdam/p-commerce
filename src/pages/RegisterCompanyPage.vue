@@ -1,4 +1,4 @@
-<!-- src/pages/RegisterCompanyPage.vue - Fixed with null checks -->
+<!-- src/pages/RegisterCompanyPage.vue - FIXED to use API -->
 <template>
   <div class="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 py-12 px-4 sm:px-6 lg:px-8">
     <div class="max-w-md w-full space-y-8 bg-white p-8 rounded-2xl shadow-lg">
@@ -131,7 +131,6 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import { supabaseSafe } from '@/supabase/client'
 
 const rootDomain = import.meta.env.VITE_ROOT_DOMAIN || 'p-commerce-peach.vercel.app'
 
@@ -168,8 +167,6 @@ const passwordMismatch = computed(() => {
          form.value.confirmPassword.length > 0
 })
 
-const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
-
 const handleSubmit = async () => {
   if (!isFormValid.value || passwordMismatch.value) return
 
@@ -177,78 +174,38 @@ const handleSubmit = async () => {
   error.value = null
 
   try {
-    console.log('📝 Registering with metadata:', {
+    console.log('📝 Registering with API:', {
       displayName: form.value.displayName,
       companyName: form.value.companyName,
-      slug: form.value.slug
+      slug: form.value.slug,
+      email: form.value.email
     })
     
-    const supabase = supabaseSafe.client
-    
-    // Sign up with metadata - trigger will handle tenant and admin creation
-    const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-      email: form.value.email,
-      password: form.value.password,
-      options: {
-        data: {
-          displayName: form.value.displayName,
-          companyName: form.value.companyName,
-          slug: form.value.slug,
-          role: 'admin'
-        }
-      }
+    // Call your API endpoint
+    const response = await fetch('/api/register-company', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        email: form.value.email,
+        password: form.value.password,
+        displayName: form.value.displayName,
+        companyName: form.value.companyName,
+        domain: form.value.slug
+      })
     })
 
-    if (signUpError) {
-      console.error('Sign up error:', signUpError)
-      throw signUpError
+    const result = await response.json()
+
+    if (!response.ok) {
+      throw new Error(result.error || 'Registration failed')
     }
-    
-    // Check if user exists
-    if (!signUpData.user) {
-      throw new Error('User creation failed - no user returned')
-    }
-    
-    const userId = signUpData.user.id
-    console.log('✅ User created successfully')
-    console.log('User ID:', userId)
-    
-    // Wait for the trigger to complete
-    console.log('⏳ Waiting 5 seconds for trigger to create tenant and admin...')
-    await wait(5000)
-    
-    // Use safe query to verify admin record was created (only if authenticated)
-    // First, sign in to get authenticated session
-    const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-      email: form.value.email,
-      password: form.value.password
-    })
-    
-    if (signInError) {
-      console.warn('Auto-login failed:', signInError.message)
-    } else if (signInData.session) {
-      console.log('✅ Auto-logged in, checking admin record...')
-      
-      const result = await supabaseSafe.queryWithAuth(
-        async (client) => {
-          return await client
-            .from('admins')
-            .select('*')
-            .eq('user_id', userId)
-            .maybeSingle()
-        },
-        null
-      )
-      
-      if (result.data) {
-        console.log('✅ Admin record verified:', result.data)
-      } else if (result.isAuthenticated) {
-        console.warn('⚠️ Admin record not found, but continuing')
-      } else {
-        console.log('Not authenticated yet, continuing...')
-      }
-    }
-    
+
+    console.log('✅ Registration successful:', result)
+    console.log('Tenant ID:', result.tenantId)
+    console.log('User ID:', result.uid)
+
     // Store email and slug for login page
     localStorage.setItem('pending_registration_email', form.value.email)
     localStorage.setItem('pending_registration_slug', form.value.slug)
