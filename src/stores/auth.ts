@@ -1,4 +1,4 @@
-// src/stores/auth.ts – updated with safe query handling
+// src/stores/auth.ts – updated with public page guard
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import type { AdminUser, CustomerUser, Address } from '@/types'
@@ -36,6 +36,34 @@ interface SupabaseAdmin {
   created_at: string
   updated_at: string
   last_login: string | null
+}
+
+// ========== PUBLIC PAGE CHECK HELPER ==========
+const isPublicPage = (): boolean => {
+  if (typeof window === 'undefined') return true
+  
+  const path = window.location.pathname
+  const publicPaths = [
+    '/',
+    '/login',
+    '/admin/login',
+    '/register',
+    '/register-company',
+    '/shop',
+    '/products',
+    '/categories',
+    '/about',
+    '/contact',
+    '/offers',
+    '/brands',
+    '/cart',
+    '/checkout',
+    '/wishlist',
+    '/reset-password',
+    '/forgot-password'
+  ]
+  
+  return publicPaths.some(publicPath => path === publicPath || path.startsWith(publicPath + '/'))
 }
 
 export const useAuthStore = defineStore('auth', () => {
@@ -83,6 +111,11 @@ export const useAuthStore = defineStore('auth', () => {
 
   // ========== HELPERS ==========
   const getAdminFromSupabase = async (userId: string, maxRetries: number = 15, initialDelay: number = 1000): Promise<AdminUser | null> => {
+    // Skip on public pages
+    if (isPublicPage()) {
+      return null
+    }
+    
     let delay = initialDelay
 
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
@@ -148,6 +181,11 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   const getCustomerFromSupabase = async (userId: string): Promise<CustomerUser | null> => {
+    // Skip on public pages
+    if (isPublicPage()) {
+      return null
+    }
+    
     try {
       // Use queryWithAuth to handle unauthenticated state gracefully
       const result = await supabaseSafe.queryWithAuth(
@@ -750,6 +788,13 @@ export const useAuthStore = defineStore('auth', () => {
 
   // ========== CHECK AUTH ==========
   const checkAuth = async () => {
+    // Skip auth check on public pages
+    if (isPublicPage()) {
+      console.log('🔒 Public page detected, skipping auth check:', window.location.pathname)
+      isLoading.value = false
+      return
+    }
+    
     isLoading.value = true
     try {
       const supabase = supabaseSafe.client
@@ -865,6 +910,12 @@ export const useAuthStore = defineStore('auth', () => {
   const clearError = () => { error.value = null }
 
   const init = () => {
+    // Skip auth listener on public pages
+    if (isPublicPage()) {
+      console.log('🔒 Public page detected, skipping auth listener:', window.location.pathname)
+      return
+    }
+    
     if (authListenerInitialized.value) return
     authListenerInitialized.value = true
 
