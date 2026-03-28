@@ -223,26 +223,34 @@ const form = reactive({
 const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
 
 const fetchAdminDirect = async (userId: string): Promise<any> => {
-  const supabase = supabaseSafe.client
   let attempts = 0
-  const maxAttempts = 25
+  const maxAttempts = 15
   let delay = 1000
 
   while (attempts < maxAttempts) {
     attempts++
     console.log(`🔍 Attempt ${attempts}/${maxAttempts} - Fetching admin for user_id: ${userId}`)
 
-    const { data: admin, error } = await supabase
-      .from('admins')
-      .select('*')
-      .eq('user_id', userId)
-      .maybeSingle()
+    // Use queryWithAuth - this only runs if user is authenticated
+    const result = await supabaseSafe.queryWithAuth(
+      async (client) => {
+        return await client
+          .from('admins')
+          .select('*')
+          .eq('user_id', userId)
+          .maybeSingle()
+      },
+      null
+    )
 
-    if (error) {
-      console.warn(`Attempt ${attempts} error:`, error.message)
-    } else if (admin) {
-      console.log(`✅ Admin found on attempt ${attempts}!`, admin)
-      return admin
+    if (result.error) {
+      console.warn(`Attempt ${attempts} error:`, result.error.message)
+    } else if (result.data) {
+      console.log(`✅ Admin found on attempt ${attempts}!`, result.data)
+      return result.data
+    } else if (!result.isAuthenticated) {
+      console.log(`Not authenticated on attempt ${attempts}`)
+      return null
     } else {
       console.log(`Admin not found on attempt ${attempts}`)
     }
@@ -250,7 +258,7 @@ const fetchAdminDirect = async (userId: string): Promise<any> => {
     if (attempts < maxAttempts) {
       console.log(`Waiting ${delay}ms before next attempt...`)
       await wait(delay)
-      delay = Math.min(delay * 1.5, 5000)
+      delay = Math.min(delay * 1.5, 3000)
     }
   }
 
@@ -309,14 +317,26 @@ const handleLogin = async () => {
     const userId = signInData.user.id
     console.log('✅ Authenticated, user ID:', userId)
 
-    console.log('⏳ Waiting 2 seconds for session consistency...')
+    // Verify session
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session) {
+      throw new Error('Session not established. Please try again.')
+    }
+    console.log('✅ Session established')
+
+    console.log('⏳ Waiting 2 seconds for database trigger to complete...')
     await wait(2000)
 
     console.log('🔍 Fetching admin by user_id:', userId)
-    const admin = await fetchAdminDirect(userId)
+    let admin = await fetchAdminDirect(userId)
 
     if (!admin) {
-      throw new Error('User profile not found. Please wait a moment and try again.')
+      console.log('🔄 Admin not found, waiting 3 more seconds and retrying...')
+      await wait(3000)
+      admin = await fetchAdminDirect(userId)
+      if (!admin) {
+        throw new Error('User profile not found. Please wait a moment and try again.')
+      }
     }
 
     console.log('✅ Admin found:', admin)
