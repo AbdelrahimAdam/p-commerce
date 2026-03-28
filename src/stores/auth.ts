@@ -1,4 +1,4 @@
-// src/stores/auth.ts – final version with serverless API registration
+// src/stores/auth.ts – updated with safe query handling
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import type { AdminUser, CustomerUser, Address } from '@/types'
@@ -83,24 +83,35 @@ export const useAuthStore = defineStore('auth', () => {
 
   // ========== HELPERS ==========
   const getAdminFromSupabase = async (userId: string, maxRetries: number = 15, initialDelay: number = 1000): Promise<AdminUser | null> => {
-    const supabase = supabaseSafe.client
     let delay = initialDelay
 
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
         console.log(`  [Attempt ${attempt}/${maxRetries}] Fetching admin for user_id: ${userId}`)
 
-        const { data, error: fetchError } = await supabase
-          .from('admins')
-          .select('*')
-          .eq('user_id', userId)
-          .maybeSingle()
+        // Use queryWithAuth to handle unauthenticated state gracefully
+        const result = await supabaseSafe.queryWithAuth(
+          async (client) => {
+            return await client
+              .from('admins')
+              .select('*')
+              .eq('user_id', userId)
+              .maybeSingle()
+          },
+          null // fallback data when not authenticated
+        )
 
-        if (fetchError) {
-          console.log(`  Attempt ${attempt} error:`, fetchError.message)
-        } else if (data) {
+        // If not authenticated, return null (no error)
+        if (!result.isAuthenticated) {
+          console.log('  User not authenticated, skipping admin fetch')
+          return null
+        }
+
+        if (result.error) {
+          console.log(`  Attempt ${attempt} error:`, result.error.message)
+        } else if (result.data) {
           console.log(`  ✅ Admin found on attempt ${attempt}!`)
-          const adminData = data as unknown as SupabaseAdmin
+          const adminData = result.data as unknown as SupabaseAdmin
           return {
             uid: adminData.user_id,
             email: adminData.email,
@@ -137,29 +148,47 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   const getCustomerFromSupabase = async (userId: string): Promise<CustomerUser | null> => {
-    const supabase = supabaseSafe.client
-    const { data, error: fetchError } = await supabase
-      .from('customers')
-      .select('*')
-      .eq('id', userId)
-      .single()
+    try {
+      // Use queryWithAuth to handle unauthenticated state gracefully
+      const result = await supabaseSafe.queryWithAuth(
+        async (client) => {
+          return await client
+            .from('customers')
+            .select('*')
+            .eq('id', userId)
+            .single()
+        },
+        null // fallback data when not authenticated
+      )
 
-    if (fetchError || !data) return null
+      // If not authenticated, return null (no error)
+      if (!result.isAuthenticated) {
+        console.log('User not authenticated, skipping customer fetch')
+        return null
+      }
 
-    const customerData = data as unknown as SupabaseCustomer
-    return {
-      uid: customerData.id,
-      email: customerData.email,
-      displayName: customerData.name || customerData.email,
-      tenantId: customerData.tenant_id,
-      photoURL: customerData.photo_url || undefined,
-      phoneNumber: customerData.phone_number || undefined,
-      addresses: customerData.addresses || [],
-      wishlist: [],
-      newsletter: customerData.newsletter || false,
-      createdAt: new Date(customerData.created_at),
-      updatedAt: new Date(customerData.updated_at),
-      lastLogin: new Date()
+      if (result.error || !result.data) {
+        return null
+      }
+
+      const customerData = result.data as unknown as SupabaseCustomer
+      return {
+        uid: customerData.id,
+        email: customerData.email,
+        displayName: customerData.name || customerData.email,
+        tenantId: customerData.tenant_id,
+        photoURL: customerData.photo_url || undefined,
+        phoneNumber: customerData.phone_number || undefined,
+        addresses: customerData.addresses || [],
+        wishlist: [],
+        newsletter: customerData.newsletter || false,
+        createdAt: new Date(customerData.created_at),
+        updatedAt: new Date(customerData.updated_at),
+        lastLogin: new Date()
+      }
+    } catch (err) {
+      console.error('Error fetching customer:', err)
+      return null
     }
   }
 
@@ -605,7 +634,7 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  // ========== COMPANY REGISTRATION (via serverless API) ==========
+  // ========== COMPANY REGISTRATION ==========
   const registerCompany = async (data: {
     email: string
     password: string
@@ -731,10 +760,9 @@ export const useAuthStore = defineStore('auth', () => {
         return
       }
 
-      const [adminData, customerData] = await Promise.all([
-        getAdminFromSupabase(authUser.id),
-        getCustomerFromSupabase(authUser.id)
-      ])
+      // Use queryWithAuth for safe fetching
+      const adminData = await getAdminFromSupabase(authUser.id, 3, 500)
+      const customerData = await getCustomerFromSupabase(authUser.id)
 
       if (adminData) {
         setAdminUser(adminData)
@@ -844,10 +872,8 @@ export const useAuthStore = defineStore('auth', () => {
     supabase.auth.onAuthStateChange(async (_event, session) => {
       if (session?.user) {
         const userId = session.user.id
-        const [adminData, customerData] = await Promise.all([
-          getAdminFromSupabase(userId),
-          getCustomerFromSupabase(userId)
-        ])
+        const adminData = await getAdminFromSupabase(userId, 3, 500)
+        const customerData = await getCustomerFromSupabase(userId)
         if (adminData) {
           user.value = adminData
           customer.value = null
