@@ -22,12 +22,12 @@ const publicRouteNames = [
   'wishlist',
   'not-found',
   'register-company',
-  'customer-login',        // <-- ADD THIS (login page route name)
-  'admin-login',           // <-- ADD THIS (admin login page route name)
-  'forgot-password',       // <-- ADD THIS
-  'reset-password',        // <-- ADD THIS
-  'tenant-store',          // <-- Tenant store routes are public
-  'tenant-store-catchall'  // <-- Tenant store catchall is public
+  'customer-login',
+  'admin-login',
+  'forgot-password',
+  'reset-password',
+  'tenant-store',
+  'tenant-store-catchall'
 ]
 
 // List of public path patterns (for fallback)
@@ -46,12 +46,12 @@ const publicPathPatterns = [
   '/contact',
   '/about',
   '/wishlist',
-  '/login',               // <-- ADD THIS
-  '/admin/login',         // Already there
+  '/login',
+  '/admin/login',
   '/register-company',
-  '/forgot-password',     // <-- ADD THIS
-  '/reset-password',      // <-- ADD THIS
-  '/store/'               // <-- Tenant store base path
+  '/forgot-password',
+  '/reset-password',
+  '/store/'
 ]
 
 const router = createRouter({
@@ -109,9 +109,9 @@ router.beforeEach(async (to, from, next) => {
   // 🔐 PROTECTED ROUTES - REQUIRE AUTHENTICATION
   // ============================================
 
-  // Check authentication status
+  // Check authentication status (only for protected routes)
   if (!authStore.isAuthenticated) {
-    console.log('🔐 Checking authentication status...')
+    console.log('🔐 Checking authentication status for protected route...')
     await authStore.checkAuth()
   }
 
