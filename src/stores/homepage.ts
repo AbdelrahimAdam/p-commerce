@@ -1,4 +1,4 @@
-// src/stores/homepage.ts – FIXED with correct tenant store properties
+// src/stores/homepage.ts – FINAL VERSION (removed unused function)
 import { defineStore } from 'pinia'
 import { ref, reactive, onUnmounted } from 'vue'
 import { supabaseSafe } from '@/supabase/client'
@@ -100,19 +100,6 @@ export const useHomepageStore = defineStore('homepage', () => {
   const getCacheKey = (tenantId: string) => `homepage_cache_${tenantId}_v2`
   const getCacheTimestampKey = (tenantId: string) => `homepage_cache_timestamp_${tenantId}_v2`
   const CACHE_DURATION = 10 * 60 * 1000 // 10 minutes
-
-  // Helper to get current tenant ID
-  const getCurrentTenantId = (): string | null => {
-    // Try to get from tenant store first
-    if (tenantStore.tenantId) {
-      return tenantStore.tenantId
-    }
-    // Fallback to auth store's current tenant
-    if (authStore.currentTenant) {
-      return authStore.currentTenant
-    }
-    return null
-  }
 
   // =================== HELPERS ===================
   const checkPermission = (): boolean => {
