@@ -231,26 +231,19 @@ const fetchAdminDirect = async (userId: string): Promise<any> => {
     attempts++
     console.log(`🔍 Attempt ${attempts}/${maxAttempts} - Fetching admin for user_id: ${userId}`)
 
-    // Use queryWithAuth - this only runs if user is authenticated
-    const result = await supabaseSafe.queryWithAuth(
-      async (client) => {
-        return await client
-          .from('admins')
-          .select('*')
-          .eq('user_id', userId)
-          .maybeSingle()
-      },
-      null
-    )
+    // Direct query after login (we know user is authenticated)
+    const supabase = supabaseSafe.client
+    const { data: admin, error: fetchError } = await supabase
+      .from('admins')
+      .select('*')
+      .eq('user_id', userId)
+      .maybeSingle()
 
-    if (result.error) {
-      console.warn(`Attempt ${attempts} error:`, result.error.message)
-    } else if (result.data) {
-      console.log(`✅ Admin found on attempt ${attempts}!`, result.data)
-      return result.data
-    } else if (!result.isAuthenticated) {
-      console.log(`Not authenticated on attempt ${attempts}`)
-      return null
+    if (fetchError) {
+      console.warn(`Attempt ${attempts} error:`, fetchError.message)
+    } else if (admin) {
+      console.log(`✅ Admin found on attempt ${attempts}!`, admin)
+      return admin
     } else {
       console.log(`Admin not found on attempt ${attempts}`)
     }
@@ -324,7 +317,7 @@ const handleLogin = async () => {
     }
     console.log('✅ Session established')
 
-    console.log('⏳ Waiting 2 seconds for database trigger to complete...')
+    console.log('⏳ Waiting 2 seconds for database to be ready...')
     await wait(2000)
 
     console.log('🔍 Fetching admin by user_id:', userId)
