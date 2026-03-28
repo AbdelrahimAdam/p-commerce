@@ -182,7 +182,7 @@ const handleSubmit = async () => {
       slug: form.value.slug
     })
     
-    // Sign up with metadata - THIS IS CRITICAL
+    // Sign up with metadata - the trigger will handle tenant and admin creation
     const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
       email: form.value.email,
       password: form.value.password,
@@ -208,15 +208,30 @@ const handleSubmit = async () => {
     console.log('✅ User created successfully')
     console.log('User ID:', signUpData.user.id)
     
-    // Store email and slug for login page
+    // Wait for the trigger to complete (3 seconds is usually enough)
+    console.log('⏳ Waiting for trigger to create tenant and admin...')
+    await new Promise(resolve => setTimeout(resolve, 3000))
+    
+    // Verify the admin record was created
+    const { data: adminCheck, error: adminError } = await supabase
+      .from('admins')
+      .select('*')
+      .eq('user_id', signUpData.user.id)
+      .maybeSingle()
+    
+    if (adminError) {
+      console.error('Error checking admin:', adminError)
+    } else if (adminCheck) {
+      console.log('✅ Admin record verified:', adminCheck)
+    } else {
+      console.warn('⚠️ Admin record not found yet, but will continue')
+    }
+    
+    // Store email for login page
     localStorage.setItem('pending_registration_email', form.value.email)
     localStorage.setItem('pending_registration_slug', form.value.slug)
     
-    // Wait for the trigger to complete
-    console.log('⏳ Waiting 5 seconds for trigger to create tenant and admin...')
-    await new Promise(resolve => setTimeout(resolve, 5000))
-    
-    // Construct correct redirect URL
+    // Construct redirect URL
     const protocol = window.location.protocol
     const encodedRedirect = encodeURIComponent(`/store/${form.value.slug}/admin/dashboard`)
     const loginUrl = `${protocol}//${rootDomain}/login?tenant=${form.value.slug}&redirect=${encodedRedirect}&registered=true`
