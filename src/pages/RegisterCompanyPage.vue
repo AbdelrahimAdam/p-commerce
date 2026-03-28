@@ -1,3 +1,4 @@
+<!-- src/pages/RegisterCompanyPage.vue - Fixed with null checks -->
 <template>
   <div class="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 py-12 px-4 sm:px-6 lg:px-8">
     <div class="max-w-md w-full space-y-8 bg-white p-8 rounded-2xl shadow-lg">
@@ -167,6 +168,8 @@ const passwordMismatch = computed(() => {
          form.value.confirmPassword.length > 0
 })
 
+const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
+
 const handleSubmit = async () => {
   if (!isFormValid.value || passwordMismatch.value) return
 
@@ -201,35 +204,49 @@ const handleSubmit = async () => {
       throw signUpError
     }
     
+    // Check if user exists
     if (!signUpData.user) {
-      throw new Error('User creation failed')
+      throw new Error('User creation failed - no user returned')
     }
     
+    const userId = signUpData.user.id
     console.log('✅ User created successfully')
-    console.log('User ID:', signUpData.user.id)
+    console.log('User ID:', userId)
     
     // Wait for the trigger to complete
-    console.log('⏳ Waiting for trigger to create tenant and admin...')
-    await new Promise(resolve => setTimeout(resolve, 5000))
+    console.log('⏳ Waiting 5 seconds for trigger to create tenant and admin...')
+    await wait(5000)
     
     // Use safe query to verify admin record was created (only if authenticated)
-    const result = await supabaseSafe.queryWithAuth(
-      async (client) => {
-        return await client
-          .from('admins')
-          .select('*')
-          .eq('user_id', signUpData.user.id)
-          .maybeSingle()
-      },
-      null
-    )
+    // First, sign in to get authenticated session
+    const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+      email: form.value.email,
+      password: form.value.password
+    })
     
-    if (result.data) {
-      console.log('✅ Admin record verified:', result.data)
-    } else if (result.isAuthenticated) {
-      console.warn('⚠️ Admin record not found, but continuing')
-    } else {
-      console.log('Not authenticated yet, continuing...')
+    if (signInError) {
+      console.warn('Auto-login failed:', signInError.message)
+    } else if (signInData.session) {
+      console.log('✅ Auto-logged in, checking admin record...')
+      
+      const result = await supabaseSafe.queryWithAuth(
+        async (client) => {
+          return await client
+            .from('admins')
+            .select('*')
+            .eq('user_id', userId)
+            .maybeSingle()
+        },
+        null
+      )
+      
+      if (result.data) {
+        console.log('✅ Admin record verified:', result.data)
+      } else if (result.isAuthenticated) {
+        console.warn('⚠️ Admin record not found, but continuing')
+      } else {
+        console.log('Not authenticated yet, continuing...')
+      }
     }
     
     // Store email and slug for login page
