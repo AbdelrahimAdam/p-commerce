@@ -4,7 +4,7 @@ import { ref, computed, watch } from 'vue'
 import { useLocalStorage } from '@vueuse/core'
 import { showNotification } from '@/utils/notifications'
 import { showConfirmation } from '@/utils/confirmation'
-import { supabaseSafe, getTable } from '@/supabase/client'
+import { getTable } from '@/supabase/client'
 import type { Product } from '@/types'
 import { useAuthStore } from './auth'
 
@@ -31,9 +31,6 @@ export interface WishlistItem {
   tenantId?: string
   dateAdded: string
 }
-
-// Helper to get Supabase client (throws if null)
-const getClient = () => supabaseSafe.client
 
 export const useWishlistStore = defineStore('wishlist', () => {
   const authStore = useAuthStore()
@@ -111,11 +108,7 @@ export const useWishlistStore = defineStore('wishlist', () => {
       }
     } catch (error) {
       console.error('Error saving wishlist to Supabase:', error)
-      showNotification({
-        title: 'Error',
-        message: 'Failed to sync wishlist',
-        type: 'error'
-      })
+      // Silent fail - don't show error notification for every sync
     }
   }
 
@@ -164,11 +157,6 @@ export const useWishlistStore = defineStore('wishlist', () => {
       }
     } catch (error) {
       console.error('Error loading wishlist from Supabase:', error)
-      showNotification({
-        title: 'Error',
-        message: 'Failed to load wishlist',
-        type: 'error'
-      })
     }
   }
 
@@ -314,11 +302,6 @@ export const useWishlistStore = defineStore('wishlist', () => {
       }
     } catch (error) {
       console.error('Error loading wishlist:', error)
-      showNotification({
-        title: 'Error',
-        message: 'Failed to load wishlist',
-        type: 'error'
-      })
     } finally {
       isLoading.value = false
     }
