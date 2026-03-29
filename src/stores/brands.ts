@@ -1,4 +1,5 @@
-// src/stores/brands.ts
+// src/stores/brands.ts - Fixed version with unused variable removed
+
 import { defineStore } from 'pinia'
 import { ref, computed, watchEffect } from 'vue'
 import { supabaseSafe, getTable } from '@/supabase/client'
@@ -211,8 +212,6 @@ export const useBrandsStore = defineStore('brands', () => {
         imageUrl = brandData.image
       }
 
-      const client = getClient()
-      
       const formattedProducts = productsData.map(p => ({
         name: p.name || { en: 'Product', ar: 'منتج' },
         description: p.description || { en: '', ar: '' },
