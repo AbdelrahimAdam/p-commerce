@@ -1,4 +1,4 @@
-<!-- src/pages/RegisterCompanyPage.vue - FIXED to use API -->
+<!-- src/pages/RegisterCompanyPage.vue - Updated with subdomain support -->
 <template>
   <div class="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 py-12 px-4 sm:px-6 lg:px-8">
     <div class="max-w-md w-full space-y-8 bg-white p-8 rounded-2xl shadow-lg">
@@ -29,13 +29,47 @@
             />
           </div>
 
-          <!-- Store URL Preview -->
+          <!-- Store URL Preview with Subdomain Option -->
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">
               Store URL
             </label>
-            <div class="text-sm text-gray-500 bg-gray-50 p-3 rounded-lg">
-              {{ rootDomain }}/store/{{ form.slug || 'your-company' }}
+            <div class="space-y-2">
+              <div class="flex items-center gap-3">
+                <span class="text-sm text-gray-500">{{ t('Choose URL type:') }}</span>
+                <label class="inline-flex items-center">
+                  <input
+                    type="radio"
+                    v-model="urlType"
+                    value="subdomain"
+                    class="h-4 w-4 text-indigo-600"
+                  />
+                  <span class="ml-2 text-sm text-gray-700">{{ t('Subdomain') }}</span>
+                </label>
+                <label class="inline-flex items-center">
+                  <input
+                    type="radio"
+                    v-model="urlType"
+                    value="path"
+                    class="h-4 w-4 text-indigo-600"
+                  />
+                  <span class="ml-2 text-sm text-gray-700">{{ t('Path-based') }}</span>
+                </label>
+              </div>
+              
+              <!-- Subdomain URL Preview -->
+              <div v-if="urlType === 'subdomain'" class="text-sm text-gray-500 bg-gray-50 p-3 rounded-lg">
+                https://{{ form.slug || 'your-company' }}.{{ rootDomain }}/store
+              </div>
+              
+              <!-- Path-based URL Preview -->
+              <div v-else class="text-sm text-gray-500 bg-gray-50 p-3 rounded-lg">
+                {{ rootDomain }}/store/{{ form.slug || 'your-company' }}
+              </div>
+              
+              <p class="text-xs text-gray-500 mt-1">
+                {{ t('Subdomain gives your brand a dedicated URL (e.g., brand.yourdomain.com)') }}
+              </p>
             </div>
           </div>
 
@@ -143,6 +177,8 @@ const form = ref({
   confirmPassword: ''
 })
 
+const urlType = ref<'subdomain' | 'path'>('subdomain')
+
 const isLoading = ref(false)
 const error = ref<string | null>(null)
 
@@ -178,10 +214,11 @@ const handleSubmit = async () => {
       displayName: form.value.displayName,
       companyName: form.value.companyName,
       slug: form.value.slug,
-      email: form.value.email
+      email: form.value.email,
+      urlType: urlType.value
     })
     
-    // Call your API endpoint
+    // Call your API endpoint with URL type
     const response = await fetch('/api/register-company', {
       method: 'POST',
       headers: {
@@ -192,7 +229,8 @@ const handleSubmit = async () => {
         password: form.value.password,
         displayName: form.value.displayName,
         companyName: form.value.companyName,
-        domain: form.value.slug
+        slug: form.value.slug,
+        urlType: urlType.value
       })
     })
 
@@ -205,15 +243,24 @@ const handleSubmit = async () => {
     console.log('✅ Registration successful:', result)
     console.log('Tenant ID:', result.tenantId)
     console.log('User ID:', result.uid)
+    console.log('Store URL:', result.storeUrl)
 
     // Store email and slug for login page
     localStorage.setItem('pending_registration_email', form.value.email)
     localStorage.setItem('pending_registration_slug', form.value.slug)
     
-    // Construct redirect URL
+    // Construct redirect URL based on URL type
     const protocol = window.location.protocol
-    const encodedRedirect = encodeURIComponent(`/store/${form.value.slug}/admin/dashboard`)
-    const loginUrl = `${protocol}//${rootDomain}/login?tenant=${form.value.slug}&redirect=${encodedRedirect}&registered=true`
+    let loginUrl: string
+    
+    if (urlType.value === 'subdomain') {
+      // Subdomain URL: https://brand.domain.com/admin/login
+      loginUrl = `${protocol}//${form.value.slug}.${rootDomain}/admin/login?registered=true`
+    } else {
+      // Path-based URL: https://domain.com/store/brand/admin/login
+      const encodedRedirect = encodeURIComponent(`/store/${form.value.slug}/admin/dashboard`)
+      loginUrl = `${protocol}//${rootDomain}/login?tenant=${form.value.slug}&redirect=${encodedRedirect}&registered=true`
+    }
     
     console.log('🔀 Redirecting to:', loginUrl)
     window.location.href = loginUrl
