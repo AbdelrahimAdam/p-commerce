@@ -25,7 +25,7 @@ export const useBrandsStore = defineStore('brands', () => {
     id: row.id,
     name: row.name,
     slug: row.slug,
-    image: row.image,
+    image: row.logo || row.image,
     signature: row.signature || '',
     description: row.description || '',
     category: row.category || '',
@@ -36,17 +36,22 @@ export const useBrandsStore = defineStore('brands', () => {
     updatedAt: new Date(row.updated_at)
   })
 
-  // Helper to get supabase client (throws if null)
   const getClient = () => supabaseSafe.client
+
+  const isFile = (value: unknown): value is File => value instanceof File
 
   const uploadBrandImage = async (file: File, brandId: string): Promise<string> => {
     const client = getClient()
-    const path = `brands/${brandId}/logo.jpg`
+    const fileExt = file.name.split('.').pop()
+    const fileName = `${brandId}-${Date.now()}.${fileExt}`
+    const filePath = `brands/${fileName}`
+    
     const { error: uploadError } = await client.storage
       .from('images')
-      .upload(path, file, { upsert: true })
+      .upload(filePath, file, { upsert: true })
     if (uploadError) throw uploadError
-    const { data: urlData } = client.storage.from('images').getPublicUrl(path)
+    
+    const { data: urlData } = client.storage.from('images').getPublicUrl(filePath)
     return urlData.publicUrl
   }
 
@@ -64,8 +69,6 @@ export const useBrandsStore = defineStore('brands', () => {
       console.warn('Failed to delete brand image from Storage:', err)
     }
   }
-
-  const isFile = (value: unknown): value is File => value instanceof File
 
   const loadBrands = async (): Promise<void> => {
     isLoading.value = true
@@ -123,18 +126,22 @@ export const useBrandsStore = defineStore('brands', () => {
         .select('*')
         .eq('brand_id', brand.id)
         .eq('tenant_id', tenantId)
+        .order('created_at', { ascending: false })
 
       if (productsError) throw productsError
 
       const products: Product[] = await Promise.all(((productsData as any[]) || []).map(async (row: any) => {
-        let imageUrl = ''
+        let imageUrl = row.image_url || ''
         let images: string[] = []
+        
         if (row.images && Array.isArray(row.images)) {
           images = await Promise.all(row.images.map(async (path: string) => {
             const { data: urlData } = client.storage.from('images').getPublicUrl(path)
             return urlData.publicUrl
           }))
-          imageUrl = images[0] || ''
+          if (!imageUrl && images.length > 0) {
+            imageUrl = images[0]
+          }
         }
 
         let categoryName = row.category
@@ -205,6 +212,31 @@ export const useBrandsStore = defineStore('brands', () => {
       }
 
       const client = getClient()
+      
+      const formattedProducts = productsData.map(p => ({
+        name: p.name || { en: 'Product', ar: 'منتج' },
+        description: p.description || { en: '', ar: '' },
+        notes: p.notes || { top: [''], heart: [''], base: [''] },
+        price: p.price || 0,
+        size: p.size || '100ml',
+        concentration: p.concentration || 'Eau de Parfum',
+        classification: p.classification || 'U',
+        slug: p.slug || '',
+        category: p.category || brandData.category || 'luxury',
+        is_best_seller: p.isBestSeller || false,
+        is_featured: p.isFeatured || false,
+        stock_quantity: p.stockQuantity || 0,
+        sku: p.sku || '',
+        is_active: p.isActive !== false,
+        image_url: p.imageUrl || '',
+        thumbnail: p.thumbnail || '',
+        gallery: p.images || [],
+        video_url: p.videoUrl || '',
+        meta_title: p.metaTitle || '',
+        meta_description: p.metaDescription || '',
+        tags: p.tags || []
+      }))
+
       const { data: brandId, error: rpcError } = await client.rpc('create_brand_with_products', {
         _tenant_id: tenantId,
         _name: brandData.name,
@@ -214,36 +246,18 @@ export const useBrandsStore = defineStore('brands', () => {
         _signature: brandData.signature || '',
         _is_active: brandData.isActive !== false,
         _image: imageUrl,
-        _products: productsData.map(p => ({
-          name: p.name,
-          slug: p.slug,
-          description: p.description,
-          price: p.price,
-          original_price: p.originalPrice,
-          category: p.category,
-          size: p.size,
-          concentration: p.concentration,
-          classification: p.classification,
-          sku: p.sku,
-          images: p.images || [],
-          is_best_seller: p.isBestSeller || false,
-          is_featured: p.isFeatured || false,
-          rating: p.rating || 0,
-          review_count: p.reviewCount || 0,
-          notes: p.notes || { top: [], heart: [], base: [] },
-          in_stock: p.inStock !== false,
-          stock_quantity: p.stockQuantity || 0,
-          meta: p.meta || {}
-        }))
-      } as any)
+        _products: formattedProducts
+      })
 
-      if (rpcError) throw rpcError
+      if (rpcError) {
+        console.error('RPC Error:', rpcError)
+        throw rpcError
+      }
       if (!brandId) throw new Error('Failed to create brand')
 
       if (isFile(brandData.image)) {
         const uploadedUrl = await uploadBrandImage(brandData.image, brandId)
         const updatePayload = { image: uploadedUrl, updated_at: new Date().toISOString() }
-        // Use getTable to bypass strict typing
         const { error: updateError } = await getTable('brands')
           .update(updatePayload)
           .eq('id', brandId)
@@ -257,6 +271,7 @@ export const useBrandsStore = defineStore('brands', () => {
 
       return brandId
     } catch (err: any) {
+      console.error('Error in addBrandWithProducts:', err)
       error.value = err?.message || 'Failed to add brand'
       return null
     } finally {
@@ -299,7 +314,6 @@ export const useBrandsStore = defineStore('brands', () => {
       if (updates.signature !== undefined) updatePayload.signature = updates.signature
       if (updates.isActive !== undefined) updatePayload.is_active = updates.isActive
 
-      // Use getTable to bypass strict typing
       const { error: updateError } = await getTable('brands')
         .update(updatePayload)
         .eq('id', brandId)
@@ -330,7 +344,6 @@ export const useBrandsStore = defineStore('brands', () => {
 
       if (fetchError && fetchError.code !== 'PGRST116') throw fetchError
 
-      // Use getTable to bypass strict typing
       const { error: deleteError } = await getTable('brands')
         .delete()
         .eq('id', brandId)
