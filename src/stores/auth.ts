@@ -1,4 +1,4 @@
-// src/stores/auth.ts – updated with public page guard
+// src/stores/auth.ts – Updated with multi-tenant support
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import type { AdminUser, CustomerUser, Address } from '@/types'
@@ -41,7 +41,7 @@ interface SupabaseAdmin {
 // ========== PUBLIC PAGE CHECK HELPER ==========
 const isPublicPage = (): boolean => {
   if (typeof window === 'undefined') return true
-  
+
   const path = window.location.pathname
   const publicPaths = [
     '/',
@@ -62,7 +62,7 @@ const isPublicPage = (): boolean => {
     '/reset-password',
     '/forgot-password'
   ]
-  
+
   return publicPaths.some(publicPath => path === publicPath || path.startsWith(publicPath + '/'))
 }
 
@@ -102,6 +102,7 @@ export const useAuthStore = defineStore('auth', () => {
   const currentTenant = computed(() => 
     user.value?.tenantId || customer.value?.tenantId || tenantStore.tenantId
   )
+  const isMainDomain = computed(() => tenantStore.isMainDomain)
 
   // Helper to cast table access (bypass TypeScript strict typing)
   const getTable = (table: string) => supabaseSafe.client.from(table) as any
@@ -109,13 +110,25 @@ export const useAuthStore = defineStore('auth', () => {
   // Helper to wait with exponential backoff
   const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
 
+  // Helper to get tenant-specific store URL
+  const getTenantStoreUrl = (): string => {
+    const tenantId = currentTenant.value
+    if (!tenantId) return window.location.origin
+    
+    const tenant = tenantStore.tenantId ? { id: tenantStore.tenantId, slug: tenantStore.tenantSlug, domain: tenantStore.tenantDomain } : null
+    if (tenant?.domain && tenant.domain !== import.meta.env.VITE_ROOT_DOMAIN) {
+      return `https://${tenant.domain}`
+    }
+    return `${window.location.origin}/store/${tenant?.slug || ''}`
+  }
+
   // ========== HELPERS ==========
   const getAdminFromSupabase = async (userId: string, maxRetries: number = 15, initialDelay: number = 1000): Promise<AdminUser | null> => {
     // Skip on public pages
     if (isPublicPage()) {
       return null
     }
-    
+
     let delay = initialDelay
 
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
@@ -185,7 +198,7 @@ export const useAuthStore = defineStore('auth', () => {
     if (isPublicPage()) {
       return null
     }
-    
+
     try {
       // Use queryWithAuth to handle unauthenticated state gracefully
       const result = await supabaseSafe.queryWithAuth(
@@ -679,6 +692,7 @@ export const useAuthStore = defineStore('auth', () => {
     displayName: string
     companyName: string
     domain: string
+    urlType?: string
   }) => {
     isLoading.value = true
     error.value = null
@@ -689,14 +703,17 @@ export const useAuthStore = defineStore('auth', () => {
       const response = await fetch('/api/register-company', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data)
+        body: JSON.stringify({
+          ...data,
+          urlType: data.urlType || 'subdomain'
+        })
       })
 
       const result = await response.json()
       if (!response.ok) throw new Error(result.error || 'Registration failed')
 
-      const { tenantId, uid, domain: fullDomain, slug } = result
-      console.log('✅ API response:', { tenantId, uid, fullDomain, slug })
+      const { tenantId, uid, storeDomain, storeUrl, slug, urlType } = result
+      console.log('✅ API response:', { tenantId, uid, storeDomain, storeUrl, slug, urlType })
 
       console.log('🔐 Logging in...')
       const supabase = supabaseSafe.client
@@ -732,12 +749,11 @@ export const useAuthStore = defineStore('auth', () => {
       }
 
       if (tenantId && slug) {
-        const domainToSet = fullDomain || `${slug}.${import.meta.env.VITE_ROOT_DOMAIN}`
-        tenantStore.setTenantAfterRegistration(tenantId, domainToSet, slug)
+        tenantStore.setTenantAfterRegistration(tenantId, storeDomain || `${slug}.${import.meta.env.VITE_ROOT_DOMAIN}`, slug)
       }
 
       console.log('✅ Company registered successfully:', tenantId)
-      return { tenantId, uid, domain: fullDomain, slug }
+      return { tenantId, uid, storeDomain, storeUrl, slug, urlType }
     } catch (err: any) {
       console.error('❌ Registration error:', err)
       error.value = err.message || 'Registration failed'
@@ -794,7 +810,7 @@ export const useAuthStore = defineStore('auth', () => {
       isLoading.value = false
       return
     }
-    
+
     isLoading.value = true
     try {
       const supabase = supabaseSafe.client
@@ -915,7 +931,7 @@ export const useAuthStore = defineStore('auth', () => {
       console.log('🔒 Public page detected, skipping auth listener:', window.location.pathname)
       return
     }
-    
+
     if (authListenerInitialized.value) return
     authListenerInitialized.value = true
 
@@ -963,6 +979,8 @@ export const useAuthStore = defineStore('auth', () => {
     currentUser,
     sessionTimeLeft,
     currentTenant,
+    isMainDomain,
+    getTenantStoreUrl,
     login,
     createSuperAdmin,
     registerCompany,
