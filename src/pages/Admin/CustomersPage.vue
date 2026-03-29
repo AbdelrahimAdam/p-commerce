@@ -137,7 +137,7 @@
 
     <!-- Customers Table -->
     <div v-if="!loading" class="bg-white rounded-xl shadow border overflow-hidden">
-      <!-- Mobile card view (visible on small screens) -->
+      <!-- Mobile card view -->
       <div class="block md:hidden">
         <div v-for="customer in paginatedCustomers" :key="customer.id" class="p-4 border-b last:border-0">
           <div class="flex items-start gap-3">
@@ -563,7 +563,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useLanguageStore } from '@/stores/language'
 import { useAuthStore } from '@/stores/auth'
-import { supabaseSafe } from '@/supabase/client'
+import { supabaseSafe, getTable } from '@/supabase/client'
 import { showConfirmation } from '@/utils/confirmation'
 import debounce from 'lodash/debounce'
 
@@ -652,9 +652,6 @@ const selectAll = computed({
   }
 })
 
-// Helper to get Supabase client (throws if null)
-const getClient = () => supabaseSafe.client
-
 // Methods
 const getInitials = (name: string) => {
   return name
@@ -712,9 +709,7 @@ const loadOrders = async () => {
   }
 
   try {
-    const client = getClient()
-    const { data, error } = await client
-      .from('orders')
+    const { data, error } = await getTable('orders')
       .select('*')
       .eq('tenant_id', tenantId)
       .order('created_at', { ascending: false })
@@ -723,7 +718,6 @@ const loadOrders = async () => {
 
     allOrders.value = (data as any[]) || []
 
-    // Group orders by user
     const ordersByUser: Record<string, any[]> = {}
     allOrders.value.forEach(order => {
       const userId = order.user_id
@@ -752,9 +746,8 @@ const loadCustomers = async () => {
   }
 
   try {
-    const client = getClient()
-    const { data, error: fetchError } = await client
-      .from('customers')
+    // Use getTable to bypass strict typing and handle empty results gracefully
+    const { data, error: fetchError } = await getTable('customers')
       .select('*')
       .eq('tenant_id', tenantId)
       .order('created_at', { ascending: false })
@@ -764,15 +757,16 @@ const loadCustomers = async () => {
 
     const ordersByUser = await loadOrders()
     
-    customers.value = ((data as any[]) || []).map(row => {
+    // Handle empty customers - if no data, return empty array
+    const customersData = (data as any[]) || []
+    
+    customers.value = customersData.map((row: any) => {
       const userId = row.id
       const userOrders = ordersByUser[userId] || []
       
-      // Calculate order stats
       const totalSpent = userOrders.reduce((sum, order) => sum + (order.total || 0), 0)
       const lastOrder = userOrders.length > 0 ? userOrders[0].created_at : null
       
-      // Determine status based on last_login
       let status = 'active'
       if (row.last_login) {
         const lastLogin = new Date(row.last_login)
@@ -797,22 +791,25 @@ const loadCustomers = async () => {
       }
     })
     
-    // Calculate stats
     await calculateStats()
     
   } catch (err: any) {
     console.error('Error loading customers:', err)
-    error.value = err.message || 'Failed to load customers'
+    // Don't show error for empty table - just set empty array
+    if (err.message?.includes('PGRST116')) {
+      customers.value = []
+      error.value = null
+    } else {
+      error.value = err.message || 'Failed to load customers'
+    }
   } finally {
     loading.value = false
   }
 }
 
 const calculateStats = async () => {
-  // Calculate total customers
   stats.value.totalCustomers = customers.value.length
   
-  // Calculate active customers
   const oneMonthAgo = new Date()
   oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1)
   
@@ -822,7 +819,6 @@ const calculateStats = async () => {
     return lastLogin > oneMonthAgo
   }).length
   
-  // Calculate new this month
   const startOfMonth = new Date()
   startOfMonth.setDate(1)
   startOfMonth.setHours(0, 0, 0, 0)
@@ -832,7 +828,6 @@ const calculateStats = async () => {
     return createdAt >= startOfMonth
   }).length
   
-  // Calculate growth rate
   const lastMonth = new Date()
   lastMonth.setMonth(lastMonth.getMonth() - 1)
   lastMonth.setDate(1)
@@ -847,7 +842,6 @@ const calculateStats = async () => {
     ? Math.round(((stats.value.newThisMonth - lastMonthCount) / lastMonthCount) * 100)
     : stats.value.newThisMonth > 0 ? 100 : 0
   
-  // Calculate average order value from customers who have orders
   const customersWithOrders_ = customers.value.filter(c => c.orders > 0)
   const totalSpentAll = customersWithOrders_.reduce((sum, c) => sum + (c.totalSpent || 0), 0)
   stats.value.avgOrderValue = customersWithOrders_.length > 0 
@@ -889,9 +883,7 @@ const deleteCustomer = async (id: string) => {
   
   if (confirmed) {
     try {
-      const client = getClient()
-      const { error } = await client
-        .from('customers')
+      const { error } = await getTable('customers')
         .delete()
         .eq('id', id)
 
@@ -969,7 +961,6 @@ onMounted(() => {
   min-height: calc(100vh - 80px);
 }
 
-/* Animation */
 @keyframes spin {
   from {
     transform: rotate(0deg);
@@ -983,7 +974,6 @@ onMounted(() => {
   animation: spin 1s linear infinite;
 }
 
-/* Scrollbar styling */
 ::-webkit-scrollbar {
   width: 6px;
 }
@@ -1002,7 +992,6 @@ onMounted(() => {
   background: #555;
 }
 
-/* Ensure buttons have adequate touch targets */
 button {
   min-height: 44px;
   min-width: 44px;
