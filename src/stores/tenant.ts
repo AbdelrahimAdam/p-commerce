@@ -8,6 +8,7 @@ interface CachedTenant {
   tenantDomain: string
   tenantSlug: string
   expiry: number
+  urlType?: 'subdomain' | 'path'
 }
 
 // Helper to get Supabase client (throws if null)
@@ -17,6 +18,7 @@ export const useTenantStore = defineStore('tenant', () => {
   const tenantId = ref<string | null>(null)
   const tenantDomain = ref<string | null>(null)
   const tenantSlug = ref<string | null>(null)
+  const urlType = ref<'subdomain' | 'path'>('path')
   const isLoading = ref(false)
   const error = ref<string | null>(null)
   const isInitialized = ref(false)
@@ -40,20 +42,20 @@ export const useTenantStore = defineStore('tenant', () => {
   // Parse subdomain from hostname
   const parseSubdomain = (hostname: string): string | null => {
     const rootDomain = import.meta.env.VITE_ROOT_DOMAIN || 'p-commerce-peach.vercel.app'
-    
+
     // For production: check if it's a subdomain of the root domain
     if (hostname.endsWith(rootDomain) && hostname !== rootDomain && hostname !== 'localhost') {
       const parts = hostname.split('.')
       // Extract the subdomain (first part before the root domain)
       return parts[0]
     }
-    
+
     // For localhost development with subdomains (e.g., tomford.localhost)
     if (hostname.includes('localhost') && hostname !== 'localhost') {
       const parts = hostname.split('.')
       return parts[0]
     }
-    
+
     return null
   }
 
@@ -71,7 +73,7 @@ export const useTenantStore = defineStore('tenant', () => {
 
     // Check for subdomain first (e.g., tomford.p-commerce-peach.vercel.app)
     const subdomainSlug = parseSubdomain(hostname)
-    
+
     // Check if we're on a tenant path like /store/slug or /slug/admin (fallback)
     let tenantSlugFromPath: string | null = null
 
@@ -97,7 +99,7 @@ export const useTenantStore = defineStore('tenant', () => {
     // PRIORITY 1: Subdomain detection (e.g., tomford.domain.com)
     if (subdomainSlug) {
       console.log('🌍 Subdomain detected:', subdomainSlug)
-      
+
       // Check cache first
       const cacheKey = `tenant_subdomain_${subdomainSlug}`
       const cachedStr = localStorage.getItem(cacheKey)
@@ -108,6 +110,7 @@ export const useTenantStore = defineStore('tenant', () => {
             tenantId.value = cached.tenantId
             tenantDomain.value = cached.tenantDomain
             tenantSlug.value = cached.tenantSlug
+            urlType.value = cached.urlType || 'subdomain'
             console.info('🟢 Tenant loaded from cache by subdomain:', tenantId.value)
             isInitialized.value = true
             resolveReady()
@@ -124,7 +127,7 @@ export const useTenantStore = defineStore('tenant', () => {
       // Look up tenant by slug (since subdomain = slug)
       const { data, error: fetchError } = await client
         .from('tenants')
-        .select('id, domain, name, settings, slug')
+        .select('id, domain, name, settings, slug, url_type')
         .eq('slug', subdomainSlug)
         .maybeSingle()
 
@@ -133,13 +136,15 @@ export const useTenantStore = defineStore('tenant', () => {
         tenantId.value = row.id
         tenantDomain.value = row.domain
         tenantSlug.value = row.slug
-        console.info('✅ Tenant resolved by subdomain:', tenantId.value)
+        urlType.value = row.url_type === 'subdomain' ? 'subdomain' : 'path'
+        console.info('✅ Tenant resolved by subdomain:', tenantId.value, 'urlType:', urlType.value)
 
         // Cache the result
         const cacheData: CachedTenant = {
           tenantId: tenantId.value!,
           tenantDomain: tenantDomain.value!,
           tenantSlug: tenantSlug.value!,
+          urlType: urlType.value,
           expiry: Date.now() + CACHE_EXPIRY
         }
         localStorage.setItem(cacheKey, JSON.stringify(cacheData))
@@ -168,6 +173,7 @@ export const useTenantStore = defineStore('tenant', () => {
               tenantId.value = cached.tenantId
               tenantDomain.value = cached.tenantDomain
               tenantSlug.value = cached.tenantSlug
+              urlType.value = cached.urlType || 'path'
               console.info('🟢 Tenant loaded from cache by slug:', tenantId.value)
               isInitialized.value = true
               resolveReady()
@@ -183,7 +189,7 @@ export const useTenantStore = defineStore('tenant', () => {
         const client = getClient()
         const { data, error: fetchError } = await client
           .from('tenants')
-          .select('id, domain, name, settings, slug')
+          .select('id, domain, name, settings, slug, url_type')
           .eq('slug', tenantSlugFromPath)
           .maybeSingle()
 
@@ -192,13 +198,15 @@ export const useTenantStore = defineStore('tenant', () => {
           tenantId.value = row.id
           tenantDomain.value = row.domain
           tenantSlug.value = row.slug
-          console.info('✅ Tenant resolved by slug:', tenantId.value)
+          urlType.value = row.url_type === 'subdomain' ? 'subdomain' : 'path'
+          console.info('✅ Tenant resolved by slug:', tenantId.value, 'urlType:', urlType.value)
 
           // Cache the result
           const cacheData: CachedTenant = {
             tenantId: tenantId.value!,
             tenantDomain: tenantDomain.value!,
             tenantSlug: tenantSlug.value!,
+            urlType: urlType.value,
             expiry: Date.now() + CACHE_EXPIRY
           }
           localStorage.setItem(cacheKey, JSON.stringify(cacheData))
@@ -216,6 +224,7 @@ export const useTenantStore = defineStore('tenant', () => {
       tenantId.value = null
       tenantDomain.value = null
       tenantSlug.value = null
+      urlType.value = 'path'
       isInitialized.value = true
       resolveReady()
       return
@@ -231,6 +240,7 @@ export const useTenantStore = defineStore('tenant', () => {
           tenantId.value = cached.tenantId
           tenantDomain.value = cached.tenantDomain
           tenantSlug.value = cached.tenantSlug
+          urlType.value = cached.urlType || 'subdomain'
           console.info('🟢 Tenant loaded from cache by domain:', tenantId.value)
           isInitialized.value = true
           resolveReady()
@@ -246,7 +256,7 @@ export const useTenantStore = defineStore('tenant', () => {
     const client = getClient()
     let { data, error: fetchError } = await client
       .from('tenants')
-      .select('id, domain, name, settings, slug')
+      .select('id, domain, name, settings, slug, url_type')
       .eq('domain', hostname)
       .limit(1)
 
@@ -268,6 +278,7 @@ export const useTenantStore = defineStore('tenant', () => {
       tenantId.value = null
       tenantDomain.value = null
       tenantSlug.value = null
+      urlType.value = 'path'
       rejectReady(new Error(error.value))
       return
     }
@@ -279,12 +290,14 @@ export const useTenantStore = defineStore('tenant', () => {
     tenantId.value = row.id
     tenantDomain.value = resolvedDomain
     tenantSlug.value = row.slug
-    console.info('✅ Tenant resolved from Supabase by domain:', tenantId.value)
+    urlType.value = row.url_type === 'subdomain' ? 'subdomain' : 'path'
+    console.info('✅ Tenant resolved from Supabase by domain:', tenantId.value, 'urlType:', urlType.value)
 
     const cacheData: CachedTenant = {
       tenantId: tenantId.value!,
       tenantDomain: tenantDomain.value!,
       tenantSlug: tenantSlug.value!,
+      urlType: urlType.value,
       expiry: Date.now() + CACHE_EXPIRY
     }
     localStorage.setItem(cacheKey, JSON.stringify(cacheData))
@@ -292,10 +305,11 @@ export const useTenantStore = defineStore('tenant', () => {
     resolveReady()
   }
 
-  const setTenantAfterRegistration = (id: string, domain: string, slug: string) => {
+  const setTenantAfterRegistration = (id: string, domain: string, slug: string, type: 'subdomain' | 'path' = 'path') => {
     tenantId.value = id
     tenantDomain.value = domain
     tenantSlug.value = slug
+    urlType.value = type
     isInitialized.value = true
     isLoading.value = false
 
@@ -304,6 +318,7 @@ export const useTenantStore = defineStore('tenant', () => {
       tenantId: tenantId.value!,
       tenantDomain: tenantDomain.value!,
       tenantSlug: tenantSlug.value!,
+      urlType: urlType.value,
       expiry: Date.now() + CACHE_EXPIRY
     }
     localStorage.setItem(cacheKey, JSON.stringify(cacheData))
@@ -311,11 +326,11 @@ export const useTenantStore = defineStore('tenant', () => {
     // Also cache by slug and subdomain
     const slugCacheKey = `tenant_slug_${slug}`
     localStorage.setItem(slugCacheKey, JSON.stringify(cacheData))
-    
+
     const subdomainCacheKey = `tenant_subdomain_${slug}`
     localStorage.setItem(subdomainCacheKey, JSON.stringify(cacheData))
 
-    console.info('🟢 Tenant set after registration:', id)
+    console.info('🟢 Tenant set after registration:', id, 'urlType:', type)
     resolveReady()
   }
 
@@ -367,6 +382,7 @@ export const useTenantStore = defineStore('tenant', () => {
     tenantId,
     tenantDomain,
     tenantSlug,
+    urlType,
     isLoading,
     error,
     isInitialized,
