@@ -1,4 +1,4 @@
-// src/stores/wishlist.ts – SUPABASE VERSION with proper upsert
+// src/stores/wishlist.ts – SUPABASE VERSION with fixed upsert
 import { defineStore } from 'pinia'
 import { ref, computed, watch } from 'vue'
 import { useLocalStorage } from '@vueuse/core'
@@ -59,7 +59,7 @@ export const useWishlistStore = defineStore('wishlist', () => {
     return 'in_stock'
   }
 
-  // Helper to save current wishlist to Supabase (upsert with correct conflict handling)
+  // Helper to save current wishlist to Supabase (using insert with conflict update)
   const saveToSupabase = async () => {
     if (!authStore.isAuthenticated) return
     try {
@@ -73,19 +73,47 @@ export const useWishlistStore = defineStore('wishlist', () => {
       }
 
       const client = getClient()
-      // Use upsert with composite key conflict
-      const { error } = await client
+      
+      // First, try to update existing record
+      const { data: existing, error: fetchError } = await client
         .from('wishlists')
-        .upsert({
-          user_id: userId,
-          items: items.value,
-          privacy: privacySetting.value,
-          shareable_id: shareableId.value || null,
-          tenant_id: tenantId,
-          updated_at: new Date().toISOString()
-        }, { onConflict: 'user_id,tenant_id' })  // ← Fixed: composite key conflict
+        .select('id')
+        .eq('user_id', userId)
+        .eq('tenant_id', tenantId)
+        .maybeSingle()
 
-      if (error) throw error
+      if (fetchError) throw fetchError
+
+      if (existing) {
+        // Update existing record
+        const { error: updateError } = await client
+          .from('wishlists')
+          .update({
+            items: items.value,
+            privacy: privacySetting.value,
+            shareable_id: shareableId.value || null,
+            updated_at: new Date().toISOString()
+          })
+          .eq('user_id', userId)
+          .eq('tenant_id', tenantId)
+
+        if (updateError) throw updateError
+      } else {
+        // Insert new record
+        const { error: insertError } = await client
+          .from('wishlists')
+          .insert({
+            user_id: userId,
+            items: items.value,
+            privacy: privacySetting.value,
+            shareable_id: shareableId.value || null,
+            tenant_id: tenantId,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          })
+
+        if (insertError) throw insertError
+      }
     } catch (error) {
       console.error('Error saving wishlist to Supabase:', error)
       showNotification({
