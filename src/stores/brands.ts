@@ -231,7 +231,8 @@ export const useBrandsStore = defineStore('brands', () => {
         image_url: p.image_url || ''
       }))
 
-      const { data: brandId, error: rpcError } = await client.rpc('create_brand_with_products', {
+      // Use supabaseSafe.rpc with proper typing
+      const { data: brandId, error: rpcError } = await (supabaseSafe as any).rpc('create_brand_with_products', {
         _tenant_id: tenantId,
         _name: brandData.name,
         _slug: brandData.slug,
