@@ -563,7 +563,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useLanguageStore } from '@/stores/language'
 import { useAuthStore } from '@/stores/auth'
-import { supabaseSafe, getTable } from '@/supabase/client'
+import { getTable } from '@/supabase/client'
 import { showConfirmation } from '@/utils/confirmation'
 import debounce from 'lodash/debounce'
 
@@ -746,7 +746,6 @@ const loadCustomers = async () => {
   }
 
   try {
-    // Use getTable to bypass strict typing and handle empty results gracefully
     const { data, error: fetchError } = await getTable('customers')
       .select('*')
       .eq('tenant_id', tenantId)
@@ -757,7 +756,6 @@ const loadCustomers = async () => {
 
     const ordersByUser = await loadOrders()
     
-    // Handle empty customers - if no data, return empty array
     const customersData = (data as any[]) || []
     
     customers.value = customersData.map((row: any) => {
@@ -795,7 +793,6 @@ const loadCustomers = async () => {
     
   } catch (err: any) {
     console.error('Error loading customers:', err)
-    // Don't show error for empty table - just set empty array
     if (err.message?.includes('PGRST116')) {
       customers.value = []
       error.value = null
