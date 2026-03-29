@@ -1,13 +1,10 @@
 <!-- src/components/Admin/AddBrandModal.vue -->
 <template>
   <div class="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
-    <!-- Background overlay -->
     <div class="fixed inset-0 bg-black bg-opacity-75 transition-opacity" @click="close"></div>
 
     <div class="flex min-h-screen items-end justify-center p-4 text-center sm:items-center sm:p-0">
-      <!-- Modal panel -->
       <div class="relative transform overflow-hidden rounded-lg bg-white text-left shadow-xl transition-all w-full mx-auto max-w-4xl">
-        <!-- Modal header -->
         <div class="bg-white px-4 pb-4 pt-5 sm:p-6 sm:pb-4">
           <div class="sm:flex sm:items-start">
             <div class="mt-3 text-center sm:mt-0 sm:text-left w-full">
@@ -27,7 +24,6 @@
                 </div>
               </div>
 
-              <!-- Step Navigation -->
               <div class="mb-6">
                 <div class="flex items-center">
                   <button
@@ -64,11 +60,8 @@
           </div>
         </div>
 
-        <!-- Modal content -->
         <div class="px-4 pb-3 sm:px-6 overflow-y-auto max-h-[calc(100vh-300px)]">
-          <!-- Step 1: Brand Information -->
           <div v-if="currentStep === 1" class="space-y-4">
-            <!-- Brand Name -->
             <div>
               <label for="brand-name" class="block text-sm font-medium text-gray-700 mb-1">
                 {{ t('Brand Name') }} *
@@ -86,13 +79,11 @@
               <p v-if="errors.name" class="mt-1 text-sm text-red-600">{{ errors.name }}</p>
             </div>
 
-            <!-- Image Upload Section -->
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">
                 {{ t('Brand Logo/Image') }} *
               </label>
 
-              <!-- URL Input -->
               <div class="mb-3">
                 <label class="block text-xs text-gray-600 mb-1">{{ t('Image URL (optional)') }}</label>
                 <div class="flex flex-col sm:flex-row gap-2">
@@ -113,7 +104,6 @@
                 </div>
               </div>
 
-              <!-- File Upload -->
               <div class="mb-3">
                 <label class="block text-xs text-gray-600 mb-1">{{ t('Or Upload Image') }}</label>
                 <div class="flex flex-col sm:flex-row items-start sm:items-center gap-2">
@@ -134,13 +124,12 @@
                   </button>
                 </div>
                 <p class="mt-1 text-xs text-gray-500">
-                  {{ t('Max 100KB for base64. JPG, PNG, GIF. Small images recommended.') }}
+                  {{ t('Images will be stored in Supabase Storage. JPG, PNG, GIF recommended.') }}
                 </p>
               </div>
 
               <p v-if="errors.image" class="mt-1 text-sm text-red-600">{{ errors.image }}</p>
 
-              <!-- Image Preview -->
               <div v-if="imagePreview" class="mt-3">
                 <p class="text-sm text-gray-600 mb-1">{{ t('Image Preview') }}:</p>
                 <div class="relative h-32 w-32 border border-gray-300 rounded-md overflow-hidden">
@@ -159,13 +148,9 @@
                     ×
                   </button>
                 </div>
-                <p v-if="brandImageBase64" class="mt-1 text-xs text-gray-500">
-                  {{ t('Image size:') }} {{ formatBytes(brandImageBase64.length) }}
-                </p>
               </div>
             </div>
 
-            <!-- Signature Scent -->
             <div>
               <label for="brand-signature" class="block text-sm font-medium text-gray-700 mb-1">
                 {{ t('Signature Scent') }}
@@ -179,7 +164,6 @@
               />
             </div>
 
-            <!-- Slug -->
             <div>
               <label for="brand-slug" class="block text-sm font-medium text-gray-700 mb-1">
                 {{ t('URL Slug') }} *
@@ -213,7 +197,6 @@
               </p>
             </div>
 
-            <!-- Category -->
             <div>
               <label for="brand-category" class="block text-sm font-medium text-gray-700 mb-1">
                 {{ t('Category') }} *
@@ -238,7 +221,6 @@
               <p v-if="errors.category" class="mt-1 text-sm text-red-600">{{ errors.category }}</p>
             </div>
 
-            <!-- Description -->
             <div>
               <label for="brand-description" class="block text-sm font-medium text-gray-700 mb-1">
                 {{ t('Description') }}
@@ -252,7 +234,6 @@
               ></textarea>
             </div>
 
-            <!-- Status -->
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">
                 {{ t('Status') }}
@@ -280,9 +261,7 @@
             </div>
           </div>
 
-          <!-- Step 2: Add Products -->
           <div v-else-if="currentStep === 2" class="space-y-4">
-            <!-- Current Brand Info -->
             <div class="bg-gray-50 rounded-lg p-4 mb-4">
               <div class="flex flex-col sm:flex-row items-start sm:items-center gap-3">
                 <div class="w-12 h-12 rounded-lg overflow-hidden flex-shrink-0">
@@ -299,7 +278,6 @@
               </div>
             </div>
 
-            <!-- Products List -->
             <div>
               <div class="flex flex-col sm:flex-row sm:items-center justify-between mb-4 gap-2">
                 <h4 class="text-sm font-medium text-gray-900">
@@ -318,9 +296,7 @@
                 </button>
               </div>
 
-              <!-- Products Grid -->
               <div class="space-y-4 max-h-[400px] overflow-y-auto pr-2">
-                <!-- Empty State -->
                 <div v-if="products.length === 0" class="text-center py-8 text-gray-500">
                   <svg class="w-12 h-12 mx-auto mb-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" 
@@ -330,19 +306,17 @@
                   <p class="text-xs mt-1">{{ t('Add at least one product to complete brand creation') }}</p>
                 </div>
 
-                <!-- Product Cards -->
                 <div
                   v-for="(product, index) in products"
                   :key="index"
                   class="border border-gray-200 rounded-lg p-4 hover:border-gray-300 transition-colors"
                 >
                   <div class="flex flex-col sm:flex-row items-start gap-4">
-                    <!-- Product Image -->
                     <div class="relative flex-shrink-0">
                       <div class="w-20 h-20 sm:w-16 sm:h-16 bg-gray-100 rounded-lg overflow-hidden">
                         <img
-                          v-if="product.imageBase64 || product.imageUrl"
-                          :src="product.imageBase64 || product.imageUrl"
+                          v-if="product.imagePreview"
+                          :src="product.imagePreview"
                           :alt="product.name?.en || ''"
                           class="w-full h-full object-cover"
                           @error="() => handleProductImageError(index)"
@@ -368,7 +342,7 @@
                           </svg>
                         </button>
                         <button
-                          v-if="product.imageBase64 || product.imageUrl"
+                          v-if="product.imagePreview"
                           @click="removeProductImage(index)"
                           class="w-6 h-6 bg-red-100 border border-red-300 rounded-full flex items-center justify-center text-red-600 hover:bg-red-200 text-xs"
                           :title="t('Remove Image')"
@@ -383,24 +357,20 @@
                         accept="image/*"
                         class="hidden"
                       />
-                      <p v-if="product.imageBase64" class="text-xs text-gray-500 mt-1">
-                        {{ formatBytes(product.imageBase64.length) }}
-                      </p>
                     </div>
 
-                    <!-- Product Details -->
                     <div class="flex-1 min-w-0">
                       <div class="flex flex-col sm:flex-row sm:items-start justify-between gap-2 mb-3">
                         <div class="flex-1">
                           <input
-                            v-model="product.name!.en"
+                            v-model="product.name.en"
                             type="text"
                             :placeholder="t('Product Name (English)')"
                             class="w-full px-2 py-1 text-sm font-medium text-gray-900 border-0 bg-transparent focus:outline-none focus:ring-0 border-b border-transparent focus:border-gray-300"
                             :class="{ '!border-red-300': productErrors[index]?.nameEn }"
                           />
                           <input
-                            v-model="product.name!.ar"
+                            v-model="product.name.ar"
                             type="text"
                             :placeholder="t('Product Name (Arabic)')"
                             class="w-full px-2 py-1 text-sm text-gray-600 border-0 bg-transparent focus:outline-none focus:ring-0 rtl:text-right border-b border-transparent focus:border-gray-300 mt-1"
@@ -419,7 +389,6 @@
                         </button>
                       </div>
 
-                      <!-- Gender Classification Field -->
                       <div class="mb-3">
                         <label class="block text-xs font-medium text-gray-700 mb-1">
                           {{ t('Classification') }} <span class="text-red-500">*</span>
@@ -458,7 +427,6 @@
                         </div>
                       </div>
 
-                      <!-- Product Fields -->
                       <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
                         <div>
                           <label class="block text-xs text-gray-500 mb-1">{{ t('Price') }} ({{ t('currencyLE') }}) *</label>
@@ -508,17 +476,16 @@
                         </div>
                       </div>
 
-                      <!-- Description -->
                       <div class="mt-3">
                         <label class="block text-xs text-gray-500 mb-1">{{ t('Description') }}</label>
                         <textarea
-                          v-model="product.description!.en"
+                          v-model="product.description.en"
                           rows="2"
                           :placeholder="t('Brief description (English)')"
                           class="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-primary-500 focus:border-primary-500 resize-none"
                         ></textarea>
                         <textarea
-                          v-model="product.description!.ar"
+                          v-model="product.description.ar"
                           rows="2"
                           :placeholder="t('وصف مختصر (العربية)')"
                           class="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-primary-500 focus:border-primary-500 resize-none rtl:text-right mt-2"
@@ -529,7 +496,6 @@
                 </div>
               </div>
 
-              <!-- Quick Add Products -->
               <div class="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
                 <h4 class="text-sm font-medium text-blue-800 mb-3">{{ t('Quick Add Templates') }}</h4>
                 <div class="flex flex-wrap gap-2">
@@ -563,10 +529,8 @@
           </div>
         </div>
 
-        <!-- Modal footer -->
         <div class="bg-gray-50 px-4 py-4 sm:px-6 border-t border-gray-200">
           <div class="flex flex-col-reverse sm:flex-row sm:justify-between sm:items-center gap-3">
-            <!-- Cancel Button -->
             <button
               type="button"
               @click="close"
@@ -576,9 +540,7 @@
               {{ t('Cancel') }}
             </button>
 
-            <!-- Navigation Buttons -->
             <div class="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
-              <!-- Back Button -->
               <button
                 v-if="currentStep === 2"
                 type="button"
@@ -592,7 +554,6 @@
                 {{ t('Back') }}
               </button>
 
-              <!-- Next/Save Button -->
               <button
                 v-if="currentStep === 1"
                 type="button"
@@ -636,34 +597,15 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, watch, computed, onMounted, onUnmounted } from 'vue'
+import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
 import { useLanguageStore } from '@/stores/language'
 import { useProductsStore } from '@/stores/products'
 import { useBrandsStore } from '@/stores/brands'
 import { useHomepageStore } from '@/stores/homepage'
 import { useAuthStore } from '@/stores/auth'
+import { supabaseSafe } from '@/supabase/client'
 import type { Brand, Product, Translation } from '@/types'
 
-// ========== BRAND ABBREVIATION MAPPING ==========
-const BRAND_CODES: Record<string, string> = {
-  "Baccarat": "BC", "Burberry Her": "BH", "Calvin Klein": "CK", "Dior": "DI",
-  "Dolcy & Gabana": "DG", "Escada": "EE", "Giorgio Armani": "GA", "Good Girl": "GG",
-  "Gucci": "GU", "Jean Paul Gaultier": "JP", "Kayali": "KA", "La costa": "LC",
-  "Lancome": "LN", "Latafa": "LF", "laverne": "LA", "Moscino": "MS",
-  "Nishan": "NI", "Louis Vuitton": "LV", "Paco Rabanne": "PR", "Parfums de Maely": "PM",
-  "Scandal": "SC", "TOM FORD": "TF", "Valantino": "VA", "Versace": "VR",
-  "Victoria's Secret": "VS", "Yves Saint Laurent": "YL"
-}
-
-const getBrandAbbreviation = (brandName: string): { code: string, isFallback: boolean } => {
-  const normalized = brandName.trim()
-  const official = BRAND_CODES[normalized]
-  if (official) return { code: official, isFallback: false }
-  const fallback = normalized.replace(/\s+/g, '').substring(0, 2).toUpperCase()
-  return { code: fallback, isFallback: true }
-}
-
-// ========== STORES & PROPS ==========
 const languageStore = useLanguageStore()
 const productsStore = useProductsStore()
 const brandsStore = useBrandsStore()
@@ -677,20 +619,28 @@ const emit = defineEmits<{
   save: [data: { brand: Partial<Brand>, products: Partial<Product>[] }]
 }>()
 
-// ========== STATE ==========
 const currentStep = ref(1)
 const formData = reactive({
   id: '', name: '', image: '', signature: '', slug: '', category: '', description: '', isActive: true
 })
-const brandImageBase64 = ref('')
 const brandImageFile = ref<File | null>(null)
+const brandImagePreview = ref('')
+const brandImageUploading = ref(false)
 
-type ProductWithTemp = Partial<Product> & {
-  imageBase64?: string;
-  classification?: string;
+interface ProductWithTemp extends Partial<Product> {
+  imageFile?: File | null
+  imagePreview?: string
+  imageUrl?: string
+  classification?: string
+  name: Translation
+  description: Translation
+  price: number
+  size: string
+  concentration: string
+  inStock: boolean
 }
-const products = ref<ProductWithTemp[]>([])
 
+const products = ref<ProductWithTemp[]>([])
 const errors = reactive({ name: '', image: '', slug: '', category: '' })
 const productErrors = ref<any[]>([])
 const loading = ref(false)
@@ -698,7 +648,7 @@ const imagePreview = ref('')
 const productFileInputs = ref<(HTMLInputElement | null)[]>([])
 const editing = computed(() => !!props.brand?.id)
 
-const productTemplates: Record<string, ProductWithTemp> = {
+const productTemplates: Record<string, Partial<ProductWithTemp>> = {
   noirExtreme: {
     name: { en: 'Noir Extreme', ar: 'نوار إكستريم' },
     description: { en: 'A luxurious oriental fragrance with notes of vanilla, amber, and spices.', ar: 'عطر شرقي فاخر بنغمات الفانيليا والعنبر والتوابل.' },
@@ -723,7 +673,6 @@ const productTemplates: Record<string, ProductWithTemp> = {
 
 const canProceedToProducts = computed(() => formData.name.trim() && formData.slug.trim() && formData.category.trim())
 
-// ========== HELPER FUNCTIONS ==========
 const formatBytes = (bytes: number): string => {
   if (bytes === 0) return '0 Bytes'
   const k = 1024
@@ -735,36 +684,52 @@ const formatBytes = (bytes: number): string => {
 const isValidUrl = (url: string): boolean => {
   if (!url) return false
   try {
-    if (url.startsWith('data:')) return url.startsWith('data:image/')
     new URL(url)
     return true
   } catch { return false }
 }
 
-const compressBase64Image = (base64: string, maxSizeKB = 100): string => {
-  if (base64.length <= maxSizeKB * 1024) return base64
-  console.warn(`Image too large: ${formatBytes(base64.length)}`)
-  return base64
+const uploadImageToStorage = async (file: File, path: string): Promise<string> => {
+  const client = supabaseSafe.client
+  const fileExt = file.name.split('.').pop()
+  const fileName = `${path}-${Date.now()}.${fileExt}`
+  const filePath = `brands/${fileName}`
+  
+  const { error: uploadError } = await client.storage
+    .from('images')
+    .upload(filePath, file, { upsert: true })
+  
+  if (uploadError) throw uploadError
+  
+  const { data: urlData } = client.storage.from('images').getPublicUrl(filePath)
+  return urlData.publicUrl
 }
 
-// ========== IMAGE HANDLING ==========
-const handleBrandImageUpload = (event: Event) => {
+const uploadProductImageToStorage = async (file: File, productId: string): Promise<string> => {
+  const client = supabaseSafe.client
+  const fileExt = file.name.split('.').pop()
+  const fileName = `${productId}-${Date.now()}.${fileExt}`
+  const filePath = `products/${fileName}`
+  
+  const { error: uploadError } = await client.storage
+    .from('images')
+    .upload(filePath, file, { upsert: true })
+  
+  if (uploadError) throw uploadError
+  
+  const { data: urlData } = client.storage.from('images').getPublicUrl(filePath)
+  return urlData.publicUrl
+}
+
+const handleBrandImageUpload = async (event: Event) => {
   const input = event.target as HTMLInputElement
   if (!input.files?.length) return
   const file = input.files[0]
   brandImageFile.value = file
-  if (file.size > 100 * 1024) {
-    alert(t('Image must be less than 100KB'))
-    input.value = ''
-    brandImageFile.value = null
-    return
-  }
   const reader = new FileReader()
   reader.onload = (e) => {
-    const base64 = e.target?.result as string
-    brandImageBase64.value = compressBase64Image(base64, 100)
-    imagePreview.value = brandImageBase64.value
-    formData.image = brandImageBase64.value
+    brandImagePreview.value = e.target?.result as string
+    imagePreview.value = brandImagePreview.value
   }
   reader.readAsDataURL(file)
   errors.image = ''
@@ -772,36 +737,33 @@ const handleBrandImageUpload = (event: Event) => {
 
 const removeBrandImage = () => {
   brandImageFile.value = null
-  brandImageBase64.value = ''
-  imagePreview.value = ''
+  brandImagePreview.value = ''
   formData.image = ''
+  imagePreview.value = ''
 }
 
 const clearImagePreview = () => {
   imagePreview.value = ''
   formData.image = ''
   brandImageFile.value = null
-  brandImageBase64.value = ''
+  brandImagePreview.value = ''
 }
 
 const previewImage = (url: string) => {
   if (url && isValidUrl(url)) {
     imagePreview.value = url
     brandImageFile.value = null
-    brandImageBase64.value = ''
+    brandImagePreview.value = ''
     errors.image = ''
   } else {
-    alert(t('Enter a valid image URL or upload an image'))
+    alert(t('Enter a valid image URL'))
   }
 }
 
 const handleImageError = () => {
   alert(t('Failed to load image.'))
-  imagePreview.value = ''
-  formData.image = ''
 }
 
-// ========== CORE METHODS ==========
 const generateSlug = () => {
   if (!formData.name) return
   formData.slug = formData.name.toLowerCase().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-').replace(/--+/g, '-').trim()
@@ -813,11 +775,8 @@ const validateForm = () => {
   productErrors.value = []
 
   if (!formData.name.trim()) { errors.name = t('Brand name required'); isValid = false }
-  if (!formData.image.trim() && !brandImageBase64.value) { errors.image = t('Brand image required'); isValid = false }
-  else if (formData.image.trim() && !isValidUrl(formData.image)) { errors.image = t('Invalid image URL'); isValid = false }
-  else if (brandImageBase64.value && brandImageBase64.value.length > 100*1024) { errors.image = t('Image too large (>100KB)'); isValid = false }
+  if (!formData.image.trim() && !brandImageFile.value) { errors.image = t('Brand image required'); isValid = false }
   if (!formData.slug.trim()) { errors.slug = t('Slug required'); isValid = false }
-  else if (!/^[a-z0-9-]+$/.test(formData.slug)) { errors.slug = t('Slug can only contain lowercase letters, numbers, hyphens'); isValid = false }
   if (!formData.category.trim()) { errors.category = t('Category required'); isValid = false }
 
   products.value.forEach((p, i) => {
@@ -825,33 +784,42 @@ const validateForm = () => {
     if (!p.name?.en?.trim()) { err.nameEn = t('Product name required'); isValid = false }
     if (!p.price || p.price <= 0) { err.price = t('Price > 0 required'); isValid = false }
     if (!p.classification) { err.classification = t('Classification required'); isValid = false }
-    if (p.imageBase64 && p.imageBase64.length > 100*1024) { err.image = t('Image >100KB'); isValid = false }
     if (Object.keys(err).length) productErrors.value[i] = err
   })
   return isValid
 }
 
-// ========== PRODUCT MANAGEMENT ==========
 const addNewProduct = () => {
   products.value.push({
     id: `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-    name: { en: '', ar: '' }, description: { en: '', ar: '' },
-    price: 0, size: '100ml', concentration: 'Eau de Parfum', classification: '',
-    imageUrl: '', imageBase64: '', images: [], inStock: true,
-    isBestSeller: false, isFeatured: false, brand: formData.slug || '', brandId: '', category: formData.category || ''
+    name: { en: '', ar: '' },
+    description: { en: '', ar: '' },
+    price: 0,
+    size: '100ml',
+    concentration: 'Eau de Parfum',
+    classification: '',
+    imageFile: null,
+    imagePreview: '',
+    imageUrl: '',
+    inStock: true
   })
   productFileInputs.value.push(null)
 }
 
 const addProductTemplate = (templateName: keyof typeof productTemplates) => {
   const tpl = productTemplates[templateName]
-  const name: Translation = { en: tpl.name?.en ?? '', ar: tpl.name?.ar ?? '' }
-  const desc: Translation = { en: tpl.description?.en ?? '', ar: tpl.description?.ar ?? '' }
   products.value.push({
     id: `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-    name, description: desc, price: tpl.price, size: tpl.size, concentration: tpl.concentration,
-    classification: tpl.classification, imageUrl: '', imageBase64: '', images: [], inStock: tpl.inStock,
-    isBestSeller: false, isFeatured: false, brand: formData.slug || '', brandId: '', category: formData.category || ''
+    name: tpl.name as Translation || { en: '', ar: '' },
+    description: tpl.description as Translation || { en: '', ar: '' },
+    price: tpl.price || 0,
+    size: tpl.size || '100ml',
+    concentration: tpl.concentration || 'Eau de Parfum',
+    classification: tpl.classification || '',
+    imageFile: null,
+    imagePreview: '',
+    imageUrl: '',
+    inStock: tpl.inStock !== false
   })
   productFileInputs.value.push(null)
 }
@@ -859,99 +827,114 @@ const addProductTemplate = (templateName: keyof typeof productTemplates) => {
 const removeProduct = (idx: number) => {
   if (products.value.length <= 1) { alert(t('At least one product required')); return }
   if (!confirm(t('Remove product?'))) return
-  products.value.splice(idx, 1); productFileInputs.value.splice(idx, 1); productErrors.value.splice(idx, 1)
+  products.value.splice(idx, 1)
+  productFileInputs.value.splice(idx, 1)
+  productErrors.value.splice(idx, 1)
 }
 
 const removeProductImage = (idx: number) => {
+  products.value[idx].imageFile = null
+  products.value[idx].imagePreview = ''
   products.value[idx].imageUrl = ''
-  products.value[idx].imageBase64 = ''
-  products.value[idx].images = []
 }
 
-const setProductFileInputRef = (el: HTMLInputElement | null, idx: number) => { productFileInputs.value[idx] = el }
-const uploadProductImage = (idx: number) => productFileInputs.value[idx]?.click()
+const setProductFileInputRef = (el: HTMLInputElement | null, idx: number) => {
+  productFileInputs.value[idx] = el
+}
+
+const uploadProductImage = (idx: number) => {
+  productFileInputs.value[idx]?.click()
+}
 
 const handleProductImageUpload = (event: Event, idx: number) => {
   const input = event.target as HTMLInputElement
   if (!input.files?.length) return
   const file = input.files[0]
-  if (file.size > 100*1024) {
-    alert(t('Product image must be <100KB'))
-    input.value = ''
-    return
-  }
+  products.value[idx].imageFile = file
   const reader = new FileReader()
   reader.onload = (e) => {
-    const base64 = e.target?.result as string
-    products.value[idx].imageBase64 = compressBase64Image(base64, 100)
-    products.value[idx].imageUrl = products.value[idx].imageBase64
-    products.value[idx].images = [products.value[idx].imageBase64!]
+    products.value[idx].imagePreview = e.target?.result as string
   }
   reader.readAsDataURL(file)
   input.value = ''
 }
 
 const handleProductImageError = (idx: number) => {
+  products.value[idx].imageFile = null
+  products.value[idx].imagePreview = ''
   products.value[idx].imageUrl = ''
-  products.value[idx].imageBase64 = ''
-  products.value[idx].images = []
 }
 
-const generateSkuBatch = (brandName: string) => {
-  const { code: brandAbbr, isFallback } = getBrandAbbreviation(brandName)
-  const groups: Record<string, ProductWithTemp[]> = { M: [], F: [], U: [] }
-  products.value.forEach(p => { if (p.classification) groups[p.classification].push(p) })
-  Object.entries(groups).forEach(([gender, group]) => {
-    group.forEach((p, idx) => p.sku = `P.N${brandAbbr}${gender}${(idx+1).toString().padStart(3,'0')}`)
-  })
-  if (isFallback) console.warn(`Brand "${brandName}" not in mapping, using fallback code: ${brandAbbr}`)
-}
-
-// ========== NAVIGATION ==========
 const goToStep = (step: number) => {
-  if (step === 2 && !canProceedToProducts.value) { alert(t('Complete brand info first')); return }
+  if (step === 2 && !canProceedToProducts.value) {
+    alert(t('Complete brand info first'))
+    return
+  }
   currentStep.value = step
 }
 
-// ========== LOAD EXISTING PRODUCTS ==========
-const loadExistingProducts = async (brandSlug: string) => {
-  try {
-    const brandProducts = await productsStore.getProductsByBrand(brandSlug)
-    if (brandProducts?.length) {
-      products.value = brandProducts.map(p => ({
-        id: p.id, name: p.name || { en: '', ar: '' }, description: p.description || { en: '', ar: '' },
-        price: p.price, size: p.size || '100ml', concentration: p.concentration || 'Eau de Parfum',
-        classification: p.classification || '', imageUrl: p.imageUrl || '', images: p.images || [],
-        inStock: p.inStock !== false, isBestSeller: p.isBestSeller || false, isFeatured: p.isFeatured || false,
-        slug: p.slug || '', brand: p.brand || brandSlug, brandId: p.brandId || '', category: p.category || '', sku: p.sku || ''
-      }))
-    }
-  } catch (e) { console.error(e) }
-}
-
-// ========== SAVE ==========
 const saveBrandAndProducts = async () => {
-  if (!authStore.isAuthenticated || !authStore.isAdmin) { alert(t('Admin login required')); return }
+  if (!authStore.isAuthenticated || !authStore.isAdmin) {
+    alert(t('Admin login required'))
+    return
+  }
   if (!validateForm()) return
-  if (!products.value.length) { alert(t('Add at least one product')); return }
-  if (!editing.value) generateSkuBatch(formData.name)
+  if (!products.value.length) {
+    alert(t('Add at least one product'))
+    return
+  }
 
   loading.value = true
   try {
-    const brandData: Partial<Brand> = {
-      name: formData.name, slug: formData.slug,
-      image: brandImageBase64.value || formData.image,
-      signature: formData.signature || '', category: formData.category,
-      description: formData.description || '', isActive: formData.isActive !== false
+    let brandImageUrl = ''
+    
+    if (brandImageFile.value) {
+      brandImageUrl = await uploadImageToStorage(brandImageFile.value, `brand_${formData.slug}`)
+    } else if (formData.image && isValidUrl(formData.image)) {
+      brandImageUrl = formData.image
     }
-    const productsData = products.value.map(p => ({
-      name: p.name || { en: '', ar: '' }, description: p.description || { en: '', ar: '' },
-      price: Number(p.price) || 0, size: p.size || '100ml', concentration: p.concentration || 'Eau de Parfum',
-      classification: p.classification || '', imageUrl: p.imageBase64 || p.imageUrl || '',
-      images: p.imageBase64 ? [p.imageBase64] : (p.imageUrl ? [p.imageUrl] : []),
-      inStock: p.inStock !== false, isBestSeller: p.isBestSeller || false, isFeatured: p.isFeatured || false,
-      slug: p.slug || (p.name?.en || '').toLowerCase().replace(/[^\w\s-]/g,'').replace(/\s+/g,'-'),
-      brand: formData.slug, brandId: '', category: p.category || formData.category, sku: p.sku || ''
+
+    const brandData: Partial<Brand> = {
+      name: formData.name,
+      slug: formData.slug,
+      image: brandImageUrl,
+      signature: formData.signature || '',
+      category: formData.category,
+      description: formData.description || '',
+      isActive: formData.isActive !== false
+    }
+
+    const productsData = await Promise.all(products.value.map(async (p, idx) => {
+      let productImageUrl = p.imageUrl || ''
+      
+      if (p.imageFile) {
+        const tempId = `temp_${formData.slug}_${idx}_${Date.now()}`
+        productImageUrl = await uploadProductImageToStorage(p.imageFile, tempId)
+      }
+
+      return {
+        name: p.name || { en: '', ar: '' },
+        description: p.description || { en: '', ar: '' },
+        notes: { top: [], heart: [], base: [] },
+        price: Number(p.price) || 0,
+        size: p.size || '100ml',
+        concentration: p.concentration || 'Eau de Parfum',
+        classification: p.classification || '',
+        slug: (p.name?.en || '').toLowerCase().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-'),
+        category: formData.category,
+        is_best_seller: false,
+        is_featured: false,
+        stock_quantity: 0,
+        sku: '',
+        is_active: true,
+        image_url: productImageUrl,
+        thumbnail: '',
+        gallery: [],
+        video_url: '',
+        meta_title: '',
+        meta_description: '',
+        tags: []
+      }
     }))
 
     let result: string | null = null
@@ -961,59 +944,60 @@ const saveBrandAndProducts = async () => {
     } else {
       result = await brandsStore.addBrandWithProducts(brandData, productsData)
     }
+
     if (result) {
       await homepageStore.loadHomepageData()
       await productsStore.fetchProducts()
       alert(t('Brand saved successfully'))
       emit('save', { brand: brandData, products: productsData })
       emit('close')
-    } else throw new Error('Save failed')
+    } else {
+      throw new Error('Save failed')
+    }
   } catch (err: any) {
-    console.error(err)
-    if (err.message?.includes('permission')) alert(t('Permission denied'))
-    else if (err.message?.includes('already exists')) alert(t('Slug already exists'))
-    else alert(t('Error: ') + err.message)
-  } finally { loading.value = false }
+    console.error('Save error:', err)
+    if (err.message?.includes('permission')) {
+      alert(t('Permission denied'))
+    } else if (err.message?.includes('already exists')) {
+      alert(t('Slug already exists'))
+    } else {
+      alert(t('Error: ') + err.message)
+    }
+  } finally {
+    loading.value = false
+  }
 }
 
-const close = () => { if (!loading.value) emit('close') }
+const close = () => {
+  if (!loading.value) emit('close')
+}
 
-// ========== WATCHERS ==========
-watch(() => formData.image, (newUrl) => {
-  if (newUrl && isValidUrl(newUrl)) {
-    imagePreview.value = newUrl
-    brandImageFile.value = null
-    brandImageBase64.value = ''
-  } else if (brandImageBase64.value) {
-    imagePreview.value = brandImageBase64.value
-  } else if (!newUrl) {
-    imagePreview.value = ''
-  }
-})
-
-// ========== LIFECYCLE ==========
 onMounted(() => {
   if (props.brand) {
     Object.assign(formData, {
-      id: props.brand.id || '', name: props.brand.name || '', image: props.brand.image || '',
-      signature: props.brand.signature || '', slug: props.brand.slug || '',
-      category: props.brand.category || '', description: props.brand.description || '',
+      id: props.brand.id || '',
+      name: props.brand.name || '',
+      image: props.brand.image || '',
+      signature: props.brand.signature || '',
+      slug: props.brand.slug || '',
+      category: props.brand.category || '',
+      description: props.brand.description || '',
       isActive: props.brand.isActive !== undefined ? props.brand.isActive : true
     })
     if (formData.image) imagePreview.value = formData.image
-    if (props.brand.slug) loadExistingProducts(props.brand.slug)
   } else {
     addNewProduct()
   }
 
-  const handleKey = (e: KeyboardEvent) => { if (e.key === 'Escape') close() }
+  const handleKey = (e: KeyboardEvent) => {
+    if (e.key === 'Escape') close()
+  }
   document.addEventListener('keydown', handleKey)
   onUnmounted(() => document.removeEventListener('keydown', handleKey))
 })
 </script>
 
 <style scoped>
-/* Custom scrollbar */
 .overflow-y-auto::-webkit-scrollbar,
 .max-h-\[400px\]::-webkit-scrollbar {
   width: 6px;
@@ -1036,43 +1020,15 @@ onMounted(() => {
   background: #555;
 }
 
-/* Responsive modal height */
 @media (max-height: 700px) {
   .max-h-\[calc\(100vh-300px\)\] {
     max-height: calc(100vh - 250px);
   }
-  
   .max-h-\[400px\] {
     max-height: 300px;
   }
 }
 
-/* Mobile optimizations */
-@media (max-width: 640px) {
-  .modal-panel {
-    margin: 0.5rem;
-    max-width: calc(100% - 1rem);
-  }
-  
-  .product-card {
-    padding: 1rem;
-  }
-  
-  .product-image-container {
-    width: 100%;
-    max-width: 80px;
-  }
-}
-
-/* Tablet optimizations */
-@media (min-width: 641px) and (max-width: 768px) {
-  .modal-panel {
-    margin: 1rem;
-    max-width: calc(100% - 2rem);
-  }
-}
-
-/* Better touch targets on mobile */
 @media (max-width: 640px) {
   button, 
   input:not([type="checkbox"]):not([type="radio"]), 
@@ -1080,52 +1036,29 @@ onMounted(() => {
   textarea {
     min-height: 44px;
   }
-  
-  .product-field-input {
-    padding: 0.75rem;
-  }
-}
-
-/* Ensure text remains readable on small screens */
-@media (max-width: 640px) {
   .text-sm {
     font-size: 0.875rem;
     line-height: 1.25rem;
   }
-  
   .text-xs {
     font-size: 0.75rem;
     line-height: 1rem;
   }
 }
 
-/* Prevent horizontal overflow */
 .break-all {
   word-break: break-all;
 }
 
-/* Smooth transitions */
 button, input, select, textarea {
   transition: all 0.2s ease;
 }
 
-/* Focus styles */
 :focus-visible {
   outline: 2px solid #3b82f6;
   outline-offset: 2px;
 }
 
-/* Step indicator animation */
-@keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.7; }
-}
-
-.bg-primary-100 {
-  animation: pulse 2s infinite;
-}
-
-/* Loading spinner animation */
 @keyframes spin {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
