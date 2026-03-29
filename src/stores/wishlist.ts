@@ -1,10 +1,10 @@
-// src/stores/wishlist.ts – SUPABASE VERSION with fixed upsert
+// src/stores/wishlist.ts – SUPABASE VERSION with proper type handling
 import { defineStore } from 'pinia'
 import { ref, computed, watch } from 'vue'
 import { useLocalStorage } from '@vueuse/core'
 import { showNotification } from '@/utils/notifications'
 import { showConfirmation } from '@/utils/confirmation'
-import { supabaseSafe } from '@/supabase/client'
+import { supabaseSafe, getTable } from '@/supabase/client'
 import type { Product } from '@/types'
 import { useAuthStore } from './auth'
 
@@ -59,7 +59,7 @@ export const useWishlistStore = defineStore('wishlist', () => {
     return 'in_stock'
   }
 
-  // Helper to save current wishlist to Supabase (using insert with conflict update)
+  // Helper to save current wishlist to Supabase (using getTable to bypass type issues)
   const saveToSupabase = async () => {
     if (!authStore.isAuthenticated) return
     try {
@@ -72,11 +72,8 @@ export const useWishlistStore = defineStore('wishlist', () => {
         return
       }
 
-      const client = getClient()
-      
-      // First, try to update existing record
-      const { data: existing, error: fetchError } = await client
-        .from('wishlists')
+      // Use getTable to bypass strict typing
+      const { data: existing, error: fetchError } = await getTable('wishlists')
         .select('id')
         .eq('user_id', userId)
         .eq('tenant_id', tenantId)
@@ -86,8 +83,7 @@ export const useWishlistStore = defineStore('wishlist', () => {
 
       if (existing) {
         // Update existing record
-        const { error: updateError } = await client
-          .from('wishlists')
+        const { error: updateError } = await getTable('wishlists')
           .update({
             items: items.value,
             privacy: privacySetting.value,
@@ -100,8 +96,7 @@ export const useWishlistStore = defineStore('wishlist', () => {
         if (updateError) throw updateError
       } else {
         // Insert new record
-        const { error: insertError } = await client
-          .from('wishlists')
+        const { error: insertError } = await getTable('wishlists')
           .insert({
             user_id: userId,
             items: items.value,
@@ -137,9 +132,8 @@ export const useWishlistStore = defineStore('wishlist', () => {
         return
       }
 
-      const client = getClient()
-      const { data, error } = await client
-        .from('wishlists')
+      // Use getTable to bypass strict typing
+      const { data, error } = await getTable('wishlists')
         .select('*')
         .eq('user_id', userId)
         .eq('tenant_id', tenantId)
