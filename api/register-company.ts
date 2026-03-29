@@ -87,12 +87,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const { email, password, displayName, companyName, domain } = req.body
+    const { email, password, displayName, companyName, slug, urlType = 'subdomain' } = req.body
 
-    console.log('📝 Registration request:', { email, companyName, domain })
+    console.log('📝 Registration request:', { email, companyName, slug, urlType })
 
     // Validation
-    if (!email || !password || !displayName || !companyName || !domain) {
+    if (!email || !password || !displayName || !companyName || !slug) {
       return res.status(400).json({ error: 'Missing required fields' })
     }
 
@@ -107,20 +107,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(400).json({ error: 'Password must be at least 6 characters' })
     }
 
-    // Generate slug from company name
-    const slug = generateSlug(companyName)
-
     // Validate slug
-    if (!slug || slug.length < 2) {
+    const validatedSlug = slug.toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/^-|-$/g, '')
+    if (!validatedSlug || validatedSlug.length < 2) {
       return res.status(400).json({ error: 'Company name is too short or invalid' })
     }
 
     // Get environment variables
     const supabaseUrl = process.env.VITE_SUPABASE_URL
     const serviceRoleKey = process.env.VITE_SUPABASE_SERVICE_ROLE_KEY
-    const rootDomain = process.env.VITE_ROOT_DOMAIN
+    const rootDomain = process.env.VITE_ROOT_DOMAIN || 'p-commerce-peach.vercel.app'
 
-    if (!supabaseUrl || !serviceRoleKey || !rootDomain) {
+    if (!supabaseUrl || !serviceRoleKey) {
       return res.status(500).json({ 
         error: 'Missing environment variables',
         details: {
@@ -137,49 +135,67 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // Generate UUID for tenant
     const tenantId = generateUUID()
-    const fullDomain = `${domain}.${rootDomain}`
+    
+    // Determine the store URL based on URL type
+    let storeDomain: string
+    let storeUrl: string
+    
+    if (urlType === 'subdomain') {
+      // Subdomain: brand.domain.com
+      storeDomain = `${validatedSlug}.${rootDomain}`
+      storeUrl = `https://${storeDomain}`
+    } else {
+      // Path-based: domain.com/store/brand
+      storeDomain = rootDomain
+      storeUrl = `https://${rootDomain}/store/${validatedSlug}`
+    }
+    
     const now = new Date().toISOString()
 
-    console.log('Generated IDs:', { tenantId, fullDomain, slug })
+    console.log('Generated IDs:', { tenantId, storeDomain, storeUrl, slug: validatedSlug, urlType })
 
     // Check slug availability
     const { data: existingSlug } = await supabaseAdmin
       .from('tenants')
       .select('id')
-      .eq('slug', slug)
+      .eq('slug', validatedSlug)
       .maybeSingle()
 
     if (existingSlug) {
       return res.status(400).json({
         error: 'Store URL already exists. Please choose a different company name.',
-        slug: slug
+        slug: validatedSlug
       })
     }
 
-    // Check domain availability
-    const { data: existingTenant } = await supabaseAdmin
-      .from('tenants')
-      .select('id')
-      .eq('domain', fullDomain)
-      .maybeSingle()
+    // Check domain availability for subdomain
+    if (urlType === 'subdomain') {
+      const { data: existingDomain } = await supabaseAdmin
+        .from('tenants')
+        .select('id')
+        .eq('domain', storeDomain)
+        .maybeSingle()
 
-    if (existingTenant) {
-      return res.status(400).json({
-        error: 'Domain already exists',
-        domain: fullDomain
-      })
+      if (existingDomain) {
+        return res.status(400).json({
+          error: 'Domain already exists',
+          domain: storeDomain
+        })
+      }
     }
 
-    // STEP 1: Create the tenant
+    // STEP 1: Create the tenant with URL type information
     console.log('Step 1: Creating tenant...')
     const { error: tenantError } = await supabaseAdmin
       .from('tenants')
       .insert({
         id: tenantId,
         name: companyName,
-        domain: fullDomain,
-        slug: slug,
+        domain: storeDomain,
+        slug: validatedSlug,
         owner_id: null,
+        url_type: urlType,
+        store_url: storeUrl,
         created_at: now,
         updated_at: now
       })
@@ -204,7 +220,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         tenant_id: tenantId,
         role: 'admin',
         companyName,
-        slug
+        slug: validatedSlug,
+        urlType,
+        storeUrl
       }
     })
 
@@ -224,7 +242,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
     console.log('✅ User created:', userId)
 
-    // STEP 3: Create the admin record - THIS IS THE CRITICAL PART
+    // STEP 3: Create the admin record
     console.log('Step 3: Creating admin record...')
     console.log('Admin data to insert:', {
       id: userId,
@@ -241,8 +259,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       .from('admins')
       .insert({
         id: userId,
-        user_id: userId,      // ← CRITICAL: Must match auth user ID
-        tenant_id: tenantId,  // ← CRITICAL: Must match tenant ID
+        user_id: userId,
+        tenant_id: tenantId,
         role: 'admin',
         email: email,
         display_name: displayName,
@@ -254,7 +272,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     if (adminError) {
       console.error('❌ Admin error:', adminError)
-      console.error('Admin error details:', adminError.message, adminError.code)
       // Rollback: delete user and tenant
       await supabaseAdmin.auth.admin.deleteUser(userId)
       await supabaseAdmin.from('tenants').delete().eq('id', tenantId)
@@ -297,8 +314,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       success: true,
       tenantId,
       uid: userId,
-      domain: fullDomain,
-      slug: slug,
+      storeDomain,
+      storeUrl,
+      slug: validatedSlug,
+      urlType,
       adminVerified: !!verifiedAdmin
     })
 
