@@ -1,5 +1,5 @@
 <template>
-  <aside class="fixed left-0 top-0 h-screen w-64 bg-gray-900 text-white z-40 transition-transform duration-300">
+  <aside class="admin-sidebar fixed left-0 top-0 h-screen w-64 bg-gray-900 text-white z-40 transition-transform duration-300 transform">
     <!-- Logo -->
     <div class="p-6 border-b border-gray-800">
       <div class="flex items-center space-x-3" :class="{ 'space-x-reverse': isRTL }">
@@ -10,9 +10,13 @@
           </svg>
         </div>
         <div>
-          <h2 class="text-lg font-display-en font-bold">{{ t('Admin') }}</h2>
-          <p class="text-xs text-gray-400">{{ t('Luxury Perfume Store') }}</p>
+          <h2 class="text-lg font-display-en font-bold">P.COMMERCE</h2>
+          <p class="text-xs text-gray-400">{{ t('Admin Dashboard') }}</p>
         </div>
+      </div>
+      <!-- Tenant Info (if multi-tenant) -->
+      <div v-if="tenantStore.tenantId && !tenantStore.isMainDomain" class="mt-2 pt-2 border-t border-gray-800">
+        <p class="text-xs text-gray-400">{{ t('Store') }}: {{ tenantStore.tenantSlug?.toUpperCase() }}</p>
       </div>
     </div>
 
@@ -97,7 +101,7 @@
         </router-link>
       </div>
 
-      <!-- Store Management (All Admins) -->
+      <!-- Store Management -->
       <div class="pt-4 border-t border-gray-800">
         <p class="px-4 py-2 text-xs text-gray-500 uppercase tracking-wider">
           {{ t('Store Management') }}
@@ -310,22 +314,21 @@ import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useLanguageStore } from '@/stores/language'
 import { useAuthStore } from '@/stores/auth'
+import { useTenantStore } from '@/stores/tenant'
 
 const router = useRouter()
 const languageStore = useLanguageStore()
 const authStore = useAuthStore()
+const tenantStore = useTenantStore()
 
-// Get the t function directly from the store
 const { isRTL, t } = languageStore
 
-// Computed
 const isSuperAdmin = computed(() => authStore.isSuperAdmin)
 
 const userInitials = computed(() => {
   const name = authStore.user?.displayName || authStore.user?.email || ''
   if (!name) return 'AD'
   
-  // Get first letters of first two words
   return name
     .split(' ')
     .map(word => word.charAt(0))
@@ -334,7 +337,6 @@ const userInitials = computed(() => {
     .slice(0, 2)
 })
 
-// Methods
 const handleNavigation = () => {
   // No need to emit close – parent controls visibility via overlay
 }
@@ -365,6 +367,42 @@ const goToAddOffer = () => {
 </script>
 
 <style scoped>
+.admin-sidebar {
+  transform: translateX(0);
+}
+
+/* Fixed position with proper layout */
+.admin-sidebar {
+  position: fixed;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 256px;
+  background-color: #111827;
+  z-index: 40;
+}
+
+/* Main content should have margin-left when sidebar is visible */
+:global(.admin-layout main) {
+  margin-left: 256px;
+}
+
+/* For mobile, sidebar slides out */
+@media (max-width: 1023px) {
+  .admin-sidebar {
+    transform: translateX(-100%);
+    transition: transform 0.3s ease-in-out;
+  }
+  
+  .admin-sidebar.mobile-open {
+    transform: translateX(0);
+  }
+  
+  :global(.admin-layout main) {
+    margin-left: 0;
+  }
+}
+
 /* Smooth transitions */
 .transition-transform {
   transition-property: transform;
@@ -407,7 +445,7 @@ const goToAddOffer = () => {
 
 /* Mobile sidebar overlay */
 @media (max-width: 1023px) {
-  aside {
+  .admin-sidebar {
     box-shadow: 2px 0 10px rgba(0, 0, 0, 0.3);
   }
 }
@@ -474,7 +512,7 @@ button:focus-visible {
 
 /* Responsive adjustments */
 @media (max-width: 768px) {
-  aside {
+  .admin-sidebar {
     width: 100%;
     max-width: 280px;
   }
