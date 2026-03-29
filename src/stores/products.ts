@@ -7,6 +7,7 @@ import type { Product, FilterOptions, Brand } from '@/types'
 import { productNotification } from '@/utils/notifications'
 import { useBrandsStore } from './brands'
 import { useAuthStore } from './auth'
+import { useTenantStore } from './tenant'
 
 // Define categories locally
 const LUXURY_CATEGORIES = [
@@ -95,6 +96,7 @@ const getTable = (table: string) => getClient().from(table) as any
 export const useProductsStore = defineStore('products', () => {
   const brandsStore = useBrandsStore()
   const authStore = useAuthStore()
+  const tenantStore = useTenantStore()
 
   const products = ref<Product[]>([])
   const featuredProducts = ref<Product[]>([])
@@ -120,6 +122,11 @@ export const useProductsStore = defineStore('products', () => {
   const productCache = ref<Map<string, { product: Product; timestamp: number }>>(new Map())
   const brandProductsCache = ref<Map<string, Product[]>>(new Map())
   const isInitialized = ref(false)
+
+  // Helper to get current tenant ID from multiple sources
+  const getCurrentTenantId = (): string | null => {
+    return authStore.currentTenant || tenantStore.tenantId
+  }
 
   const debouncedFetchProducts = debounce(async (options: FilterOptions = {}, resetPagination: boolean = true) => {
     await fetchProducts(options, resetPagination)
@@ -215,13 +222,14 @@ export const useProductsStore = defineStore('products', () => {
   ): Promise<Product[]> => {
     try {
       const client = getClient()
-      // Ensure tenant is defined (checked before calling)
-      const tenant = authStore.currentTenant!
+      const tenantId = getCurrentTenantId()
+      if (!tenantId) return []
+
       let query = client
         .from('products')
         .select('*')
         .eq('brand_id', brandId)
-        .eq('tenant_id', tenant)
+        .eq('tenant_id', tenantId)
         .eq('in_stock', true)
         .order('created_at', { ascending: false })
         .order('id', { ascending: false })
@@ -264,7 +272,8 @@ export const useProductsStore = defineStore('products', () => {
   }
 
   const fetchProducts = async (options: FilterOptions = {}, resetPagination: boolean = true) => {
-    if (!authStore.currentTenant) {
+    const tenantId = getCurrentTenantId()
+    if (!tenantId) {
       products.value = []
       featuredProducts.value = []
       newArrivals.value = []
@@ -299,7 +308,7 @@ export const useProductsStore = defineStore('products', () => {
       }
 
       let brandsToFetch = brandsStore.activeBrands.filter(
-        brand => brand.tenantId === authStore.currentTenant
+        brand => brand.tenantId === tenantId
       )
 
       if (options.brand) {
@@ -338,8 +347,8 @@ export const useProductsStore = defineStore('products', () => {
       lastUpdated.value = new Date()
 
       cacheProducts(unique)
-      if (resetPagination && authStore.currentTenant) deriveSpecialCollections()
-      console.log(`✅ Loaded ${unique.length} products from ${brandsToFetch.length} brands`)
+      if (resetPagination && tenantId) deriveSpecialCollections()
+      console.log(`✅ Loaded ${unique.length} products from ${brandsToFetch.length} brands for tenant ${tenantId}`)
     } catch (err: any) {
       error.value = err.message || 'Failed to load products'
       productNotification.error('Failed to load luxury products')
@@ -380,7 +389,8 @@ export const useProductsStore = defineStore('products', () => {
   const fetchLuxuryCollections = async () => deriveSpecialCollections()
 
   const fetchProductBySlug = async (slug: string) => {
-    if (!authStore.currentTenant) {
+    const tenantId = getCurrentTenantId()
+    if (!tenantId) {
       error.value = 'No tenant context'
       return null
     }
@@ -399,7 +409,7 @@ export const useProductsStore = defineStore('products', () => {
       let product = products.value.find(p => p.slug === slug)
       if (!product) {
         const client = getClient()
-        const tenantBrands = brandsStore.brands.filter(b => b.tenantId === authStore.currentTenant)
+        const tenantBrands = brandsStore.brands.filter(b => b.tenantId === tenantId)
         for (const brand of tenantBrands) {
           const { data, error: fetchError } = await client
             .from('products')
@@ -430,8 +440,9 @@ export const useProductsStore = defineStore('products', () => {
 
   const getProductsByBrand = async (brandSlug: string): Promise<Product[]> => {
     try {
+      const tenantId = getCurrentTenantId()
       const brand = brandsStore.brands.find(b => b.slug === brandSlug)
-      if (!brand || brand.tenantId !== authStore.currentTenant) return []
+      if (!brand || brand.tenantId !== tenantId) return []
       const cached = brandProductsCache.value.get(brand.id)
       if (cached && cached.length) return cached
 
@@ -440,7 +451,7 @@ export const useProductsStore = defineStore('products', () => {
         .from('products')
         .select('*')
         .eq('brand_id', brand.id)
-        .eq('tenant_id', authStore.currentTenant)
+        .eq('tenant_id', tenantId)
         .eq('in_stock', true)
         .order('created_at', { ascending: false })
 
@@ -697,7 +708,7 @@ export const useProductsStore = defineStore('products', () => {
   )
 
   watchEffect(async () => {
-    const tenantId = authStore.currentTenant
+    const tenantId = getCurrentTenantId()
     const brandsLoaded = brandsStore.brands.length > 0
     if (tenantId && brandsLoaded && !isInitialized.value) {
       await fetchProducts({}, true)
@@ -707,7 +718,8 @@ export const useProductsStore = defineStore('products', () => {
 
   const initialize = async () => {
     isInitialized.value = false
-    if (authStore.currentTenant && brandsStore.brands.length > 0) {
+    const tenantId = getCurrentTenantId()
+    if (tenantId && brandsStore.brands.length > 0) {
       await fetchProducts({}, true)
       isInitialized.value = true
     }
