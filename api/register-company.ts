@@ -3,14 +3,6 @@ import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { createClient } from '@supabase/supabase-js'
 import crypto from 'crypto'
 
-// Helper function to generate slug from company name
-const generateSlug = (companyName: string): string => {
-  return companyName
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-|-$/g, '')
-}
-
 // Helper function to generate UUID
 const generateUUID = (): string => {
   return crypto.randomUUID()
