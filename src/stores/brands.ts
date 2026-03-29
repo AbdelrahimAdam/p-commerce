@@ -1,15 +1,16 @@
-// src/stores/brands.ts - Fixed version with unused variable removed
-
+// src/stores/brands.ts - Updated with tenant store fallback
 import { defineStore } from 'pinia'
 import { ref, computed, watchEffect } from 'vue'
 import { supabaseSafe, getTable } from '@/supabase/client'
 import type { Brand, BrandWithProducts, Product } from '@/types'
 import { useProductsStore } from '@/stores/products'
 import { useAuthStore } from './auth'
+import { useTenantStore } from './tenant'
 
 export const useBrandsStore = defineStore('brands', () => {
   const productsStore = useProductsStore()
   const authStore = useAuthStore()
+  const tenantStore = useTenantStore()
 
   const brands = ref<Brand[]>([])
   const currentBrand = ref<BrandWithProducts | null>(null)
@@ -21,6 +22,11 @@ export const useBrandsStore = defineStore('brands', () => {
     brands.value.filter(b => b.isActive === true)
   )
   const brandCount = computed(() => brands.value.length)
+
+  // Helper to get current tenant ID from multiple sources
+  const getCurrentTenantId = (): string | null => {
+    return authStore.currentTenant || tenantStore.tenantId
+  }
 
   const transformBrandData = (row: any): Brand => ({
     id: row.id,
@@ -46,12 +52,12 @@ export const useBrandsStore = defineStore('brands', () => {
     const fileExt = file.name.split('.').pop()
     const fileName = `${brandId}-${Date.now()}.${fileExt}`
     const filePath = `brands/${fileName}`
-    
+
     const { error: uploadError } = await client.storage
       .from('images')
       .upload(filePath, file, { upsert: true })
     if (uploadError) throw uploadError
-    
+
     const { data: urlData } = client.storage.from('images').getPublicUrl(filePath)
     return urlData.publicUrl
   }
@@ -76,7 +82,7 @@ export const useBrandsStore = defineStore('brands', () => {
     error.value = ''
 
     try {
-      const tenantId = authStore.currentTenant
+      const tenantId = getCurrentTenantId()
       if (!tenantId) {
         brands.value = []
         return
@@ -107,7 +113,7 @@ export const useBrandsStore = defineStore('brands', () => {
     currentBrand.value = null
 
     try {
-      const tenantId = authStore.currentTenant
+      const tenantId = getCurrentTenantId()
       if (!tenantId) return null
 
       const client = getClient()
@@ -134,7 +140,7 @@ export const useBrandsStore = defineStore('brands', () => {
       const products: Product[] = await Promise.all(((productsData as any[]) || []).map(async (row: any) => {
         let imageUrl = row.image_url || ''
         let images: string[] = []
-        
+
         if (row.images && Array.isArray(row.images)) {
           images = await Promise.all(row.images.map(async (path: string) => {
             const { data: urlData } = client.storage.from('images').getPublicUrl(path)
@@ -204,7 +210,7 @@ export const useBrandsStore = defineStore('brands', () => {
     error.value = ''
 
     try {
-      const tenantId = authStore.currentTenant
+      const tenantId = getCurrentTenantId()
       if (!tenantId) throw new Error('No tenant ID')
 
       let imageUrl = ''
@@ -230,7 +236,6 @@ export const useBrandsStore = defineStore('brands', () => {
         image_url: p.image_url || ''
       }))
 
-      // Use supabaseSafe.rpc with proper typing
       const { data: brandId, error: rpcError } = await (supabaseSafe as any).rpc('create_brand_with_products', {
         _tenant_id: tenantId,
         _name: brandData.name,
@@ -359,13 +364,13 @@ export const useBrandsStore = defineStore('brands', () => {
   }
 
   const initialize = async () => {
-    if (!brands.value.length && authStore.currentTenant) {
+    if (!brands.value.length && getCurrentTenantId()) {
       await loadBrands()
     }
   }
 
   watchEffect(async () => {
-    const tenantId = authStore.currentTenant
+    const tenantId = getCurrentTenantId()
     if (tenantId) {
       await loadBrands()
     } else {
