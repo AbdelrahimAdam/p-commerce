@@ -625,28 +625,28 @@ const formData = reactive({
 })
 const brandImageFile = ref<File | null>(null)
 const brandImagePreview = ref('')
-const brandImageUploading = ref(false)
+const loading = ref(false)
+const imagePreview = ref('')
+const productFileInputs = ref<(HTMLInputElement | null)[]>([])
+const editing = computed(() => !!props.brand?.id)
 
-interface ProductWithTemp extends Partial<Product> {
-  imageFile?: File | null
-  imagePreview?: string
-  imageUrl?: string
-  classification?: string
+interface ProductWithTemp {
+  id?: string
   name: Translation
   description: Translation
   price: number
   size: string
   concentration: string
+  classification: string
+  imageFile: File | null
+  imagePreview: string
+  imageUrl: string
   inStock: boolean
 }
 
 const products = ref<ProductWithTemp[]>([])
 const errors = reactive({ name: '', image: '', slug: '', category: '' })
 const productErrors = ref<any[]>([])
-const loading = ref(false)
-const imagePreview = ref('')
-const productFileInputs = ref<(HTMLInputElement | null)[]>([])
-const editing = computed(() => !!props.brand?.id)
 
 const productTemplates: Record<string, Partial<ProductWithTemp>> = {
   noirExtreme: {
@@ -672,14 +672,6 @@ const productTemplates: Record<string, Partial<ProductWithTemp>> = {
 }
 
 const canProceedToProducts = computed(() => formData.name.trim() && formData.slug.trim() && formData.category.trim())
-
-const formatBytes = (bytes: number): string => {
-  if (bytes === 0) return '0 Bytes'
-  const k = 1024
-  const sizes = ['Bytes', 'KB', 'MB', 'GB']
-  const i = Math.floor(Math.log(bytes) / Math.log(k))
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
-}
 
 const isValidUrl = (url: string): boolean => {
   if (!url) return false
@@ -927,13 +919,7 @@ const saveBrandAndProducts = async () => {
         stock_quantity: 0,
         sku: '',
         is_active: true,
-        image_url: productImageUrl,
-        thumbnail: '',
-        gallery: [],
-        video_url: '',
-        meta_title: '',
-        meta_description: '',
-        tags: []
+        image_url: productImageUrl
       }
     }))
 
