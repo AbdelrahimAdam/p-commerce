@@ -1,4 +1,4 @@
-// src/stores/wishlist.ts – SUPABASE VERSION
+// src/stores/wishlist.ts – SUPABASE VERSION with proper upsert
 import { defineStore } from 'pinia'
 import { ref, computed, watch } from 'vue'
 import { useLocalStorage } from '@vueuse/core'
@@ -44,7 +44,7 @@ export const useWishlistStore = defineStore('wishlist', () => {
   const selectedItems = ref<string[]>([])
   const privacySetting = ref<'private' | 'shared' | 'public'>('private')
   const shareableId = useLocalStorage('wishlist_shareable_id', '')
-  const guestWishlist = ref<WishlistItem[]>([]) // holds a copy of the guest wishlist before login
+  const guestWishlist = ref<WishlistItem[]>([])
 
   // Getters
   const totalItems = computed(() => items.value.length)
@@ -59,7 +59,7 @@ export const useWishlistStore = defineStore('wishlist', () => {
     return 'in_stock'
   }
 
-  // Helper to save current wishlist to Supabase (upsert)
+  // Helper to save current wishlist to Supabase (upsert with correct conflict handling)
   const saveToSupabase = async () => {
     if (!authStore.isAuthenticated) return
     try {
@@ -73,6 +73,7 @@ export const useWishlistStore = defineStore('wishlist', () => {
       }
 
       const client = getClient()
+      // Use upsert with composite key conflict
       const { error } = await client
         .from('wishlists')
         .upsert({
@@ -82,7 +83,7 @@ export const useWishlistStore = defineStore('wishlist', () => {
           shareable_id: shareableId.value || null,
           tenant_id: tenantId,
           updated_at: new Date().toISOString()
-        } as any, { onConflict: 'user_id' })
+        }, { onConflict: 'user_id,tenant_id' })  // ← Fixed: composite key conflict
 
       if (error) throw error
     } catch (error) {
@@ -113,6 +114,7 @@ export const useWishlistStore = defineStore('wishlist', () => {
         .from('wishlists')
         .select('*')
         .eq('user_id', userId)
+        .eq('tenant_id', tenantId)
         .maybeSingle()
 
       if (error) throw error
@@ -134,9 +136,8 @@ export const useWishlistStore = defineStore('wishlist', () => {
         privacySetting.value = row.privacy || 'private'
         shareableId.value = row.shareable_id || ''
 
-        await saveToSupabase() // persist merged list
+        await saveToSupabase()
       } else {
-        // No wishlist for this user – create one
         await saveToSupabase()
       }
     } catch (error) {
@@ -281,7 +282,6 @@ export const useWishlistStore = defineStore('wishlist', () => {
     isLoading.value = true
     try {
       if (authStore.isAuthenticated) {
-        // Save current guest wishlist before loading server data
         guestWishlist.value = [...items.value]
         await loadFromSupabase()
       } else {
