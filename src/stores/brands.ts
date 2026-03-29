@@ -197,7 +197,7 @@ export const useBrandsStore = defineStore('brands', () => {
 
   const addBrandWithProducts = async (
     brandData: Partial<Brand> & { image?: string | File },
-    productsData: Partial<Product>[]
+    productsData: any[]
   ): Promise<string | null> => {
     isLoading.value = true
     error.value = ''
@@ -216,25 +216,19 @@ export const useBrandsStore = defineStore('brands', () => {
       const formattedProducts = productsData.map(p => ({
         name: p.name || { en: 'Product', ar: 'منتج' },
         description: p.description || { en: '', ar: '' },
-        notes: p.notes || { top: [''], heart: [''], base: [''] },
+        notes: p.notes || { top: [], heart: [], base: [] },
         price: p.price || 0,
         size: p.size || '100ml',
         concentration: p.concentration || 'Eau de Parfum',
         classification: p.classification || 'U',
         slug: p.slug || '',
         category: p.category || brandData.category || 'luxury',
-        is_best_seller: p.isBestSeller || false,
-        is_featured: p.isFeatured || false,
-        stock_quantity: p.stockQuantity || 0,
+        is_best_seller: p.is_best_seller || false,
+        is_featured: p.is_featured || false,
+        stock_quantity: p.stock_quantity || 0,
         sku: p.sku || '',
-        is_active: p.isActive !== false,
-        image_url: p.imageUrl || '',
-        thumbnail: p.thumbnail || '',
-        gallery: p.images || [],
-        video_url: p.videoUrl || '',
-        meta_title: p.metaTitle || '',
-        meta_description: p.metaDescription || '',
-        tags: p.tags || []
+        is_active: p.is_active !== false,
+        image_url: p.image_url || ''
       }))
 
       const { data: brandId, error: rpcError } = await client.rpc('create_brand_with_products', {
