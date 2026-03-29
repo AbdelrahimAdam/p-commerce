@@ -5,8 +5,8 @@
     <div class="luxury-header-container">
       <!-- Top Bar -->
       <div class="luxury-top-bar">
-        <!-- Left: Logo -->
-        <router-link to="/" class="luxury-logo-container">
+        <!-- Left: Logo - Now tenant-aware -->
+        <router-link :to="homeLink" class="luxury-logo-container">
           <div class="luxury-logo-icon">
             <div class="logo-inner">
               <div class="luxury-p-logo">{{ brandLetter }}</div>
@@ -22,7 +22,7 @@
         <nav class="luxury-nav-desktop">
           <ul class="luxury-nav-list">
             <li class="luxury-nav-item">
-              <router-link to="/" class="luxury-nav-link" active-class="active">
+              <router-link :to="homeLink" class="luxury-nav-link" active-class="active">
                 {{ languageStore.t('home') }}
               </router-link>
               <div class="nav-preview">
@@ -215,15 +215,15 @@
       <div class="mobile-menu-container">
         <div class="mobile-menu-header">
           <div class="mobile-menu-logo">
-            <div class="mobile-logo-icon">
+            <router-link :to="homeLink" class="mobile-logo-icon" @click="closeMobileMenu">
               <div class="mobile-logo-inner">
                 <div class="mobile-logo-p">{{ brandLetter }}</div>
               </div>
-            </div>
-            <div class="mobile-logo-text">
+            </router-link>
+            <router-link :to="homeLink" class="mobile-logo-text" @click="closeMobileMenu">
               <h3 class="mobile-logo-title">{{ storeName }}</h3>
               <p class="mobile-logo-subtitle">{{ storeTagline }}</p>
-            </div>
+            </router-link>
           </div>
           <button class="mobile-menu-close" @click="closeMobileMenu" :aria-label="languageStore.t('close')">
             <svg class="luxury-icon" viewBox="0 0 24 24" fill="none">
@@ -238,7 +238,7 @@
           <nav class="mobile-nav">
             <ul class="mobile-nav-list">
               <li class="mobile-nav-item">
-                <router-link to="/" class="mobile-nav-link" @click="closeMobileMenu">
+                <router-link :to="homeLink" class="mobile-nav-link" @click="closeMobileMenu">
                   {{ languageStore.t('home') }}
                 </router-link>
               </li>
@@ -485,19 +485,44 @@ const mobileMenuOpen = ref(false)
 const userMenuOpen = ref(false)
 const searchOpen = ref(false)
 
+// Tenant-aware home link
+const homeLink = computed(() => {
+  const tenantId = tenantStore.tenantId
+  const tenantSlug = tenantStore.tenantSlug
+  const isMainDomain = tenantStore.isMainDomain
+  
+  // If on main domain, go to landing page
+  if (isMainDomain || !tenantId) {
+    return '/'
+  }
+  
+  // If on tenant store, go to store front
+  const urlType = tenantStore.urlType || 'path'
+  
+  if (urlType === 'subdomain') {
+    // For subdomain, just go to root of the subdomain
+    return '/'
+  } else {
+    // For path-based, go to the store path
+    return `/store/${tenantSlug}`
+  }
+})
+
 // Tenant-aware branding
 const storeName = computed(() => {
-  if (tenantStore.tenantId === 'main') {
-    return 'P.COMMERCE'
+  if (tenantStore.tenantId && !tenantStore.isMainDomain) {
+    // You can fetch the tenant name from the tenant store or use a default
+    // This could be enhanced to get the actual brand name from the tenant
+    return tenantStore.tenantSlug?.toUpperCase() || 'P.COMMERCE'
   }
   return 'P.COMMERCE'
 })
 
 const storeTagline = computed(() => {
-  if (tenantStore.tenantId === 'main') {
+  if (tenantStore.tenantId && !tenantStore.isMainDomain) {
     return 'LUXURY PERFUME STORE'
   }
-  return 'PERFUME STORE'
+  return 'LUXURY PERFUME STORE'
 })
 
 const brandLetter = computed(() => {
@@ -642,6 +667,7 @@ onUnmounted(() => {
 
 <style scoped>
 /* ========== LUXURY HEADER STYLES ========== */
+/* Keep all original styles exactly as they were */
 .luxury-header {
   background: linear-gradient(180deg, 
     rgba(10, 10, 10, 0.98) 0%, 
@@ -832,7 +858,7 @@ onUnmounted(() => {
   }
 }
 
-/* Desktop Navigation */
+/* Desktop Navigation - Keep original styles */
 .luxury-nav-desktop {
   display: none;
 }
@@ -918,7 +944,7 @@ onUnmounted(() => {
   opacity: 1;
 }
 
-/* Navigation Preview */
+/* Navigation Preview - Keep original */
 .nav-preview {
   position: absolute;
   top: 100%;
@@ -980,7 +1006,7 @@ onUnmounted(() => {
   opacity: 0.9;
 }
 
-/* Header Right Actions */
+/* Header Right Actions - Keep original */
 .luxury-header-right {
   display: flex;
   align-items: center;
@@ -994,7 +1020,6 @@ onUnmounted(() => {
   }
 }
 
-/* Desktop Section */
 .luxury-desktop-section {
   display: flex;
   align-items: center;
@@ -1018,7 +1043,6 @@ onUnmounted(() => {
   gap: 0.5rem;
 }
 
-/* Header Actions */
 .luxury-header-action {
   width: 40px;
   height: 40px;
@@ -1051,7 +1075,6 @@ onUnmounted(() => {
   box-shadow: 0 4px 20px rgba(212, 175, 55, 0.2);
 }
 
-/* Wishlist badge */
 .wishlist-badge {
   position: absolute;
   top: -4px;
@@ -1076,7 +1099,6 @@ onUnmounted(() => {
   left: -4px;
 }
 
-/* Cart badge */
 .cart-badge {
   position: absolute;
   top: -4px;
@@ -1110,7 +1132,7 @@ onUnmounted(() => {
   stroke-linejoin: round;
 }
 
-/* Mobile Actions Row - Only hamburger, cart, wishlist */
+/* Mobile Actions Row */
 .mobile-actions-row {
   display: none;
   align-items: center;
@@ -1125,7 +1147,6 @@ onUnmounted(() => {
   }
 }
 
-/* Mobile Action Icon Links */
 .mobile-action-icon-link {
   position: relative;
   width: 30px;
@@ -1223,7 +1244,7 @@ onUnmounted(() => {
   transform: rotate(-45deg) translate(3.5px, -3.5px);
 }
 
-/* Mobile Overlay */
+/* Mobile Overlay - Keep original */
 .luxury-mobile-overlay {
   position: fixed;
   top: 0;
@@ -1235,7 +1256,7 @@ onUnmounted(() => {
   z-index: 1001;
 }
 
-/* Mobile Menu - Half Screen */
+/* Mobile Menu - Keep original */
 .luxury-mobile-menu {
   position: fixed;
   top: 0;
@@ -1311,6 +1332,7 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   gap: 0.75rem;
+  text-decoration: none;
 }
 
 .mobile-logo-icon {
@@ -1318,6 +1340,7 @@ onUnmounted(() => {
   height: 36px;
   position: relative;
   flex-shrink: 0;
+  text-decoration: none;
 }
 
 .mobile-logo-inner {
@@ -1343,6 +1366,7 @@ onUnmounted(() => {
 .mobile-logo-text {
   text-align: left;
   min-width: 0;
+  text-decoration: none;
 }
 
 .luxury-header.rtl .mobile-logo-text {
@@ -1410,7 +1434,6 @@ onUnmounted(() => {
   overflow-y: auto;
 }
 
-/* Mobile Navigation */
 .mobile-nav {
   flex: 1;
   margin-bottom: 1.5rem;
@@ -1455,7 +1478,6 @@ onUnmounted(() => {
   color: #d4af37;
 }
 
-/* Mobile Actions */
 .mobile-actions {
   display: flex;
   flex-direction: column;
@@ -1507,7 +1529,6 @@ onUnmounted(() => {
   flex-shrink: 0;
 }
 
-/* Ensure language toggle inside sidebar looks like other buttons */
 .mobile-action-btn :deep(.luxury-language-toggle) {
   width: 100%;
 }
@@ -1522,7 +1543,119 @@ onUnmounted(() => {
   justify-content: flex-start;
 }
 
-/* Search Overlay */
+/* User Dropdown - Keep original */
+.luxury-dropdown {
+  position: absolute;
+  top: 100%;
+  right: 1rem;
+  margin-top: 0.5rem;
+  width: 280px;
+  background: rgba(10, 10, 10, 0.98);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(212, 175, 55, 0.2);
+  border-radius: 12px;
+  overflow: hidden;
+  z-index: 1003;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+}
+
+.luxury-header.rtl .luxury-dropdown {
+  right: auto;
+  left: 1rem;
+}
+
+.dropdown-content {
+  padding: 0.5rem;
+}
+
+.dropdown-user {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  border-bottom: 1px solid rgba(212, 175, 55, 0.1);
+  margin-bottom: 0.5rem;
+}
+
+.user-avatar {
+  width: 40px;
+  height: 40px;
+  background: linear-gradient(135deg, #d4af37 0%, #b8941f 100%);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.avatar-initials {
+  font-family: 'Inter', sans-serif;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #0a0a0a;
+}
+
+.user-info {
+  flex: 1;
+}
+
+.user-name {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #d4af37;
+  margin: 0;
+}
+
+.user-email {
+  font-family: 'Inter', sans-serif;
+  font-size: 0.7rem;
+  color: #999999;
+  margin: 0.2rem 0 0 0;
+}
+
+.dropdown-menu {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.625rem 0.75rem;
+  color: #f4e7c1;
+  text-decoration: none;
+  transition: all 0.2s ease;
+  border-radius: 8px;
+  cursor: pointer;
+  font-family: 'Inter', sans-serif;
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.dropdown-item:hover {
+  background: rgba(212, 175, 55, 0.1);
+  color: #d4af37;
+}
+
+.dropdown-icon {
+  width: 16px;
+  height: 16px;
+  stroke: currentColor;
+  fill: none;
+}
+
+.logout-btn {
+  color: #ef4444;
+}
+
+.logout-btn:hover {
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+}
+
+/* Search Overlay - Keep original */
 .luxury-search-overlay {
   position: fixed;
   top: 0;
