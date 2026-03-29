@@ -1,4 +1,4 @@
-<!-- src/pages/RegisterCompanyPage.vue - Updated with subdomain support -->
+<!-- src/pages/RegisterCompanyPage.vue - Fixed with proper imports -->
 <template>
   <div class="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 py-12 px-4 sm:px-6 lg:px-8">
     <div class="max-w-md w-full space-y-8 bg-white p-8 rounded-2xl shadow-lg">
@@ -36,7 +36,7 @@
             </label>
             <div class="space-y-2">
               <div class="flex items-center gap-3">
-                <span class="text-sm text-gray-500">{{ t('Choose URL type:') }}</span>
+                <span class="text-sm text-gray-500">Choose URL type:</span>
                 <label class="inline-flex items-center">
                   <input
                     type="radio"
@@ -44,7 +44,7 @@
                     value="subdomain"
                     class="h-4 w-4 text-indigo-600"
                   />
-                  <span class="ml-2 text-sm text-gray-700">{{ t('Subdomain') }}</span>
+                  <span class="ml-2 text-sm text-gray-700">Subdomain</span>
                 </label>
                 <label class="inline-flex items-center">
                   <input
@@ -53,7 +53,7 @@
                     value="path"
                     class="h-4 w-4 text-indigo-600"
                   />
-                  <span class="ml-2 text-sm text-gray-700">{{ t('Path-based') }}</span>
+                  <span class="ml-2 text-sm text-gray-700">Path-based</span>
                 </label>
               </div>
               
@@ -68,7 +68,7 @@
               </div>
               
               <p class="text-xs text-gray-500 mt-1">
-                {{ t('Subdomain gives your brand a dedicated URL (e.g., brand.yourdomain.com)') }}
+                Subdomain gives your brand a dedicated URL (e.g., brand.yourdomain.com)
               </p>
             </div>
           </div>
