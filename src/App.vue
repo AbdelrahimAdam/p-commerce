@@ -282,8 +282,8 @@ const appClasses = computed(() => ({
   'default-layout': routeLayout.value === 'default'
 }))
 
+// ✅ FIX: Removed paddingTop to prevent double spacing – body already has padding-top from header.
 const mainContentStyle = computed(() => ({
-  paddingTop: `${headerHeight.value}px`,
   minHeight: `calc(100dvh - ${headerHeight.value}px)`
 }))
 
