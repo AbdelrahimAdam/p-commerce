@@ -1,6 +1,6 @@
 <template>
   <div class="landing-page bg-[#0f0f0f] text-white" :class="{ 'rtl': isRTL }" dir="auto">
-    <!-- Hero Section - Centered right below header -->
+    <!-- Hero Section -->
     <section class="relative overflow-hidden min-h-[85vh] flex items-center">
       <div class="absolute inset-0">
         <img
@@ -11,18 +11,15 @@
         />
       </div>
       <div class="absolute inset-0 bg-gradient-to-b from-black/60 via-black/80 to-black"></div>
-
       <div class="container mx-auto px-6 relative z-10 mt-16 md:mt-20">
         <div class="max-w-4xl mx-auto text-center">
           <h1 class="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold mb-6 leading-[1.2]">
             {{ t('heroTitle') }}
             <span class="text-amber-400 block sm:inline mt-2 sm:mt-0"> {{ t('heroHighlight') }} </span>
           </h1>
-
           <p class="text-gray-300 text-base sm:text-lg md:text-xl max-w-2xl mx-auto mb-8 md:mb-12 px-4">
             {{ t('heroSubtitle') }}
           </p>
-
           <div class="flex flex-col sm:flex-row justify-center gap-4 px-4">
             <router-link
               to="/register-company"
@@ -30,7 +27,6 @@
             >
               {{ t('startStore') }}
             </router-link>
-
             <router-link
               to="/brands"
               class="px-6 sm:px-8 py-3 sm:py-4 border-2 border-amber-400 text-amber-400 rounded-xl hover:bg-amber-400 hover:text-black transition-all duration-300 text-center font-medium"
@@ -42,7 +38,7 @@
       </div>
     </section>
 
-    <!-- Features - Responsive Grid -->
+    <!-- Features - Representative Images -->
     <section class="py-16 md:py-24">
       <div class="container mx-auto px-6">
         <div class="text-center mb-12 md:mb-16">
@@ -71,7 +67,7 @@
       </div>
     </section>
 
-    <!-- How It Works - Clean Steps -->
+    <!-- How It Works -->
     <section class="py-16 md:py-20 bg-gradient-to-b from-[#1a1a1a] to-[#0f0f0f]">
       <div class="container mx-auto px-6">
         <h2 class="text-2xl sm:text-3xl md:text-4xl font-bold text-amber-400 text-center mb-10 md:mb-14">
@@ -87,7 +83,7 @@
       </div>
     </section>
 
-    <!-- CTA - Simplified -->
+    <!-- CTA -->
     <section class="py-16 md:py-20 bg-gradient-to-r from-amber-600 to-amber-500 text-black text-center">
       <div class="container mx-auto px-6">
         <h2 class="text-2xl sm:text-3xl md:text-4xl font-bold mb-3 md:mb-4">
@@ -116,32 +112,38 @@ const features = [
   {
     title: t('featureMultiTenant'),
     description: t('featureMultiTenantDesc'),
-    image: 'https://images.unsplash.com/photo-1559583985-c80d8ad9b29f?auto=format&fit=crop&w=400&q=80'
+    image: 'https://placehold.co/600x400/0a0a0a/white?text=Multi‑tenant+Store+Front'
+    // Replace with actual screenshot of a tenant store
   },
   {
     title: t('featureProductMgmt'),
     description: t('featureProductMgmtDesc'),
-    image: 'https://images.unsplash.com/photo-1593642632559-0c6d3fc62b89?auto=format&fit=crop&w=400&q=80'
+    image: 'https://placehold.co/600x400/0a0a0a/white?text=Product+Management+Panel'
+    // Replace with dashboard screenshot showing product management
   },
   {
     title: t('featureMultiLang'),
     description: t('featureMultiLangDesc'),
-    image: 'https://images.unsplash.com/photo-1456406644174-8ddd4cd52a06?auto=format&fit=crop&w=400&q=80'
+    image: 'https://placehold.co/600x400/0a0a0a/white?text=Multi‑language+Support'
+    // Replace with image showing language switch
   },
   {
     title: t('featureCart'),
     description: t('featureCartDesc'),
-    image: 'https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?auto=format&fit=crop&w=400&q=80'
+    image: 'https://placehold.co/600x400/0a0a0a/white?text=Luxury+Shopping+Cart'
+    // Replace with image of cart with perfume products
   },
   {
     title: t('featureAdmin'),
     description: t('featureAdminDesc'),
-    image: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=400&q=80'
+    image: 'https://placehold.co/600x400/0a0a0a/white?text=Admin+Dashboard+Analytics'
+    // Replace with screenshot of admin dashboard
   },
   {
     title: t('featureSubdomain'),
     description: t('featureSubdomainDesc'),
-    image: 'https://images.unsplash.com/photo-1591696331111-ef9586a5b17f?auto=format&fit=crop&w=400&q=80'
+    image: 'https://placehold.co/600x400/0a0a0a/white?text=Custom+Subdomain+Store'
+    // Replace with illustration of subdomain stores
   }
 ]
 
@@ -153,7 +155,7 @@ const steps = [
 </script>
 
 <style scoped>
-/* Feature Cards - Professional & Clean */
+/* same as before, no changes needed */
 .feature-card {
   background: linear-gradient(135deg, rgba(26, 26, 26, 0.95) 0%, rgba(17, 17, 17, 0.95) 100%);
   border: 1px solid rgba(251, 191, 36, 0.15);
@@ -162,13 +164,11 @@ const steps = [
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   backdrop-filter: blur(0px);
 }
-
 .feature-card:hover {
   transform: translateY(-4px);
   border-color: rgba(251, 191, 36, 0.4);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
 }
-
 .feature-image-wrapper {
   width: 100%;
   height: 160px;
@@ -177,18 +177,15 @@ const steps = [
   margin-bottom: 1rem;
   background: #0a0a0a;
 }
-
 .feature-image {
   width: 100%;
   height: 100%;
   object-fit: cover;
   transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
 }
-
 .feature-card:hover .feature-image {
   transform: scale(1.05);
 }
-
 .feature-title {
   color: #fbbf24;
   font-weight: 600;
@@ -196,14 +193,11 @@ const steps = [
   margin-bottom: 0.5rem;
   line-height: 1.4;
 }
-
 .feature-description {
   color: #9ca3af;
   font-size: 0.875rem;
   line-height: 1.5;
 }
-
-/* Step Cards */
 .step-card {
   background: rgba(15, 15, 15, 0.8);
   backdrop-filter: blur(10px);
@@ -213,12 +207,10 @@ const steps = [
   text-align: center;
   transition: all 0.3s ease;
 }
-
 .step-card:hover {
   border-color: rgba(251, 191, 36, 0.4);
   transform: translateY(-2px);
 }
-
 .step-number {
   width: 56px;
   height: 56px;
@@ -233,57 +225,44 @@ const steps = [
   margin: 0 auto 1rem;
   box-shadow: 0 4px 12px rgba(251, 191, 36, 0.3);
 }
-
 .step-title {
   font-size: 1.125rem;
   font-weight: 600;
   margin-bottom: 0.5rem;
   color: #fff;
 }
-
 .step-description {
   color: #9ca3af;
   font-size: 0.875rem;
   line-height: 1.5;
 }
-
-/* RTL Support */
 .rtl {
   direction: rtl;
   text-align: right;
 }
-
 .rtl .feature-card,
 .rtl .step-card {
   text-align: right;
 }
-
-/* Responsive Adjustments */
 @media (max-width: 640px) {
   .feature-image-wrapper {
     height: 140px;
   }
-  
   .feature-title {
     font-size: 1rem;
   }
-  
   .feature-description {
     font-size: 0.8125rem;
   }
-  
   .step-card {
     padding: 1.25rem;
   }
-  
   .step-number {
     width: 48px;
     height: 48px;
     font-size: 1.25rem;
   }
 }
-
-/* Smooth Scroll Behavior */
 html {
   scroll-behavior: smooth;
 }
