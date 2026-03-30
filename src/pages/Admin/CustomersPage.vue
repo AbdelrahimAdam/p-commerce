@@ -243,7 +243,7 @@
               <th class="py-3 px-4 text-left text-sm font-semibold text-gray-700">{{ t('Last Order') }}</th>
               <th class="py-3 px-4 text-left text-sm font-semibold text-gray-700">{{ t('Status') }}</th>
               <th class="py-3 px-4 text-left text-sm font-semibold text-gray-700">{{ t('Actions') }}</th>
-              </tr>
+              <tr>
           </thead>
           <tbody class="divide-y divide-gray-200">
             <tr v-for="customer in paginatedCustomers" :key="customer.id" class="hover:bg-gray-50">
@@ -263,13 +263,13 @@
                     <p class="text-sm text-gray-500">ID: {{ customer.id.slice(0, 8) }}</p>
                   </div>
                 </div>
-               </td>
+                </td>
               <td class="py-4 px-4">
                 <p class="text-sm">{{ customer.email }}</p>
-               </td>
+                </td>
               <td class="py-4 px-4">
                 <p class="text-sm">{{ customer.phone || '-' }}</p>
-               </td>
+                </td>
               <td class="py-4 px-4">
                 <span :class="[
                   'px-3 py-1 rounded-full text-sm font-medium',
@@ -277,13 +277,13 @@
                 ]">
                   {{ customer.orders || 0 }}
                 </span>
-               </td>
+                </td>
               <td class="py-4 px-4 font-medium">
                 {{ formatCurrency(customer.totalSpent || 0) }}
-               </td>
+                </td>
               <td class="py-4 px-4 text-sm text-gray-600">
                 {{ customer.lastOrder ? formatDate(customer.lastOrder) : t('Never') }}
-               </td>
+                </td>
               <td class="py-4 px-4">
                 <span :class="[
                   'px-3 py-1 rounded-full text-sm',
@@ -295,7 +295,7 @@
                 ]">
                   {{ getStatusText(customer.status) }}
                 </span>
-               </td>
+                </td>
               <td class="py-4 px-4">
                 <div class="flex items-center gap-2">
                   <button 
@@ -340,10 +340,10 @@
                     </svg>
                   </button>
                 </div>
-               </td>
-             </tr>
+                </td>
+              </tr>
           </tbody>
-         </table>
+        </table>
       </div>
 
       <!-- Empty State -->
@@ -534,7 +534,7 @@ font-bold">
                   <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{{ t('Total') }}</th>
                   <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{{ t('Status') }}</th>
                   <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{{ t('Payment') }}</th>
-                </tr>
+                 </tr>
               </thead>
               <tbody class="bg-white divide-y divide-gray-200">
                 <tr v-for="order in customerOrders" :key="order.id" class="hover:bg-gray-50">
@@ -546,8 +546,8 @@ font-bold">
                     <span :class="getStatusClasses(order.status)" class="px-2 py-1 text-xs rounded-full">
                       {{ order.status }}
                     </span>
-                  </td>
-                  <td class="px-4 py-3 text-sm text-gray-600">{{ order.paymentMethod }}</td>
+                   </tr>
+                  <td class="px-4 py-3 text-sm text-gray-600">{{ order.paymentMethod }} </tr>
                 </tr>
               </tbody>
             </table>
@@ -709,6 +709,7 @@ const loadOrders = async () => {
   }
 
   try {
+    // Use maybeSingle() for each order query to avoid PGRST116
     const { data, error } = await getTable('orders')
       .select('*')
       .eq('tenant_id', tenantId)
@@ -746,6 +747,7 @@ const loadCustomers = async () => {
   }
 
   try {
+    // Use maybeSingle() or handle empty results gracefully
     const { data, error: fetchError } = await getTable('customers')
       .select('*')
       .eq('tenant_id', tenantId)
@@ -793,7 +795,8 @@ const loadCustomers = async () => {
     
   } catch (err: any) {
     console.error('Error loading customers:', err)
-    if (err.message?.includes('PGRST116')) {
+    // Handle PGRST116 gracefully - it means no customers found
+    if (err.message?.includes('PGRST116') || err.code === 'PGRST116') {
       customers.value = []
       error.value = null
     } else {
