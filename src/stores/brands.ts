@@ -1,4 +1,4 @@
-// src/stores/brands.ts - Updated with tenant store fallback
+// src/stores/brands.ts - Updated with logo instead of image
 import { defineStore } from 'pinia'
 import { ref, computed, watchEffect } from 'vue'
 import { supabaseSafe, getTable } from '@/supabase/client'
@@ -256,7 +256,8 @@ export const useBrandsStore = defineStore('brands', () => {
 
       if (isFile(brandData.image)) {
         const uploadedUrl = await uploadBrandImage(brandData.image, brandId)
-        const updatePayload = { image: uploadedUrl, updated_at: new Date().toISOString() }
+        // Use 'logo' column instead of 'image'
+        const updatePayload = { logo: uploadedUrl, updated_at: new Date().toISOString() }
         const { error: updateError } = await getTable('brands')
           .update(updatePayload)
           .eq('id', brandId)
@@ -291,18 +292,19 @@ export const useBrandsStore = defineStore('brands', () => {
 
       if (updates.image) {
         if (isFile(updates.image)) {
+          // Use 'logo' column instead of 'image'
           const { data: oldBrand, error: fetchError } = await client
             .from('brands')
-            .select('image')
+            .select('logo')
             .eq('id', brandId)
             .single()
-          if (!fetchError && oldBrand && (oldBrand as any).image) {
-            await deleteBrandImageFromStorage((oldBrand as any).image)
+          if (!fetchError && oldBrand && (oldBrand as any).logo) {
+            await deleteBrandImageFromStorage((oldBrand as any).logo)
           }
           const newImageUrl = await uploadBrandImage(updates.image, brandId)
-          updatePayload.image = newImageUrl
+          updatePayload.logo = newImageUrl
         } else if (typeof updates.image === 'string') {
-          updatePayload.image = updates.image
+          updatePayload.logo = updates.image
         }
       }
 
@@ -335,9 +337,10 @@ export const useBrandsStore = defineStore('brands', () => {
 
     try {
       const client = getClient()
+      // Use 'logo' column instead of 'image'
       const { data: brandRow, error: fetchError } = await client
         .from('brands')
-        .select('image')
+        .select('logo')
         .eq('id', brandId)
         .single()
 
@@ -349,8 +352,8 @@ export const useBrandsStore = defineStore('brands', () => {
 
       if (deleteError) throw deleteError
 
-      if (brandRow && (brandRow as any).image) {
-        await deleteBrandImageFromStorage((brandRow as any).image)
+      if (brandRow && (brandRow as any).logo) {
+        await deleteBrandImageFromStorage((brandRow as any).logo)
       }
 
       await loadBrands()
