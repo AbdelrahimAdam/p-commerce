@@ -1,31 +1,26 @@
 <template>
   <div id="vue-app" :class="[isRTL ? 'rtl' : 'ltr', appClasses]" class="min-h-screen-mobile">
-    <!-- SEO Head Component -->
     <SEOHead />
 
-    <!-- ADMIN LAYOUT -->
+    <!-- ==================== ADMIN LAYOUT ==================== -->
     <template v-if="routeLayout === 'admin'">
       <div class="admin-app-wrapper">
-        <!-- Admin Sidebar with Mobile Transition -->
-        <AdminSidebar 
-          :class="[
-            'fixed lg:static inset-y-0 left-0 z-40 w-64 lg:w-auto h-screen lg:h-auto',
-            'transform transition-transform duration-300 ease-in-out',
-            'lg:flex-shrink-0',
-            isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
-          ]"
+        <!-- Admin Sidebar (now receives mobileOpen prop and emits close) -->
+        <AdminSidebar
+          :mobile-open="isMobileMenuOpen"
+          @close="isMobileMenuOpen = false"
         />
 
         <!-- Mobile Overlay -->
-        <div 
+        <div
           v-if="isMobileMenuOpen"
           class="fixed inset-0 bg-black bg-opacity-50 z-30 lg:hidden transition-opacity duration-300"
           @click="isMobileMenuOpen = false"
         ></div>
 
         <!-- Main Content Area -->
-        <div class="flex-1 flex flex-col min-w-0">
-          <!-- Top Navigation Bar -->
+        <div class="admin-main-content flex-1 flex flex-col min-w-0">
+          <!-- Top Navigation Bar (unchanged) -->
           <header class="bg-white border-b border-gray-200 sticky top-0 z-20 flex-shrink-0">
             <div class="px-4 sm:px-6 lg:px-8 max-w-full">
               <div class="flex items-center justify-between h-16 gap-4">
@@ -37,34 +32,22 @@
                     class="p-2 text-gray-600 hover:text-primary-600 lg:hidden flex-shrink-0"
                     :aria-label="isMobileMenuOpen ? 'Close menu' : 'Open menu'"
                   >
-                    <svg 
-                      v-if="isMobileMenuOpen" 
-                      class="w-6 h-6" 
-                      fill="none" 
-                      stroke="currentColor" 
-                      viewBox="0 0 24 24"
-                    >
+                    <svg v-if="isMobileMenuOpen" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                     </svg>
-                    <svg 
-                      v-else 
-                      class="w-6 h-6" 
-                      fill="none" 
-                      stroke="currentColor" 
-                      viewBox="0 0 24 24"
-                    >
+                    <svg v-else class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
                     </svg>
                   </button>
 
                   <!-- Logo (Mobile) -->
-                  <router-link 
-                    to="/admin" 
+                  <router-link
+                    to="/admin"
                     class="lg:hidden flex items-center min-w-0 ml-2 sm:ml-4"
                   >
                     <div class="w-8 h-8 rounded-full bg-gradient-gold flex items-center justify-center flex-shrink-0">
                       <svg class="w-4 h-4 text-black" viewBox="0 0 24 24" fill="none">
-                        <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" 
+                        <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"
                               stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
                       </svg>
                     </div>
@@ -79,7 +62,7 @@
                   </h1>
                 </div>
 
-                <!-- Right Side Actions (same as original) -->
+                <!-- Right Side Actions (unchanged) -->
                 <div class="flex items-center space-x-1 sm:space-x-2 lg:space-x-4">
                   <button @click="toggleLanguage" class="p-2 text-gray-600 hover:text-primary-600" :title="currentLanguage === 'en' ? 'Switch to Arabic' : 'Switch to English'">
                     <span class="text-sm font-medium hidden sm:inline">{{ currentLanguage === 'en' ? 'العربية' : 'English' }}</span>
@@ -93,6 +76,7 @@
                       <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"/>
                     </svg>
                   </button>
+                  <!-- Notifications (unchanged) -->
                   <div class="relative">
                     <button @click="toggleNotifications" class="p-2 text-gray-600 hover:text-primary-600 relative" :title="safeTranslate('Notifications')">
                       <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -122,6 +106,7 @@
                       <div class="p-3 border-t border-gray-200 flex-shrink-0"><button @click="markAllAsRead" class="w-full text-center text-sm text-primary-600 hover:text-primary-700 font-medium py-2 active:bg-gray-50 rounded">{{ safeTranslate('Mark all as read') }}</button></div>
                     </div>
                   </div>
+                  <!-- User Dropdown (unchanged) -->
                   <div class="relative">
                     <button @click="toggleUserMenu" class="flex items-center space-x-2 sm:space-x-3 p-2 hover:bg-gray-100 rounded-lg active:bg-gray-200" :title="currentUser?.displayName || 'Admin User'">
                       <div class="w-8 h-8 rounded-full bg-primary-100 flex items-center justify-center flex-shrink-0"><span class="text-primary-600 font-bold text-sm">{{ userInitials }}</span></div>
@@ -141,18 +126,40 @@
               </div>
             </div>
           </header>
+
           <main class="flex-1 p-4 sm:p-6 lg:p-8 overflow-x-hidden overflow-y-auto bg-gray-50">
-            <div class="mb-6 lg:mb-8"><div class="lg:hidden"><h1 class="text-2xl sm:text-3xl font-display-en font-bold text-gray-900 mb-2 break-words">{{ adminPageTitle }}</h1><div v-if="adminPageDescription" class="text-gray-600 text-sm sm:text-base">{{ adminPageDescription }}</div></div><div v-if="adminPageDescription" class="hidden lg:block text-gray-600">{{ adminPageDescription }}</div></div>
-            <div class="admin-content"><router-view v-slot="{ Component }"><transition name="fade" mode="out-in"><component :is="Component" /></transition></router-view></div>
+            <div class="mb-6 lg:mb-8">
+              <div class="lg:hidden">
+                <h1 class="text-2xl sm:text-3xl font-display-en font-bold text-gray-900 mb-2 break-words">{{ adminPageTitle }}</h1>
+                <div v-if="adminPageDescription" class="text-gray-600 text-sm sm:text-base">{{ adminPageDescription }}</div>
+              </div>
+              <div v-if="adminPageDescription" class="hidden lg:block text-gray-600">{{ adminPageDescription }}</div>
+            </div>
+            <div class="admin-content">
+              <router-view v-slot="{ Component }">
+                <transition name="fade" mode="out-in">
+                  <component :is="Component" />
+                </transition>
+              </router-view>
+            </div>
           </main>
+
           <footer class="px-4 sm:px-6 lg:px-8 py-4 border-t border-gray-200 bg-white flex-shrink-0">
-            <div class="flex flex-col sm:flex-row justify-between items-center space-y-3 sm:space-y-0"><div class="text-sm text-gray-600 text-center sm:text-left">© {{ currentYear }} P.COMMERCE. {{ safeTranslate('All rights reserved.') }}</div><div class="flex flex-wrap justify-center items-center gap-3 sm:gap-6 text-sm text-gray-600"><router-link to="/" class="hover:text-primary-600 transition-colors">{{ safeTranslate('View Store') }}</router-link><a href="#" class="hover:text-primary-600 transition-colors">{{ safeTranslate('Help') }}</a><a href="#" class="hover:text-primary-600 transition-colors">{{ safeTranslate('Privacy') }}</a><a href="#" class="hover:text-primary-600 transition-colors">{{ safeTranslate('Terms') }}</a></div></div>
+            <div class="flex flex-col sm:flex-row justify-between items-center space-y-3 sm:space-y-0">
+              <div class="text-sm text-gray-600 text-center sm:text-left">© {{ currentYear }} P.COMMERCE. {{ safeTranslate('All rights reserved.') }}</div>
+              <div class="flex flex-wrap justify-center items-center gap-3 sm:gap-6 text-sm text-gray-600">
+                <router-link to="/" class="hover:text-primary-600 transition-colors">{{ safeTranslate('View Store') }}</router-link>
+                <a href="#" class="hover:text-primary-600 transition-colors">{{ safeTranslate('Help') }}</a>
+                <a href="#" class="hover:text-primary-600 transition-colors">{{ safeTranslate('Privacy') }}</a>
+                <a href="#" class="hover:text-primary-600 transition-colors">{{ safeTranslate('Terms') }}</a>
+              </div>
+            </div>
           </footer>
         </div>
       </div>
     </template>
 
-    <!-- ADMIN LOGIN LAYOUT -->
+    <!-- ADMIN LOGIN LAYOUT (unchanged) -->
     <template v-else-if="routeLayout === 'admin-login'">
       <div class="admin-login-wrapper">
         <router-view v-slot="{ Component, route }">
@@ -161,14 +168,14 @@
       </div>
     </template>
 
-    <!-- LANDING LAYOUT (Marketing) -->
+    <!-- LANDING LAYOUT (unchanged) -->
     <template v-else-if="routeLayout === 'landing'">
       <MarketingLayout>
         <router-view />
       </MarketingLayout>
     </template>
 
-    <!-- DEFAULT LAYOUT (Main Store) - OPTIMIZED SPACING -->
+    <!-- DEFAULT LAYOUT (Main Store) - unchanged -->
     <template v-else>
       <LuxuryHeader />
       <main id="main-content" class="main-content" :style="mainContentStyle">
@@ -184,7 +191,7 @@
       <LuxuryNotificationCenter />
     </template>
 
-    <!-- Loading Overlay -->
+    <!-- Loading Overlay (unchanged) -->
     <transition name="fade">
       <div v-if="showFullScreenLoader" class="luxury-loading-overlay fixed inset-0 bg-[#0a0a0a] z-[100] flex items-center justify-center safe-top safe-bottom">
         <div class="text-center">
@@ -282,7 +289,7 @@ const appClasses = computed(() => ({
   'default-layout': routeLayout.value === 'default'
 }))
 
-// ✅ FIX: Removed paddingTop to prevent double spacing – body already has padding-top from header.
+// For the default layout only – body already has padding from header, so we only need min-height
 const mainContentStyle = computed(() => ({
   minHeight: `calc(100dvh - ${headerHeight.value}px)`
 }))
@@ -384,7 +391,7 @@ onMounted(async () => {
   const hostname = window.location.hostname
   const rootDomain = import.meta.env.VITE_ROOT_DOMAIN || 'localhost:5173'
   const isRootDomain = hostname === rootDomain || hostname === 'localhost'
-  
+
   if (!isRootDomain) {
     tenantStore.resolveTenantFromDomain().catch(err => console.warn('Tenant resolution failed:', err))
   } else {
@@ -398,19 +405,19 @@ onMounted(async () => {
   setupReducedMotion()
   setupFontLoading()
   updateLanguageDirection()
-  
+
   window.addEventListener('scroll', handleScroll, { passive: true })
   window.addEventListener('resize', handleResize, { passive: true })
   window.addEventListener('online', handleOnlineStatus)
   window.addEventListener('offline', handleOnlineStatus)
   window.addEventListener('keydown', handleEscapeKey)
-  
+
   handleResize()
   if (routeLayout.value === 'default') handleScroll()
-  
+
   await nextTick()
   if (routeLayout.value === 'default') updateHeaderHeight()
-  
+
   try {
     if (languageStore.initialize) languageStore.initialize()
     if (!isPublicRoute.value) {
@@ -422,7 +429,7 @@ onMounted(async () => {
   } catch (error) {
     console.error('❌ Store initialization failed:', error)
   }
-  
+
   if (routeLayout.value === 'default') document.documentElement.classList.add('luxury-scrollbar')
   updatePageTitle()
 })
@@ -607,8 +614,45 @@ watch(() => route.path, (_newPath) => { updatePageTitle(); if (routeLayout.value
   transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Ensure proper scrolling in admin main content */
-.admin-layout main {
-  height: calc(100vh - 64px - 56px); /* Viewport - Header - Footer */
+/* Admin layout specific overrides */
+.admin-app-wrapper {
+  display: flex;
+  min-height: 100vh;
+  min-height: 100dvh;
+  position: relative;
+}
+
+.admin-main-content {
+  flex: 1;
+  margin-left: 256px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  width: calc(100% - 256px);
+}
+
+/* Mobile: sidebar slides out, main content takes full width */
+@media (max-width: 1023px) {
+  .admin-main-content {
+    margin-left: 0;
+    width: 100%;
+  }
+}
+
+/* Ensure sticky header inside admin layout works */
+.admin-main-content header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: white;
+}
+
+.admin-login-wrapper {
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
 }
 </style>
