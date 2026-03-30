@@ -2,31 +2,25 @@
   <div id="vue-app" :class="[isRTL ? 'rtl' : 'ltr', appClasses]" class="min-h-screen-mobile">
     <SEOHead />
 
-    <!-- ==================== ADMIN LAYOUT ==================== -->
+    <!-- ADMIN LAYOUT -->
     <template v-if="routeLayout === 'admin'">
       <div class="admin-app-wrapper">
-        <!-- Admin Sidebar (now receives mobileOpen prop and emits close) -->
         <AdminSidebar
           :mobile-open="isMobileMenuOpen"
           @close="isMobileMenuOpen = false"
         />
 
-        <!-- Mobile Overlay -->
         <div
           v-if="isMobileMenuOpen"
           class="fixed inset-0 bg-black bg-opacity-50 z-30 lg:hidden transition-opacity duration-300"
           @click="isMobileMenuOpen = false"
         ></div>
 
-        <!-- Main Content Area -->
         <div class="admin-main-content flex-1 flex flex-col min-w-0">
-          <!-- Top Navigation Bar (unchanged) -->
           <header class="bg-white border-b border-gray-200 sticky top-0 z-20 flex-shrink-0">
             <div class="px-4 sm:px-6 lg:px-8 max-w-full">
               <div class="flex items-center justify-between h-16 gap-4">
-                <!-- Left Side: Menu Button & Mobile Logo -->
                 <div class="flex items-center flex-1 lg:flex-none min-w-0">
-                  <!-- Mobile Menu Button -->
                   <button
                     @click="toggleMobileMenu"
                     class="p-2 text-gray-600 hover:text-primary-600 lg:hidden flex-shrink-0"
@@ -40,7 +34,6 @@
                     </svg>
                   </button>
 
-                  <!-- Logo (Mobile) -->
                   <router-link
                     to="/admin"
                     class="lg:hidden flex items-center min-w-0 ml-2 sm:ml-4"
@@ -56,13 +49,11 @@
                     </span>
                   </router-link>
 
-                  <!-- Page Title (Desktop) -->
                   <h1 class="hidden lg:block text-xl font-display-en font-bold text-gray-900 truncate ml-4">
                     {{ adminPageTitle }}
                   </h1>
                 </div>
 
-                <!-- Right Side Actions (unchanged) -->
                 <div class="flex items-center space-x-1 sm:space-x-2 lg:space-x-4">
                   <button @click="toggleLanguage" class="p-2 text-gray-600 hover:text-primary-600" :title="currentLanguage === 'en' ? 'Switch to Arabic' : 'Switch to English'">
                     <span class="text-sm font-medium hidden sm:inline">{{ currentLanguage === 'en' ? 'العربية' : 'English' }}</span>
@@ -76,7 +67,6 @@
                       <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"/>
                     </svg>
                   </button>
-                  <!-- Notifications (unchanged) -->
                   <div class="relative">
                     <button @click="toggleNotifications" class="p-2 text-gray-600 hover:text-primary-600 relative" :title="safeTranslate('Notifications')">
                       <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -106,7 +96,6 @@
                       <div class="p-3 border-t border-gray-200 flex-shrink-0"><button @click="markAllAsRead" class="w-full text-center text-sm text-primary-600 hover:text-primary-700 font-medium py-2 active:bg-gray-50 rounded">{{ safeTranslate('Mark all as read') }}</button></div>
                     </div>
                   </div>
-                  <!-- User Dropdown (unchanged) -->
                   <div class="relative">
                     <button @click="toggleUserMenu" class="flex items-center space-x-2 sm:space-x-3 p-2 hover:bg-gray-100 rounded-lg active:bg-gray-200" :title="currentUser?.displayName || 'Admin User'">
                       <div class="w-8 h-8 rounded-full bg-primary-100 flex items-center justify-center flex-shrink-0"><span class="text-primary-600 font-bold text-sm">{{ userInitials }}</span></div>
@@ -159,7 +148,7 @@
       </div>
     </template>
 
-    <!-- ADMIN LOGIN LAYOUT (unchanged) -->
+    <!-- ADMIN LOGIN LAYOUT -->
     <template v-else-if="routeLayout === 'admin-login'">
       <div class="admin-login-wrapper">
         <router-view v-slot="{ Component, route }">
@@ -168,14 +157,14 @@
       </div>
     </template>
 
-    <!-- LANDING LAYOUT (unchanged) -->
+    <!-- LANDING LAYOUT (Marketing) -->
     <template v-else-if="routeLayout === 'landing'">
       <MarketingLayout>
         <router-view />
       </MarketingLayout>
     </template>
 
-    <!-- DEFAULT LAYOUT (Main Store) - unchanged -->
+    <!-- DEFAULT LAYOUT (Main Store) - OPTIMIZED SPACING -->
     <template v-else>
       <LuxuryHeader />
       <main id="main-content" class="main-content" :style="mainContentStyle">
@@ -191,7 +180,7 @@
       <LuxuryNotificationCenter />
     </template>
 
-    <!-- Loading Overlay (unchanged) -->
+    <!-- Loading Overlay -->
     <transition name="fade">
       <div v-if="showFullScreenLoader" class="luxury-loading-overlay fixed inset-0 bg-[#0a0a0a] z-[100] flex items-center justify-center safe-top safe-bottom">
         <div class="text-center">
@@ -289,7 +278,6 @@ const appClasses = computed(() => ({
   'default-layout': routeLayout.value === 'default'
 }))
 
-// For the default layout only – body already has padding from header, so we only need min-height
 const mainContentStyle = computed(() => ({
   minHeight: `calc(100dvh - ${headerHeight.value}px)`
 }))
@@ -387,6 +375,15 @@ const setupFontLoading = () => { if ('fonts' in document) { document.fonts.ready
 const setupReducedMotion = () => { prefersReducedMotion.value = window.matchMedia('(prefers-reduced-motion: reduce)').matches; window.matchMedia('(prefers-reduced-motion: reduce)').addEventListener('change', (e) => { prefersReducedMotion.value = e.matches }) }
 const handleEscapeKey = (event: KeyboardEvent) => { if (routeLayout.value === 'admin' && event.key === 'Escape') { showNotifications.value = false; showUserMenu.value = false; if (window.innerWidth < 1024) isMobileMenuOpen.value = false } }
 
+// Manage body padding for landing layout
+watch(() => routeLayout.value, (layout) => {
+  if (layout === 'landing') {
+    document.body.classList.add('landing-layout-active')
+  } else {
+    document.body.classList.remove('landing-layout-active')
+  }
+}, { immediate: true })
+
 onMounted(async () => {
   const hostname = window.location.hostname
   const rootDomain = import.meta.env.VITE_ROOT_DOMAIN || 'localhost:5173'
@@ -443,6 +440,7 @@ onUnmounted(() => {
   if (animationFrameId.value) cancelAnimationFrame(animationFrameId.value)
   document.body.classList.remove('loaded')
   document.documentElement.classList.remove('luxury-scrollbar')
+  document.body.classList.remove('landing-layout-active')
 })
 
 watch(() => languageStore.currentLanguage, (newLang) => { updateLanguageDirection(); updatePageTitle(); window.dispatchEvent(new CustomEvent('luxury-notification', { detail: { type: 'success', title: safeTranslate('languageChanged'), message: safeTranslate('languageChangedMessage'), duration: 2000, icon: newLang === 'ar' ? '🌙' : '🌍' } })) })
@@ -452,7 +450,6 @@ watch(() => route.path, (_newPath) => { updatePageTitle(); if (routeLayout.value
 
 <style scoped>
 /* ========== APP-SPECIFIC STYLES - OPTIMIZED SPACING ========== */
-/* Main Content Area - Default Layout */
 .main-content {
   min-height: calc(100dvh - var(--header-height));
   position: relative;
@@ -461,13 +458,11 @@ watch(() => route.path, (_newPath) => { updatePageTitle(); if (routeLayout.value
   width: 100%;
 }
 
-/* Luxury Loading Overlay - now matches preloader */
 .luxury-loading-overlay {
   background: #0a0a0a;
   backdrop-filter: none;
 }
 
-/* Safe area support */
 .LuxuryCartSidebar,
 .LuxurySearchModal,
 .LuxuryNotificationCenter,
@@ -478,7 +473,6 @@ watch(() => route.path, (_newPath) => { updatePageTitle(); if (routeLayout.value
   padding-right: var(--safe-area-inset-right);
 }
 
-/* Container utilities - Optimized spacing */
 .luxury-container {
   width: 100%;
   max-width: min(1400px, 95vw);
@@ -504,7 +498,6 @@ watch(() => route.path, (_newPath) => { updatePageTitle(); if (routeLayout.value
   }
 }
 
-/* Section spacing utilities */
 .section {
   margin-bottom: 2rem;
   padding: 1.5rem 0;
@@ -524,7 +517,6 @@ watch(() => route.path, (_newPath) => { updatePageTitle(); if (routeLayout.value
   }
 }
 
-/* Grid gap utilities */
 .grid-gap {
   gap: 1rem;
 }
@@ -541,18 +533,15 @@ watch(() => route.path, (_newPath) => { updatePageTitle(); if (routeLayout.value
   }
 }
 
-/* Color Utilities */
 .text-gold-light {
   color: #f4e7c1;
 }
 
-/* Admin content specific */
 .admin-content {
   max-width: 100%;
   overflow-x: hidden;
 }
 
-/* Better touch targets for mobile */
 @media (max-width: 640px) {
   button:not(.no-mobile-scale),
   a:not(.no-mobile-scale) {
@@ -561,14 +550,12 @@ watch(() => route.path, (_newPath) => { updatePageTitle(); if (routeLayout.value
   }
 }
 
-/* Improve dropdown scroll on mobile */
 @media (max-width: 640px) {
   [class*="dropdown"] {
     -webkit-overflow-scrolling: touch;
   }
 }
 
-/* Dark mode styles for admin */
 :global(.dark) .admin-app-wrapper {
   background-color: #0f172a;
 }
@@ -609,12 +596,14 @@ watch(() => route.path, (_newPath) => { updatePageTitle(); if (routeLayout.value
   box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 10px 10px -5px rgba(0, 0, 0, 0.2);
 }
 
-/* Smooth sidebar transitions */
 .sidebar-transition {
   transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Admin layout specific overrides */
+.admin-layout main {
+  height: calc(100vh - 64px - 56px);
+}
+
 .admin-app-wrapper {
   display: flex;
   min-height: 100vh;
@@ -631,7 +620,6 @@ watch(() => route.path, (_newPath) => { updatePageTitle(); if (routeLayout.value
   width: calc(100% - 256px);
 }
 
-/* Mobile: sidebar slides out, main content takes full width */
 @media (max-width: 1023px) {
   .admin-main-content {
     margin-left: 0;
@@ -639,7 +627,6 @@ watch(() => route.path, (_newPath) => { updatePageTitle(); if (routeLayout.value
   }
 }
 
-/* Ensure sticky header inside admin layout works */
 .admin-main-content header {
   position: sticky;
   top: 0;
@@ -654,5 +641,12 @@ watch(() => route.path, (_newPath) => { updatePageTitle(); if (routeLayout.value
   align-items: center;
   justify-content: center;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+</style>
+
+<style>
+/* Global override for landing layout – remove body padding */
+body.landing-layout-active {
+  padding-top: 0 !important;
 }
 </style>
