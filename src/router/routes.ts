@@ -361,7 +361,7 @@ export const routes: Array<RouteRecordRaw> = [
       },
       requiresAuth: false,
       isPublic: true,
-      layout: 'landing'
+      layout: 'default'
     }
   },
 
@@ -419,7 +419,7 @@ export const routes: Array<RouteRecordRaw> = [
       },
       requiresAuth: false,
       isPublic: true,
-      layout: 'landing'
+      layout: 'default'
     }
   },
 
@@ -439,7 +439,7 @@ export const routes: Array<RouteRecordRaw> = [
       },
       requiresAuth: false,
       isPublic: true,
-      layout: 'landing'
+      layout: 'default'
     }
   },
 
@@ -459,7 +459,7 @@ export const routes: Array<RouteRecordRaw> = [
       },
       requiresAuth: true,
       isPublic: false,
-      layout: 'landing'
+      layout: 'default'
     }
   },
 
@@ -478,7 +478,7 @@ export const routes: Array<RouteRecordRaw> = [
       },
       requiresAuth: true,
       isPublic: false,
-      layout: 'landing'
+      layout: 'default'
     }
   },
 
@@ -497,7 +497,7 @@ export const routes: Array<RouteRecordRaw> = [
       },
       requiresAuth: true,
       isPublic: false,
-      layout: 'landing'
+      layout: 'default'
     }
   },
 
@@ -540,7 +540,7 @@ export const routes: Array<RouteRecordRaw> = [
       },
       requiresAuth: false, // Public - guests can look up orders by email
       isPublic: true,
-      layout: 'landing'
+      layout: 'default'
     }
   },
 
@@ -561,7 +561,7 @@ export const routes: Array<RouteRecordRaw> = [
       },
       requiresAuth: false, // Public but will verify email
       isPublic: true,
-      layout: 'landing'
+      layout: 'default'
     }
   },
 
@@ -662,7 +662,7 @@ export const routes: Array<RouteRecordRaw> = [
       },
       requiresAuth: false,
       isPublic: true,
-      layout: 'landing'
+      layout: 'default'
     }
   },
 
@@ -681,7 +681,7 @@ export const routes: Array<RouteRecordRaw> = [
       },
       requiresAuth: false,
       isPublic: true,
-      layout: 'landing'
+      layout: 'default'
     }
   },
 
@@ -719,7 +719,7 @@ export const routes: Array<RouteRecordRaw> = [
       requiresAuth: false,
       requiresAdmin: false,
       isPublic: true,
-      layout: 'landing'
+      layout: 'default'
     }
   },
 
