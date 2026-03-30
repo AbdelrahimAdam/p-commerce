@@ -243,7 +243,7 @@
               <th class="py-3 px-4 text-left text-sm font-semibold text-gray-700">{{ t('Last Order') }}</th>
               <th class="py-3 px-4 text-left text-sm font-semibold text-gray-700">{{ t('Status') }}</th>
               <th class="py-3 px-4 text-left text-sm font-semibold text-gray-700">{{ t('Actions') }}</th>
-              <tr>
+            </tr>
           </thead>
           <tbody class="divide-y divide-gray-200">
             <tr v-for="customer in paginatedCustomers" :key="customer.id" class="hover:bg-gray-50">
@@ -263,13 +263,13 @@
                     <p class="text-sm text-gray-500">ID: {{ customer.id.slice(0, 8) }}</p>
                   </div>
                 </div>
-                </td>
+              </td>
               <td class="py-4 px-4">
                 <p class="text-sm">{{ customer.email }}</p>
-                </td>
+              </td>
               <td class="py-4 px-4">
                 <p class="text-sm">{{ customer.phone || '-' }}</p>
-                </td>
+              </td>
               <td class="py-4 px-4">
                 <span :class="[
                   'px-3 py-1 rounded-full text-sm font-medium',
@@ -277,13 +277,13 @@
                 ]">
                   {{ customer.orders || 0 }}
                 </span>
-                </td>
+              </td>
               <td class="py-4 px-4 font-medium">
                 {{ formatCurrency(customer.totalSpent || 0) }}
-                </td>
+              </td>
               <td class="py-4 px-4 text-sm text-gray-600">
                 {{ customer.lastOrder ? formatDate(customer.lastOrder) : t('Never') }}
-                </td>
+              </td>
               <td class="py-4 px-4">
                 <span :class="[
                   'px-3 py-1 rounded-full text-sm',
@@ -295,7 +295,7 @@
                 ]">
                   {{ getStatusText(customer.status) }}
                 </span>
-                </td>
+              </td>
               <td class="py-4 px-4">
                 <div class="flex items-center gap-2">
                   <button 
@@ -340,8 +340,8 @@
                     </svg>
                   </button>
                 </div>
-                </td>
-              </tr>
+              </td>
+            </tr>
           </tbody>
         </table>
       </div>
@@ -455,18 +455,18 @@ font-bold">
           <div v-if="selectedCustomer.recentOrders && selectedCustomer.recentOrders.length > 0" class="mb-6">
             <h4 class="font-bold mb-3">{{ t('Recent Orders') }}</h4>
             <div class="space-y-3">
-              <div v-for="order in selectedCustomer.recentOrders.slice(0, 3)" :key="order.id" 
+              <div v-for="orderItem in selectedCustomer.recentOrders.slice(0, 3)" :key="orderItem.id" 
                    class="border rounded-lg p-4 hover:bg-gray-50 cursor-pointer"
-                   @click="viewOrder(order)">
+                   @click="viewOrder(orderItem)">
                 <div class="flex justify-between items-center">
                   <div>
-                    <p class="font-medium text-primary-600">#{{ order.orderNumber }}</p>
-                    <p class="text-sm text-gray-600">{{ formatDate(order.createdAt) }}</p>
+                    <p class="font-medium text-primary-600">#{{ orderItem.orderNumber }}</p>
+                    <p class="text-sm text-gray-600">{{ formatDate(orderItem.createdAt) }}</p>
                   </div>
                   <div class="text-right">
-                    <p class="font-bold">{{ formatCurrency(order.total) }}</p>
-                    <span :class="getStatusClasses(order.status)" class="px-2 py-1 text-xs rounded-full">
-                      {{ order.status }}
+                    <p class="font-bold">{{ formatCurrency(orderItem.total) }}</p>
+                    <span :class="getStatusClasses(orderItem.status)" class="px-2 py-1 text-xs rounded-full">
+                      {{ orderItem.status }}
                     </span>
                   </div>
                 </div>
@@ -534,20 +534,20 @@ font-bold">
                   <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{{ t('Total') }}</th>
                   <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{{ t('Status') }}</th>
                   <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{{ t('Payment') }}</th>
-                 </tr>
+                </tr>
               </thead>
               <tbody class="bg-white divide-y divide-gray-200">
-                <tr v-for="order in customerOrders" :key="order.id" class="hover:bg-gray-50">
-                  <td class="px-4 py-3 text-sm font-medium text-primary-600">#{{ order.orderNumber }}</td>
-                  <td class="px-4 py-3 text-sm text-gray-600">{{ formatDate(order.createdAt) }}</td>
-                  <td class="px-4 py-3 text-sm text-gray-600">{{ order.items?.length || 0 }}</td>
-                  <td class="px-4 py-3 text-sm font-medium">{{ formatCurrency(order.total) }}</td>
+                <tr v-for="orderItem in customerOrders" :key="orderItem.id" class="hover:bg-gray-50">
+                  <td class="px-4 py-3 text-sm font-medium text-primary-600">#{{ orderItem.orderNumber }}</td>
+                  <td class="px-4 py-3 text-sm text-gray-600">{{ formatDate(orderItem.createdAt) }}</td>
+                  <td class="px-4 py-3 text-sm text-gray-600">{{ orderItem.items?.length || 0 }}</td>
+                  <td class="px-4 py-3 text-sm font-medium">{{ formatCurrency(orderItem.total) }}</td>
                   <td class="px-4 py-3">
-                    <span :class="getStatusClasses(order.status)" class="px-2 py-1 text-xs rounded-full">
-                      {{ order.status }}
+                    <span :class="getStatusClasses(orderItem.status)" class="px-2 py-1 text-xs rounded-full">
+                      {{ orderItem.status }}
                     </span>
-                   </tr>
-                  <td class="px-4 py-3 text-sm text-gray-600">{{ order.paymentMethod }} </tr>
+                  </td>
+                  <td class="px-4 py-3 text-sm text-gray-600">{{ orderItem.paymentMethod }}</td>
                 </tr>
               </tbody>
             </table>
@@ -709,7 +709,6 @@ const loadOrders = async () => {
   }
 
   try {
-    // Use maybeSingle() for each order query to avoid PGRST116
     const { data, error } = await getTable('orders')
       .select('*')
       .eq('tenant_id', tenantId)
@@ -747,7 +746,6 @@ const loadCustomers = async () => {
   }
 
   try {
-    // Use maybeSingle() or handle empty results gracefully
     const { data, error: fetchError } = await getTable('customers')
       .select('*')
       .eq('tenant_id', tenantId)
@@ -795,7 +793,6 @@ const loadCustomers = async () => {
     
   } catch (err: any) {
     console.error('Error loading customers:', err)
-    // Handle PGRST116 gracefully - it means no customers found
     if (err.message?.includes('PGRST116') || err.code === 'PGRST116') {
       customers.value = []
       error.value = null
