@@ -1,4 +1,4 @@
-// src/stores/brands.ts - Updated with logo instead of image
+// src/stores/brands.ts - Updated with maybeSingle() to handle empty results
 import { defineStore } from 'pinia'
 import { ref, computed, watchEffect } from 'vue'
 import { supabaseSafe, getTable } from '@/supabase/client'
@@ -117,14 +117,23 @@ export const useBrandsStore = defineStore('brands', () => {
       if (!tenantId) return null
 
       const client = getClient()
+      // Use maybeSingle() instead of single() to handle empty results gracefully
       const { data: brandRow, error: brandError } = await client
         .from('brands')
         .select('*')
         .eq('slug', slug)
         .eq('tenant_id', tenantId)
-        .single()
+        .maybeSingle()
 
-      if (brandError || !brandRow) return null
+      if (brandError) {
+        console.error('Error fetching brand:', brandError)
+        throw brandError
+      }
+      
+      if (!brandRow) {
+        console.log(`Brand not found with slug: ${slug}`)
+        return null
+      }
 
       const brand = transformBrandData(brandRow)
 
@@ -135,7 +144,10 @@ export const useBrandsStore = defineStore('brands', () => {
         .eq('tenant_id', tenantId)
         .order('created_at', { ascending: false })
 
-      if (productsError) throw productsError
+      if (productsError) {
+        console.error('Error fetching products:', productsError)
+        throw productsError
+      }
 
       const products: Product[] = await Promise.all(((productsData as any[]) || []).map(async (row: any) => {
         let imageUrl = row.image_url || ''
@@ -153,12 +165,12 @@ export const useBrandsStore = defineStore('brands', () => {
 
         let categoryName = row.category
         if (!categoryName && row.category_id) {
-          const { data: catRow } = await client
+          const { data: catRow, error: catError } = await client
             .from('categories')
             .select('name')
             .eq('id', row.category_id)
-            .single()
-          if (catRow) categoryName = (catRow as any).name
+            .maybeSingle()
+          if (!catError && catRow) categoryName = (catRow as any).name
         }
 
         return {
@@ -196,6 +208,7 @@ export const useBrandsStore = defineStore('brands', () => {
       return currentBrand.value
     } catch (err: any) {
       error.value = err?.message || 'Failed to load brand'
+      console.error('Error in getBrandBySlug:', err)
       return null
     } finally {
       isLoading.value = false
@@ -256,7 +269,6 @@ export const useBrandsStore = defineStore('brands', () => {
 
       if (isFile(brandData.image)) {
         const uploadedUrl = await uploadBrandImage(brandData.image, brandId)
-        // Use 'logo' column instead of 'image'
         const updatePayload = { logo: uploadedUrl, updated_at: new Date().toISOString() }
         const { error: updateError } = await getTable('brands')
           .update(updatePayload)
@@ -292,12 +304,12 @@ export const useBrandsStore = defineStore('brands', () => {
 
       if (updates.image) {
         if (isFile(updates.image)) {
-          // Use 'logo' column instead of 'image'
           const { data: oldBrand, error: fetchError } = await client
             .from('brands')
             .select('logo')
             .eq('id', brandId)
-            .single()
+            .maybeSingle()
+          
           if (!fetchError && oldBrand && (oldBrand as any).logo) {
             await deleteBrandImageFromStorage((oldBrand as any).logo)
           }
@@ -337,12 +349,11 @@ export const useBrandsStore = defineStore('brands', () => {
 
     try {
       const client = getClient()
-      // Use 'logo' column instead of 'image'
       const { data: brandRow, error: fetchError } = await client
         .from('brands')
         .select('logo')
         .eq('id', brandId)
-        .single()
+        .maybeSingle()
 
       if (fetchError && fetchError.code !== 'PGRST116') throw fetchError
 
